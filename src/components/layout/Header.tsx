@@ -10,20 +10,25 @@ import {
   UserIcon,
   MagnifyingGlassIcon
 } from '@heroicons/react/24/outline'
+import { Bell } from 'lucide-react'
 import { AuthService } from '@/services/authService'
 import { useAuthStore } from '@/store/authStore'
 import { useCartStore } from '@/store/cartStore'
+import { useNotification } from '@/hooks/useNotification'
 import { SearchModal } from '@/components/modals/SearchModal'
 import { CartDrawer } from '@/components/cart/CartDrawer'
+import { NotificationModal } from '@/components/modals/NotificationModal'
 
 export function Header() {
   const [isMenuOpen, setIsMenuOpen] = useState(false)
   const [isSearchOpen, setIsSearchOpen] = useState(false)
   const [isCartOpen, setIsCartOpen] = useState(false)
+  const [isNotificationOpen, setIsNotificationOpen] = useState(false)
   const router = useRouter()
   
   const { user, isAuthenticated, logout } = useAuthStore()
   const { totalItems } = useCartStore()
+  const { notifications } = useNotification()
 
   const handleLogout = async () => {
     try {
@@ -44,7 +49,7 @@ export function Header() {
 
   return (
     <>
-      <header className="bg-white shadow-sm border-b border-neutral-200 sticky top-0 z-40">
+      <header className="bg-white shadow-sm border-b border-neutral-200 sticky top-0 z-50">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center h-16">
             {/* Logo */}
@@ -78,6 +83,19 @@ export function Header() {
                 className="p-2 text-neutral-700 hover:text-primary-600 transition-colors duration-200"
               >
                 <MagnifyingGlassIcon className="w-5 h-5" />
+              </button>
+
+              {/* Notification Button */}
+              <button
+                onClick={() => setIsNotificationOpen(true)}
+                className="relative p-2 text-neutral-700 hover:text-primary-600 transition-colors duration-200"
+              >
+                <Bell className="w-6 h-6" />
+                {notifications.length > 0 && (
+                  <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center font-medium">
+                    {notifications.length > 9 ? '9+' : notifications.length}
+                  </span>
+                )}
               </button>
 
               {/* Cart Button */}
@@ -217,6 +235,7 @@ export function Header() {
       {/* Modals */}
       <SearchModal isOpen={isSearchOpen} onClose={() => setIsSearchOpen(false)} />
       <CartDrawer isOpen={isCartOpen} onClose={() => setIsCartOpen(false)} />
+      <NotificationModal isOpen={isNotificationOpen} onClose={() => setIsNotificationOpen(false)} />
     </>
   )
 }

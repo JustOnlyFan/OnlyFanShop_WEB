@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useSearchParams } from 'next/navigation';
-import { useQuery } from 'react-query';
+import { useQuery } from '@tanstack/react-query';
 import { ProductService } from '@/services/productService';
 import { Product, Brand, Category } from '@/types';
 import { ProductCard } from '@/components/product/ProductCard';
@@ -37,8 +37,14 @@ export default function SearchPage() {
   const [loading, setLoading] = useState(false);
 
   // Fetch categories and brands
-  const { data: categoriesData } = useQuery('categories', () => ProductService.getCategories());
-  const { data: brandsData } = useQuery('brands', () => ProductService.getBrands());
+  const { data: categoriesData } = useQuery({
+    queryKey: ['categories'],
+    queryFn: () => ProductService.getCategories()
+  });
+  const { data: brandsData } = useQuery({
+    queryKey: ['brands'],
+    queryFn: () => ProductService.getBrands()
+  });
 
   useEffect(() => {
     if (categoriesData) setCategories(categoriesData);
@@ -244,3 +250,10 @@ export default function SearchPage() {
     </div>
   );
 }
+
+
+
+
+
+
+

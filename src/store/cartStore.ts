@@ -1,6 +1,7 @@
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
-import { CartItem, Product } from '@/types'
+import { CartItem } from '@/types'
+import { Product } from '@/services/productService'
 import { CartService } from '@/services/cartService'
 import { useAuthStore } from './authStore'
 
@@ -21,6 +22,8 @@ interface CartActions {
   setLoading: (loading: boolean) => void
   setError: (error: string | null) => void
   clearError: () => void
+  getSmartAnalysis: () => Promise<void>
+  getOptimizationSuggestions: () => Promise<any>
 }
 
 export const useCartStore = create<CartState & CartActions>()(
@@ -238,6 +241,7 @@ export const useCartStore = create<CartState & CartActions>()(
           throw error
         }
       },
+
     }),
     {
       name: 'cart-storage',

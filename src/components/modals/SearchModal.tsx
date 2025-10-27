@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { useQuery } from 'react-query'
+import { useQuery } from '@tanstack/react-query'
 import { XMarkIcon, MagnifyingGlassIcon } from '@heroicons/react/24/outline'
 import { ProductService } from '@/services/productService'
 import { ProductCard } from '@/components/product/ProductCard'
@@ -17,14 +17,12 @@ export function SearchModal({ isOpen, onClose }: SearchModalProps) {
   const [query, setQuery] = useState('')
   const debouncedQuery = useDebounce(query, 300)
 
-  const { data: searchResults, isLoading } = useQuery(
-    ['search', debouncedQuery],
-    () => ProductService.searchProducts(debouncedQuery, { size: 6 }),
-    {
-      enabled: debouncedQuery.length > 2,
-      select: (data) => data.data?.products || []
-    }
-  )
+  const { data: searchResults, isLoading } = useQuery({
+    queryKey: ['search', debouncedQuery],
+    queryFn: () => ProductService.searchProducts(debouncedQuery, { size: 6 }),
+    enabled: debouncedQuery.length > 2,
+    select: (data) => data.data?.products || []
+  })
 
   useEffect(() => {
     if (isOpen) {
@@ -131,3 +129,10 @@ export function SearchModal({ isOpen, onClose }: SearchModalProps) {
     </div>
   )
 }
+
+
+
+
+
+
+

@@ -72,11 +72,14 @@ export default function CheckoutPage() {
         token: token ? 'Present' : 'Missing'
       });
 
-      const response = await PaymentService.createVNPayPayment(
-        totalPrice,
-        'NCB', // Bank code
-        shippingAddress.trim()
-      );
+      const response = await PaymentService.createVNPayPayment({
+        orderId: Date.now(),
+        amount: totalPrice,
+        returnUrl: `${window.location.origin}/checkout/success`,
+        cancelUrl: `${window.location.origin}/checkout/cancel`,
+        orderDescription: `Order for ${items.length} items`,
+        orderType: 'other'
+      });
 
       if (response.data?.paymentUrl) {
         // Redirect to VNPay

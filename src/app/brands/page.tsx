@@ -1,9 +1,10 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { useQuery } from 'react-query';
+import { useQuery } from '@tanstack/react-query';
 import { ProductService } from '@/services/productService';
-import { Brand, Product } from '@/types';
+import { Brand } from '@/types';
+import { Product } from '@/services/productService';
 import { LoadingSpinner } from '@/components/ui/LoadingSpinner';
 import { Button } from '@/components/ui/Button';
 import { 
@@ -34,11 +35,17 @@ export default function BrandsPage() {
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
 
   // Fetch brands and products
-  const { data: brandsData } = useQuery('brands', () => ProductService.getBrands());
-  const { data: productsData } = useQuery('featured-products', () => ProductService.getHomepage({ size: 12 }));
+  const { data: brandsData } = useQuery({
+    queryKey: ['brands'],
+    queryFn: () => ProductService.getBrands()
+  });
+  const { data: productsData } = useQuery({
+    queryKey: ['featured-products'],
+    queryFn: () => ProductService.getHomepage({ size: 12 })
+  });
 
   useEffect(() => {
-    if (brandsData) setBrands(brandsData);
+    if (brandsData?.data) setBrands(brandsData.data);
     if (productsData?.data) setFeaturedProducts(productsData.data.products || []);
     setLoading(false);
   }, [brandsData, productsData]);
