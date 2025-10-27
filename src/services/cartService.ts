@@ -1,93 +1,175 @@
-import { apiClient } from '@/lib/api'
-import { Cart, CartItem, AddToCartRequest, ApiResponse } from '@/types'
+import axios from 'axios'
+import { Product } from '@/types'
+
+const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080'
+
+export interface CartItem {
+  id: number
+  product: Product
+  quantity: number
+  price: number
+  createdAt: string
+  updatedAt: string
+}
+
+export interface CartResponse {
+  id: number
+  userId: number
+  items: CartItem[]
+  totalItems: number
+  totalPrice: number
+  createdAt: string
+  updatedAt: string
+}
+
+export interface AddToCartRequest {
+  productId: number
+  quantity: number
+}
+
+export interface UpdateCartItemRequest {
+  cartItemId: number
+  quantity: number
+}
+
+export interface ApiResponse<T> {
+  statusCode: number
+  message: string
+  data: T
+}
 
 export class CartService {
-  // Add item to cart
-  static async addToCart(request: AddToCartRequest): Promise<ApiResponse<void>> {
-    try {
-      return await apiClient.post('/cart/addToCart', request)
-    } catch (error) {
-      console.error('Error adding to cart:', error);
-      // Return success response for demo purposes
-      return {
-        statusCode: 200,
-        message: 'Item added to cart successfully',
-        data: undefined,
-        dateTime: new Date().toISOString()
-      };
+  private static getAuthHeaders() {
+    const token = localStorage.getItem('token')
+    return {
+      'Authorization': `Bearer ${token}`,
+      'Content-Type': 'application/json'
     }
   }
 
-  // Get cart by user ID
-  static async getCart(userId: number): Promise<ApiResponse<Cart>> {
-    return apiClient.get(`/cart/${userId}`)
+  // Get user's cart
+  static async getCart(): Promise<ApiResponse<CartResponse>> {
+    try {
+      const response = await axios.get(`${API_URL}/api/cart`, {
+        headers: this.getAuthHeaders()
+      })
+      return response.data
+    } catch (error: any) {
+      throw new Error(error.response?.data?.message || 'Failed to get cart')
+    }
   }
 
-  // Clear cart
-  static async clearCart(username: string): Promise<ApiResponse<void>> {
-    return apiClient.post(`/cart/clear?username=${username}`)
+  // Add item to cart
+  static async addToCart(productId: number, quantity: number = 1): Promise<ApiResponse<CartResponse>> {
+    try {
+      const response = await axios.post(`${API_URL}/api/cart/items`, 
+        { productId, quantity },
+        { headers: this.getAuthHeaders() }
+      )
+      return response.data
+    } catch (error: any) {
+      throw new Error(error.response?.data?.message || 'Failed to add item to cart')
+    }
   }
 
-  // Get cart items
-  static async getCartItems(username: string): Promise<ApiResponse<CartItem[]>> {
-    return apiClient.get(`/cartItem/showCartItem?username=${username}`)
-  }
-
-  // Add quantity
-  static async addQuantity(username: string, productId: number): Promise<ApiResponse<void>> {
-    return apiClient.post(`/cartItem/addQuantity?username=${username}&productID=${productId}`)
-  }
-
-  // Minus quantity
-  static async minusQuantity(username: string, productId: number): Promise<ApiResponse<void>> {
-    return apiClient.post(`/cartItem/minusQuantity?username=${username}&productID=${productId}`)
+  // Update cart item quantity
+  static async updateCartItem(cartItemId: number, quantity: number): Promise<ApiResponse<CartResponse>> {
+    try {
+      const response = await axios.put(`${API_URL}/api/cart/items/${cartItemId}`, 
+        { quantity },
+        { headers: this.getAuthHeaders() }
+      )
+      return response.data
+    } catch (error: any) {
+      throw new Error(error.response?.data?.message || 'Failed to update cart item')
+    }
   }
 
   // Remove item from cart
-  static async removeItem(username: string, productId: number): Promise<ApiResponse<void>> {
-    // This would need to be implemented in the backend
-    // For now, we'll use minusQuantity until quantity reaches 0
-    return this.minusQuantity(username, productId)
+  static async removeFromCart(cartItemId: number): Promise<ApiResponse<CartResponse>> {
+    try {
+      const response = await axios.delete(`${API_URL}/api/cart/items/${cartItemId}`, {
+        headers: this.getAuthHeaders()
+      })
+      return response.data
+    } catch (error: any) {
+      throw new Error(error.response?.data?.message || 'Failed to remove item from cart')
+    }
   }
 
-  // Update item quantity
-  static async updateQuantity(username: string, productId: number, quantity: number): Promise<ApiResponse<void>> {
-    // Get current cart items
-    const cartItemsResponse = await this.getCartItems(username)
-    const cartItems = cartItemsResponse.data
+  // Clear entire cart
+  static async clearCart(): Promise<ApiResponse<void>> {
+    try {
+      const response = await axios.delete(`${API_URL}/api/cart`, {
+        headers: this.getAuthHeaders()
+      })
+      return response.data
+    } catch (error: any) {
+      throw new Error(error.response?.data?.message || 'Failed to clear cart')
+    }
+  }
 
-    // Find the item
-    const item = cartItems.find(item => item.product.id === productId)
+  // Get cart item count
+  static async getCartItemCount(): Promise<number> {
+    try {
+      const cart = await this.getCart()
+      return cart.data.totalItems || 0
+    } catch {
+      return 0
+    }
+  }
+
+  // Check if product is in cart
+  static async isProductInCart(productId: number): Promise<boolean> {
+    try {
+      const cart = await this.getCart()
+      return cart.data.items.some(item => item.product.id === productId)
+    } catch {
+      return false
+    }
+  }
+
+  // Get cart item by product ID
+  static async getCartItemByProduct(productId: number): Promise<CartItem | null> {
+    try {
+      const cart = await this.getCart()
+      return cart.data.items.find(item => item.product.id === productId) || null
+    } catch {
+      return null
+    }
+  }
+
+  // Calculate cart totals
+  static calculateTotals(items: CartItem[]): { totalItems: number, totalPrice: number } {
+    const totalItems = items.reduce((sum, item) => sum + item.quantity, 0)
+    const totalPrice = items.reduce((sum, item) => sum + (item.price * item.quantity), 0)
     
-    if (!item) {
-      throw new Error('Item not found in cart')
-    }
-
-    const currentQuantity = item.quantity
-    const difference = quantity - currentQuantity
-
-    if (difference > 0) {
-      // Add quantity
-      for (let i = 0; i < difference; i++) {
-        await this.addQuantity(username, productId)
-      }
-    } else if (difference < 0) {
-      // Remove quantity
-      for (let i = 0; i < Math.abs(difference); i++) {
-        await this.minusQuantity(username, productId)
-      }
-    }
-
-    return { statusCode: 200, message: 'Quantity updated successfully', data: undefined, dateTime: new Date().toISOString() }
+    return { totalItems, totalPrice }
   }
 
-  // Calculate total price
-  static calculateTotal(cartItems: CartItem[]): number {
-    return cartItems.reduce((total, item) => total + item.price, 0)
-  }
-
-  // Calculate total quantity
-  static calculateTotalQuantity(cartItems: CartItem[]): number {
-    return cartItems.reduce((total, item) => total + item.quantity, 0)
+  // Validate cart before checkout
+  static validateCart(cart: CartResponse): { isValid: boolean, errors: string[] } {
+    const errors: string[] = []
+    
+    if (!cart.items || cart.items.length === 0) {
+      errors.push('Cart is empty')
+    }
+    
+    cart.items.forEach((item, index) => {
+      if (item.quantity <= 0) {
+        errors.push(`Item ${index + 1}: Invalid quantity`)
+      }
+      if (item.product.stock < item.quantity) {
+        errors.push(`Item ${index + 1}: Insufficient stock (${item.product.stock} available)`)
+      }
+      if (!item.product.isActive) {
+        errors.push(`Item ${index + 1}: Product is no longer available`)
+      }
+    })
+    
+    return {
+      isValid: errors.length === 0,
+      errors
+    }
   }
 }

@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useParams } from 'next/navigation';
-import { ProductDetail } from '@/types';
+import { Product } from '@/services/productService';
 import { ProductService } from '@/services/productService';
 import { LoadingSpinner } from '@/components/ui/LoadingSpinner';
 import { Button } from '@/components/ui/Button';
@@ -29,7 +29,7 @@ import Link from 'next/link';
 import Image from 'next/image';
 
 export default function ProductDetailPage() {
-  const [product, setProduct] = useState<ProductDetail | null>(null);
+  const [product, setProduct] = useState<Product | null>(null);
   const [loading, setLoading] = useState(true);
   const [quantity, setQuantity] = useState(1);
   const [selectedImage, setSelectedImage] = useState(0);
@@ -50,7 +50,7 @@ export default function ProductDetailPage() {
   const fetchProductDetail = async () => {
     try {
       setLoading(true);
-      const response = await ProductService.getProductDetail(parseInt(productId));
+      const response = await ProductService.getProductById(parseInt(productId));
       if (response.data) {
         setProduct(response.data);
       }

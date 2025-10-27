@@ -64,13 +64,26 @@ export const useAuthStore = create<AuthState & AuthActions>()(
             set({ 
               user: response.data, 
               isAuthenticated: true, 
-              isLoading: false 
+              isLoading: false,
+              error: null
             })
           } else {
+            // Clear auth data on failure
+            AuthService.clearAuth()
+            set({ 
+              user: null, 
+              isAuthenticated: false, 
+              isLoading: false,
+              error: response.message || 'Đăng nhập thất bại'
+            })
             throw new Error(response.message || 'Đăng nhập thất bại')
           }
         } catch (error: any) {
+          // Clear auth data on error
+          AuthService.clearAuth()
           set({ 
+            user: null,
+            isAuthenticated: false,
             error: error.message || 'Đăng nhập thất bại', 
             isLoading: false 
           })
@@ -127,7 +140,7 @@ export const useAuthStore = create<AuthState & AuthActions>()(
       },
 
       logout: () => {
-        AuthService.removeToken()
+        AuthService.clearAuth()
         set({ 
           user: null, 
           isAuthenticated: false, 
@@ -166,3 +179,11 @@ export const useAuthStore = create<AuthState & AuthActions>()(
     }
   )
 )
+
+
+
+
+
+
+
+

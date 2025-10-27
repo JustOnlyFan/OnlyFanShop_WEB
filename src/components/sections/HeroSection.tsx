@@ -10,19 +10,17 @@ import {
 } from '@heroicons/react/24/outline'
 import { Button } from '@/components/ui/Button'
 import { ProductCard } from '@/components/product/ProductCard'
-import { useQuery } from 'react-query'
+import { useQuery } from '@tanstack/react-query'
 import { ProductService } from '@/services/productService'
 
 export function HeroSection() {
   const [currentSlide, setCurrentSlide] = useState(0)
 
-  const { data: featuredProducts } = useQuery(
-    'featured-products',
-    () => ProductService.getHomepage({ size: 4 }),
-    {
-      select: (data) => data.data?.products || []
-    }
-  )
+  const { data: featuredProducts } = useQuery({
+    queryKey: ['featured-products'],
+    queryFn: () => ProductService.getHomepage({ size: 4 }),
+    select: (data) => data.data?.products || []
+  })
 
   const heroSlides = [
     {
@@ -202,3 +200,10 @@ export function HeroSection() {
     </section>
   )
 }
+
+
+
+
+
+
+

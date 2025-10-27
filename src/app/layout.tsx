@@ -2,7 +2,7 @@ import type { Metadata } from 'next'
 import { Inter, Poppins } from 'next/font/google'
 import './globals.css'
 import { Providers } from '@/components/providers/Providers'
-import { Header } from '@/components/layout/Header'
+import { DesktopLayout } from '@/components/layout/DesktopLayout'
 import { Footer } from '@/components/layout/Footer'
 import { ErrorBoundary } from '@/components/ErrorBoundary'
 import { Toaster } from 'react-hot-toast'
@@ -19,6 +19,7 @@ const poppins = Poppins({
 })
 
 export const metadata: Metadata = {
+  metadataBase: new URL(process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000'),
   title: 'OnlyFan Shop - Quạt điện cao cấp',
   description: 'Cửa hàng quạt điện cao cấp với đa dạng sản phẩm từ các thương hiệu uy tín. Quạt đứng, quạt trần, quạt hơi nước và nhiều hơn nữa.',
   keywords: 'quạt điện, quạt đứng, quạt trần, quạt hơi nước, quạt không cánh, OnlyFan',
@@ -41,13 +42,10 @@ export default function RootLayout({
       <body className="font-sans antialiased">
         <Providers>
           <ErrorBoundary>
-            <div className="min-h-screen flex flex-col">
-              <Header />
-              <main className="flex-1">
-                {children}
-              </main>
-              <Footer />
-            </div>
+            <DesktopLayout>
+              {children}
+            </DesktopLayout>
+            <Footer />
           </ErrorBoundary>
           <Toaster 
             position="top-right"

@@ -1,6 +1,6 @@
 'use client'
 
-import { useQuery } from 'react-query'
+import { useQuery } from '@tanstack/react-query'
 import { ProductService } from '@/services/productService'
 import { LoadingSpinner } from '@/components/ui/LoadingSpinner'
 import { Button } from '@/components/ui/Button'
@@ -13,13 +13,11 @@ import {
 } from '@heroicons/react/24/outline'
 
 export function CategoriesSection() {
-  const { data: categories, isLoading, error } = useQuery(
-    'categories',
-    () => ProductService.getCategories(),
-    {
-      select: (data) => data
-    }
-  )
+  const { data: categories, isLoading, error } = useQuery({
+    queryKey: ['categories'],
+    queryFn: () => ProductService.getCategories(),
+    select: (data) => data
+  })
 
   // Fallback categories if API fails
   const fallbackCategories = [
@@ -28,32 +26,32 @@ export function CategoriesSection() {
       name: 'Quạt Đứng',
       icon: HomeIcon,
       description: 'Quạt đứng cao cấp cho gia đình',
-      image: '/images/category-standing.jpg'
+      image: 'https://images.unsplash.com/photo-1581094794329-c8112a89af12?w=400&h=300&fit=crop&q=80&auto=format'
     },
     {
       id: 2,
       name: 'Quạt Trần',
       icon: BuildingOfficeIcon,
       description: 'Quạt trần cho văn phòng và nhà ở',
-      image: '/images/category-ceiling.jpg'
+      image: 'https://images.unsplash.com/photo-1581094794329-c8112a89af12?w=400&h=300&fit=crop&q=80&auto=format'
     },
     {
       id: 3,
       name: 'Quạt Hơi Nước',
       icon: TruckIcon,
       description: 'Quạt làm mát bằng hơi nước',
-      image: '/images/category-mist.jpg'
+      image: 'https://images.unsplash.com/photo-1581094794329-c8112a89af12?w=400&h=300&fit=crop&q=80&auto=format'
     },
     {
       id: 4,
       name: 'Quạt Công Nghiệp',
       icon: WrenchScrewdriverIcon,
       description: 'Quạt công nghiệp công suất lớn',
-      image: '/images/category-industrial.jpg'
+      image: 'https://images.unsplash.com/photo-1581094794329-c8112a89af12?w=400&h=300&fit=crop&q=80&auto=format'
     }
   ]
 
-  const displayCategories = categories && categories.length > 0 ? categories : fallbackCategories
+  const displayCategories = categories && categories.data && categories.data.length > 0 ? categories.data : fallbackCategories
 
   if (isLoading) {
     return (
@@ -93,9 +91,9 @@ export function CategoriesSection() {
                 className="group relative bg-white rounded-xl shadow-sm border border-neutral-200 overflow-hidden hover:shadow-lg transition-all duration-300"
               >
                 <div className="aspect-square relative overflow-hidden">
-                  <div className="absolute inset-0 bg-gradient-to-br from-primary-50 to-secondary-50 flex items-center justify-center">
+                  <div className="absolute inset-0 bg-gradient-to-br from-blue-50 to-indigo-50 flex items-center justify-center">
                     {IconComponent && (
-                      <IconComponent className="w-16 h-16 text-primary-600 group-hover:scale-110 transition-transform duration-300" />
+                      <IconComponent className="w-16 h-16 text-blue-600 group-hover:scale-110 transition-transform duration-300" />
                     )}
                   </div>
                   

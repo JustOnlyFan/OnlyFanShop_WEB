@@ -1,114 +1,233 @@
-import { apiClient } from '@/lib/api'
-import { User, LoginRequest, RegisterRequest, ApiResponse } from '@/types'
+import axios from 'axios'
+
+const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080'
+
+export interface LoginRequest {
+  email: string
+  password: string
+}
+
+export interface RegisterRequest {
+  username: string
+  email: string
+  password: string
+  confirmPassword: string
+  phoneNumber?: string
+  address?: string
+}
+
+export interface UserDTO {
+  userID: number
+  username: string
+  email: string
+  phoneNumber?: string
+  address?: string
+  role: 'CUSTOMER' | 'ADMIN'
+  authProvider: 'LOCAL' | 'GOOGLE' | 'FACEBOOK'
+  token?: string
+}
+
+export interface ApiResponse<T> {
+  statusCode: number
+  message: string
+  data: T
+}
 
 export class AuthService {
+  private static getAuthHeaders() {
+    const token = localStorage.getItem('token')
+    return {
+      'Authorization': `Bearer ${token}`,
+      'Content-Type': 'application/json'
+    }
+  }
+
   // Login
-  static async login(credentials: LoginRequest): Promise<ApiResponse<User>> {
-    return apiClient.post('/login/signin', credentials)
+  static async login(credentials: LoginRequest): Promise<ApiResponse<UserDTO>> {
+    try {
+      const response = await axios.post(`${API_URL}/login/signin`, credentials)
+      
+      // Only save to localStorage if login is successful
+      if (response.data && response.data.statusCode === 200 && response.data.data) {
+        localStorage.setItem('token', response.data.data.token || '')
+        localStorage.setItem('user', JSON.stringify(response.data.data))
+      }
+      
+      return response.data
+    } catch (error: any) {
+      // Clear any existing auth data on login failure
+      localStorage.removeItem('token')
+      localStorage.removeItem('user')
+      throw new Error(error.response?.data?.message || 'Login failed')
+    }
   }
 
   // Register
-  static async register(userData: RegisterRequest): Promise<ApiResponse<User>> {
-    return apiClient.post('/login/register', userData)
-  }
-
-  // Google Login
-  static async googleLogin(email: string, username: string): Promise<ApiResponse<User>> {
-    return apiClient.post('/api/auth/google/login', { email, username })
+  static async register(userData: RegisterRequest): Promise<ApiResponse<void>> {
+    try {
+      const response = await axios.post(`${API_URL}/login/register`, userData)
+      return response.data
+    } catch (error: any) {
+      throw new Error(error.response?.data?.message || 'Registration failed')
+    }
   }
 
   // Send OTP
-  static async sendOTP(email: string): Promise<ApiResponse<void>> {
-    return apiClient.post(`/login/send-otp?email=${email}`)
+  static async sendOtp(email: string): Promise<ApiResponse<void>> {
+    try {
+      const response = await axios.post(`${API_URL}/login/send-otp`, 
+        { email }, 
+        { headers: { 'Content-Type': 'application/x-www-form-urlencoded' } }
+      )
+      return response.data
+    } catch (error: any) {
+      throw new Error(error.response?.data?.message || 'Failed to send OTP')
+    }
   }
 
   // Verify OTP
-  static async verifyOTP(email: string, otp: string): Promise<ApiResponse<void>> {
-    return apiClient.post(`/login/verify-otp?email=${email}&otp=${otp}`)
+  static async verifyOtp(email: string, otp: string): Promise<ApiResponse<void>> {
+    try {
+      const response = await axios.post(`${API_URL}/login/verify-otp`, 
+        { email, otp }, 
+        { headers: { 'Content-Type': 'application/x-www-form-urlencoded' } }
+      )
+      return response.data
+    } catch (error: any) {
+      throw new Error(error.response?.data?.message || 'OTP verification failed')
+    }
   }
 
-  // Reset Password
+  // Check account availability
+  static async checkAccount(username: string, email: string): Promise<{ usernameAvailable: boolean, emailAvailable: boolean }> {
+    try {
+      const response = await axios.get(`${API_URL}/login/check-account`, {
+        params: { username, email }
+      })
+      return response.data
+    } catch (error: any) {
+      throw new Error(error.response?.data?.message || 'Account check failed')
+    }
+  }
+
+  // Reset password
   static async resetPassword(email: string, newPassword: string): Promise<ApiResponse<void>> {
-    return apiClient.post(`/login/reset-password?email=${email}&newPassword=${newPassword}`)
+    try {
+      const response = await axios.post(`${API_URL}/login/reset-password`, 
+        { email, newPassword }, 
+        { headers: { 'Content-Type': 'application/x-www-form-urlencoded' } }
+      )
+      return response.data
+    } catch (error: any) {
+      throw new Error(error.response?.data?.message || 'Password reset failed')
+    }
   }
 
-  // Check if account exists
-  static async checkAccount(username?: string, email?: string): Promise<{
-    usernameExists?: boolean
-    emailExists?: boolean
-  }> {
-    const params = new URLSearchParams()
-    if (username) params.append('username', username)
-    if (email) params.append('email', email)
-    
-    const response = await apiClient.get(`/login/check-account?${params.toString()}`)
-    return response.data as {
-      usernameExists?: boolean
-      emailExists?: boolean
+  // Google Login
+  static async googleLogin(googleToken: string): Promise<ApiResponse<UserDTO>> {
+    try {
+      const response = await axios.post(`${API_URL}/api/auth/google/login`, 
+        { email: '' }, // Will be extracted from token
+        { 
+          headers: { 
+            'X-Custom-Token': googleToken,
+            'Content-Type': 'application/json'
+          } 
+        }
+      )
+      
+      if (response.data.data) {
+        localStorage.setItem('token', response.data.data.token || '')
+        localStorage.setItem('user', JSON.stringify(response.data.data))
+      }
+      
+      return response.data
+    } catch (error: any) {
+      throw new Error(error.response?.data?.message || 'Google login failed')
     }
   }
 
   // Get current user
-  static async getCurrentUser(): Promise<ApiResponse<User>> {
-    return apiClient.get('/users/getUser')
+  static getCurrentUser(): UserDTO | null {
+    try {
+      const userStr = localStorage.getItem('user')
+      return userStr ? JSON.parse(userStr) : null
+    } catch {
+      return null
+    }
   }
 
-  // Update user
-  static async updateUser(userData: Partial<User>): Promise<ApiResponse<User>> {
-    return apiClient.put('/users/updateUser', userData)
+  // Get token
+  static getToken(): string | null {
+    return localStorage.getItem('token')
   }
 
-  // Change password
-  static async changePassword(oldPassword: string, newPassword: string): Promise<ApiResponse<void>> {
-    return apiClient.put('/users/changePassword', { oldPassword, newPassword })
+  // Check if user is authenticated
+  static isAuthenticated(): boolean {
+    const token = this.getToken()
+    const user = this.getCurrentUser()
+    return !!(token && user)
   }
 
-  // Change address
-  static async changeAddress(address: string): Promise<ApiResponse<void>> {
-    return apiClient.put(`/users/changeAddress?address=${address}`)
+  // Set user data
+  static setUser(user: UserDTO): void {
+    localStorage.setItem('user', JSON.stringify(user))
+  }
+
+  // Set token
+  static setToken(token: string): void {
+    localStorage.setItem('token', token)
+  }
+
+  // Remove token
+  static removeToken(): void {
+    localStorage.removeItem('token')
+  }
+
+  // Remove user
+  static removeUser(): void {
+    localStorage.removeItem('user')
+  }
+
+  // Clear all auth data
+  static clearAuth(): void {
+    localStorage.removeItem('token')
+    localStorage.removeItem('user')
   }
 
   // Logout
-  static async logout(): Promise<ApiResponse<void>> {
-    return apiClient.post('/users/logout')
+  static logout(): void {
+    this.clearAuth()
+    window.location.href = '/auth/login'
   }
 
-  // Local storage helpers
-  static setToken(token: string): void {
-    if (typeof window !== 'undefined') {
-      localStorage.setItem('token', token)
+  // Update profile
+  static async updateProfile(userData: Partial<UserDTO>): Promise<ApiResponse<UserDTO>> {
+    try {
+      const response = await axios.put(`${API_URL}/api/users/profile`, userData, {
+        headers: this.getAuthHeaders()
+      })
+      
+      if (response.data.data) {
+        localStorage.setItem('user', JSON.stringify(response.data.data))
+      }
+      
+      return response.data
+    } catch (error: any) {
+      throw new Error(error.response?.data?.message || 'Profile update failed')
     }
   }
 
-  static getToken(): string | null {
-    if (typeof window !== 'undefined') {
-      return localStorage.getItem('token')
+  // Change password
+  static async changePassword(currentPassword: string, newPassword: string): Promise<ApiResponse<void>> {
+    try {
+      const response = await axios.put(`${API_URL}/api/users/change-password`, 
+        { currentPassword, newPassword },
+        { headers: this.getAuthHeaders() }
+      )
+      return response.data
+    } catch (error: any) {
+      throw new Error(error.response?.data?.message || 'Password change failed')
     }
-    return null
-  }
-
-  static removeToken(): void {
-    if (typeof window !== 'undefined') {
-      localStorage.removeItem('token')
-      localStorage.removeItem('user')
-    }
-  }
-
-  static setUser(user: User): void {
-    if (typeof window !== 'undefined') {
-      localStorage.setItem('user', JSON.stringify(user))
-    }
-  }
-
-  static getUser(): User | null {
-    if (typeof window !== 'undefined') {
-      const userStr = localStorage.getItem('user')
-      return userStr ? JSON.parse(userStr) : null
-    }
-    return null
-  }
-
-  static isAuthenticated(): boolean {
-    return !!this.getToken()
   }
 }

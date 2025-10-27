@@ -1,6 +1,6 @@
 'use client'
 
-import { useQuery } from 'react-query'
+import { useQuery } from '@tanstack/react-query'
 import { ProductService } from '@/services/productService'
 import { ProductCard } from '@/components/product/ProductCard'
 import { LoadingSpinner } from '@/components/ui/LoadingSpinner'
@@ -8,13 +8,11 @@ import { Button } from '@/components/ui/Button'
 import Link from 'next/link'
 
 export function FeaturedProducts() {
-  const { data: homepageData, isLoading, error } = useQuery(
-    'featured-products',
-    () => ProductService.getHomepage({ size: 8 }),
-    {
-      select: (data) => data.data
-    }
-  )
+  const { data: homepageData, isLoading, error } = useQuery({
+    queryKey: ['featured-products'],
+    queryFn: () => ProductService.getHomepage({ size: 8 }),
+    select: (data) => data.data
+  })
 
   if (isLoading) {
     return (
@@ -81,3 +79,10 @@ export function FeaturedProducts() {
     </section>
   )
 }
+
+
+
+
+
+
+
