@@ -2,6 +2,18 @@
 @tailwind components;
 @tailwind utilities;
 
+/* Animated gradient for admin header */
+@keyframes gradientShift {
+  0% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
+}
+
+.gradient-animated {
+  background-size: 200% 200%;
+  animation: gradientShift 10s ease infinite;
+}
+
 /* Custom Scrollbar Styles */
 @layer utilities {
   .scrollbar-thin {

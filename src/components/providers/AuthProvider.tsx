@@ -5,7 +5,7 @@ import { useAuthStore } from '@/store/authStore'
 import { AuthService } from '@/services/authService'
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
-  const { setUser, logout } = useAuthStore()
+  const { setUser, setHasHydrated } = useAuthStore()
 
   useEffect(() => {
     // Check if user is actually authenticated on app start
@@ -21,7 +21,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       }
 
       // Validate token by checking if it exists and user data is valid
-      if (token && user && user.id) {
+      if (token && user && (user.userID || (user as any).id)) {
         setUser(user)
       } else {
         // Invalid auth data, clear everything
@@ -31,7 +31,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
 
     checkAuthState()
-  }, [setUser])
+    // mark hydration complete after initial auth check
+    setHasHydrated(true)
+  }, [setUser, setHasHydrated])
 
   return <>{children}</>
 }

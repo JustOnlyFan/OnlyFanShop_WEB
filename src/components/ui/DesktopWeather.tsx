@@ -226,10 +226,10 @@ export function DesktopWeather() {
 
   return (
     <motion.div 
-      initial={{ opacity: 0, y: -20, scale: 0.9 }}
+      initial={{ opacity: 0, y: 20, scale: 0.9 }}
       animate={{ opacity: 1, y: 0, scale: 1 }}
       transition={{ duration: 0.5, ease: "easeOut" }}
-      className="fixed top-20 right-8 bg-gradient-to-br from-slate-900/90 via-slate-800/90 to-slate-900/90 backdrop-blur-xl rounded-2xl p-4 text-white z-30 w-[280px] shadow-2xl border border-white/10"
+      className="fixed bottom-6 md:bottom-10 lg:bottom-16 right-4 md:right-6 lg:right-8 bg-gradient-to-br from-slate-900/90 via-slate-800/90 to-slate-900/90 backdrop-blur-xl rounded-2xl p-4 text-white z-30 w-[280px] shadow-2xl border border-white/10"
     >
       <AnimatePresence mode="wait">
         {loading ? (

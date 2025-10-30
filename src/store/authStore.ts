@@ -8,12 +8,14 @@ interface AuthState {
   isAuthenticated: boolean
   isLoading: boolean
   error: string | null
+  hasHydrated?: boolean
 }
 
 interface AuthActions {
   setUser: (user: User | null) => void
   setLoading: (loading: boolean) => void
   setError: (error: string | null) => void
+  setHasHydrated: (hydrated: boolean) => void
   login: (email: string, password: string) => Promise<void>
   register: (userData: {
     username: string
@@ -37,6 +39,7 @@ export const useAuthStore = create<AuthState & AuthActions>()(
       isAuthenticated: false,
       isLoading: false,
       error: null,
+      hasHydrated: false,
 
       // Actions
       setUser: (user) => {
@@ -51,6 +54,8 @@ export const useAuthStore = create<AuthState & AuthActions>()(
       setLoading: (isLoading) => set({ isLoading }),
 
       setError: (error) => set({ error }),
+
+      setHasHydrated: (hydrated) => set({ hasHydrated: hydrated }),
 
       clearError: () => set({ error: null }),
 

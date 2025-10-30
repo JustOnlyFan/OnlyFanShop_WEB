@@ -2,13 +2,13 @@
 
 import { useState } from 'react'
 import Link from 'next/link'
-import { useRouter } from 'next/navigation'
-import { 
-  Bars3Icon, 
-  XMarkIcon, 
-  ShoppingCartIcon, 
-  UserIcon,
-  MagnifyingGlassIcon
+import { useRouter, usePathname } from 'next/navigation'
+import {
+    Bars3Icon,
+    XMarkIcon,
+    ShoppingCartIcon,
+    UserIcon,
+    MagnifyingGlassIcon
 } from '@heroicons/react/24/outline'
 import { Bell } from 'lucide-react'
 import { AuthService } from '@/services/authService'
@@ -18,224 +18,298 @@ import { useNotification } from '@/hooks/useNotification'
 import { SearchModal } from '@/components/modals/SearchModal'
 import { CartDrawer } from '@/components/cart/CartDrawer'
 import { NotificationModal } from '@/components/modals/NotificationModal'
+import { motion } from 'framer-motion'
 
 export function Header() {
-  const [isMenuOpen, setIsMenuOpen] = useState(false)
-  const [isSearchOpen, setIsSearchOpen] = useState(false)
-  const [isCartOpen, setIsCartOpen] = useState(false)
-  const [isNotificationOpen, setIsNotificationOpen] = useState(false)
-  const router = useRouter()
-  
-  const { user, isAuthenticated, logout } = useAuthStore()
-  const { totalItems } = useCartStore()
-  const { notifications } = useNotification()
+    const [isMenuOpen, setIsMenuOpen] = useState(false)
+    const [isSearchOpen, setIsSearchOpen] = useState(false)
+    const [isCartOpen, setIsCartOpen] = useState(false)
+    const [isNotificationOpen, setIsNotificationOpen] = useState(false)
+    const router = useRouter()
+    const pathname = usePathname()
+    const isAdminPath = pathname?.startsWith('/admin')
 
-  const handleLogout = async () => {
-    try {
-      await AuthService.logout()
-      logout()
-      router.push('/')
-    } catch (error) {
-      console.error('Logout error:', error)
+    const { user, isAuthenticated, logout } = useAuthStore()
+    const { totalItems } = useCartStore()
+    const { notifications } = useNotification()
+
+    const handleLogout = async () => {
+        try {
+            await AuthService.logout()
+            logout()
+            router.push('/')
+        } catch (error) {
+            console.error('Logout error:', error)
+        }
     }
-  }
 
-  const navigation = [
-    { name: 'Trang chủ', href: '/' },
-    { name: 'Sản phẩm', href: '/products' },
-    { name: 'Thương hiệu', href: '/brands' },
-    { name: 'Liên hệ', href: '/contact' },
-  ]
+    const navigation = [
+        { name: 'Trang chủ', href: '/' },
+        { name: 'Sản phẩm', href: '/products' },
+        { name: 'Thương hiệu', href: '/brands' },
+        { name: 'Liên hệ', href: '/contact' },
+    ];
 
-  return (
-    <>
-      <header className="bg-white shadow-sm border-b border-neutral-200 sticky top-0 z-50">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between items-center h-16">
-            {/* Logo */}
-            <div className="flex-shrink-0">
-              <Link href="/" className="flex items-center">
-                <div className="w-8 h-8 bg-gradient-to-br from-primary-500 to-secondary-500 rounded-lg flex items-center justify-center">
-                  <span className="text-white font-bold text-lg">F</span>
-                </div>
-                <span className="ml-2 text-xl font-bold text-gradient">OnlyFan</span>
-              </Link>
-            </div>
+    return (
+        <>
+            <header className="relative overflow-hidden bg-gradient-to-r from-indigo-700 via-blue-600 to-fuchsia-700 sticky top-0 z-50 h-16 text-white">
+                {/* Background Effects - Always render */}
+                <div
+                    className="pointer-events-none absolute inset-0 opacity-70 z-0"
+                    style={{
+                        background: 'linear-gradient(90deg, rgba(99,102,241,0.35), rgba(59,130,246,0.35), rgba(168,85,247,0.35), rgba(236,72,153,0.35))',
+                        backgroundSize: '200% 100%',
+                        animation: 'gradient-shift 8s ease infinite'
+                    }}
+                />
 
-            {/* Desktop Navigation */}
-            <nav className="hidden md:flex space-x-8">
-              {navigation.map((item) => (
-                <Link
-                  key={item.name}
-                  href={item.href}
-                  className="text-neutral-700 hover:text-primary-600 px-3 py-2 text-sm font-medium transition-colors duration-200"
-                >
-                  {item.name}
-                </Link>
-              ))}
-            </nav>
+                {/* Animated shimmer sweep */}
+                <motion.div
+                    className="pointer-events-none absolute inset-0 bg-gradient-to-r from-transparent via-white/10 to-transparent z-0"
+                    initial={{ x: '-100%' }}
+                    animate={{ x: ['-100%', '100%'] }}
+                    transition={{ duration: 4, repeat: Infinity, ease: 'linear' }}
+                />
 
-            {/* Search, Cart, User */}
-            <div className="flex items-center space-x-4">
-              {/* Search Button */}
-              <button
-                onClick={() => setIsSearchOpen(true)}
-                className="p-2 text-neutral-700 hover:text-primary-600 transition-colors duration-200"
-              >
-                <MagnifyingGlassIcon className="w-5 h-5" />
-              </button>
+                {/* Glitter overlay */}
+                <motion.div
+                    className="pointer-events-none absolute inset-0 opacity-20 z-0"
+                    style={{
+                        backgroundImage: 'radial-gradient(rgba(255,255,255,0.9) 1px, transparent 1px)',
+                        backgroundSize: '18px 18px'
+                    }}
+                    animate={{ opacity: [0.08, 0.18, 0.08] }}
+                    transition={{ duration: 3, repeat: Infinity }}
+                />
 
-              {/* Notification Button */}
-              <button
-                onClick={() => setIsNotificationOpen(true)}
-                className="relative p-2 text-neutral-700 hover:text-primary-600 transition-colors duration-200"
-              >
-                <Bell className="w-6 h-6" />
-                {notifications.length > 0 && (
-                  <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center font-medium">
-                    {notifications.length > 9 ? '9+' : notifications.length}
-                  </span>
-                )}
-              </button>
+                {/* Ambient blur orbs */}
+                <div className="pointer-events-none absolute -top-10 -left-10 w-56 h-56 bg-fuchsia-500/20 blur-3xl rounded-full z-0" />
+                <div className="pointer-events-none absolute -bottom-12 -right-12 w-64 h-64 bg-indigo-500/20 blur-3xl rounded-full z-0" />
 
-              {/* Cart Button */}
-              <button
-                onClick={() => setIsCartOpen(true)}
-                className="relative p-2 text-neutral-700 hover:text-primary-600 transition-colors duration-200"
-              >
-                <ShoppingCartIcon className="w-5 h-5" />
-                {totalItems > 0 && (
-                  <span className="absolute -top-1 -right-1 bg-primary-600 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center">
-                    {totalItems}
-                  </span>
-                )}
-              </button>
-
-              {/* User Menu */}
-              {isAuthenticated ? (
-                <div className="relative group">
-                  <button className="flex items-center space-x-2 p-2 text-neutral-700 hover:text-primary-600 transition-colors duration-200">
-                    <UserIcon className="w-5 h-5" />
-                    <span className="hidden sm:block text-sm font-medium">
-                      {user?.username}
-                    </span>
-                  </button>
-                  
-                  {/* Dropdown Menu */}
-                  <div className="absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-lg border border-neutral-200 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200">
-                    <div className="py-1">
-               <Link
-                 href="/profile"
-                 className="block px-4 py-2 text-sm text-neutral-700 hover:bg-neutral-50"
-               >
-                 Thông tin cá nhân
-               </Link>
-               <Link
-                 href="/orders"
-                 className="block px-4 py-2 text-sm text-neutral-700 hover:bg-neutral-50"
-               >
-                 Đơn hàng
-               </Link>
-               <Link
-                 href="/wishlist"
-                 className="block px-4 py-2 text-sm text-neutral-700 hover:bg-neutral-50"
-               >
-                 Yêu thích
-               </Link>
-                      <button
-                        onClick={handleLogout}
-                        className="block w-full text-left px-4 py-2 text-sm text-neutral-700 hover:bg-neutral-50"
-                      >
-                        Đăng xuất
-                      </button>
-                    </div>
-                  </div>
-                </div>
-              ) : (
-                <div className="flex items-center space-x-2">
-                  <Link
-                    href="/auth/login"
-                    className="text-sm font-medium text-neutral-700 hover:text-primary-600 transition-colors duration-200"
-                  >
-                    Đăng nhập
-                  </Link>
-                  <Link
-                    href="/auth/register"
-                    className="btn-primary text-sm"
-                  >
-                    Đăng ký
-                  </Link>
-                </div>
-              )}
-
-              {/* Mobile menu button */}
-              <button
-                onClick={() => setIsMenuOpen(!isMenuOpen)}
-                className="md:hidden p-2 text-neutral-700 hover:text-primary-600 transition-colors duration-200"
-              >
-                {isMenuOpen ? (
-                  <XMarkIcon className="w-6 h-6" />
-                ) : (
-                  <Bars3Icon className="w-6 h-6" />
-                )}
-              </button>
-            </div>
-          </div>
-
-          {/* Mobile Navigation */}
-          {isMenuOpen && (
-            <div className="md:hidden border-t border-neutral-200">
-              <div className="px-2 pt-2 pb-3 space-y-1">
-                {navigation.map((item) => (
-                  <Link
-                    key={item.name}
-                    href={item.href}
-                    className="block px-3 py-2 text-base font-medium text-neutral-700 hover:text-primary-600 hover:bg-neutral-50 rounded-md transition-colors duration-200"
-                    onClick={() => setIsMenuOpen(false)}
-                  >
-                    {item.name}
-                  </Link>
-                ))}
-                {!isAuthenticated && (
-                  <div className="pt-4 pb-3 border-t border-neutral-200">
-                    <div className="flex items-center px-3">
-                      <div className="flex-shrink-0">
-                        <UserIcon className="w-8 h-8 text-neutral-400" />
-                      </div>
-                      <div className="ml-3">
-                        <div className="text-base font-medium text-neutral-800">
-                          Khách
+                <div className="relative z-10 px-4 sm:px-6 lg:px-8">
+                    {isAdminPath ? (
+                        // Admin Layout - Logo centered
+                        <div className="flex justify-center items-center h-16">
+                            <Link href="/admin" className="flex items-center">
+                                <div className="w-8 h-8 bg-white/20 backdrop-blur-sm rounded-lg flex items-center justify-center shadow-lg">
+                                    <span className="text-white font-bold text-lg">F</span>
+                                </div>
+                                <span className="ml-2 text-xl font-bold text-white drop-shadow-lg">OnlyFan</span>
+                            </Link>
                         </div>
-                      </div>
-                    </div>
-                    <div className="mt-3 px-2 space-y-1">
-                      <Link
-                        href="/auth/login"
-                        className="block px-3 py-2 text-base font-medium text-neutral-700 hover:text-primary-600 hover:bg-neutral-50 rounded-md"
-                        onClick={() => setIsMenuOpen(false)}
-                      >
-                        Đăng nhập
-                      </Link>
-                      <Link
-                        href="/auth/register"
-                        className="block px-3 py-2 text-base font-medium text-primary-600 hover:bg-primary-50 rounded-md"
-                        onClick={() => setIsMenuOpen(false)}
-                      >
-                        Đăng ký
-                      </Link>
-                    </div>
-                  </div>
-                )}
-              </div>
-            </div>
-          )}
-        </div>
-      </header>
+                    ) : (
+                        // Customer Layout - Full navigation
+                        <div className="flex justify-between items-center h-16">
+                            {/* Logo */}
+                            <div className="flex-shrink-0">
+                                <Link href="/" className="flex items-center">
+                                    <div className="w-8 h-8 bg-white/20 backdrop-blur-sm rounded-lg flex items-center justify-center shadow-lg">
+                                        <span className="text-white font-bold text-lg">F</span>
+                                    </div>
+                                    <span className="ml-2 text-xl font-bold text-white drop-shadow-lg">OnlyFan</span>
+                                </Link>
+                            </div>
 
-      {/* Modals */}
-      <SearchModal isOpen={isSearchOpen} onClose={() => setIsSearchOpen(false)} />
-      <CartDrawer isOpen={isCartOpen} onClose={() => setIsCartOpen(false)} />
-      <NotificationModal isOpen={isNotificationOpen} onClose={() => setIsNotificationOpen(false)} />
-    </>
-  )
+                            {/* Desktop Navigation */}
+                            <nav className="hidden md:flex space-x-8">
+                                {navigation.map((item) => (
+                                    <Link
+                                        key={item.name}
+                                        href={item.href}
+                                        className="text-white/90 hover:text-white px-3 py-2 text-sm font-medium transition-colors duration-200 drop-shadow-sm"
+                                    >
+                                        {item.name}
+                                    </Link>
+                                ))}
+                            </nav>
+
+                            {/* Right Side Actions */}
+                            <div className="flex items-center space-x-4">
+                                {/* Search Button */}
+                                <button
+                                    onClick={() => setIsSearchOpen(true)}
+                                    className="p-2 text-white/90 hover:text-white transition-colors duration-200 hover:bg-white/10 rounded-lg"
+                                    aria-label="Tìm kiếm"
+                                >
+                                    <MagnifyingGlassIcon className="w-5 h-5" />
+                                </button>
+
+                                {/* Notification Button */}
+                                <button
+                                    onClick={() => setIsNotificationOpen(true)}
+                                    className="relative p-2 text-white/90 hover:text-white transition-colors duration-200 hover:bg-white/10 rounded-lg"
+                                    aria-label="Thông báo"
+                                >
+                                    <Bell className="w-5 h-5" />
+                                    {notifications.length > 0 && (
+                                        <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center font-medium shadow-lg">
+                      {notifications.length > 9 ? '9+' : notifications.length}
+                    </span>
+                                    )}
+                                </button>
+
+                                {/* Cart Button */}
+                                <button
+                                    onClick={() => setIsCartOpen(true)}
+                                    className="relative p-2 text-white/90 hover:text-white transition-colors duration-200 hover:bg-white/10 rounded-lg"
+                                    aria-label="Giỏ hàng"
+                                >
+                                    <ShoppingCartIcon className="w-5 h-5" />
+                                    {totalItems > 0 && (
+                                        <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center font-medium shadow-lg">
+                      {totalItems}
+                    </span>
+                                    )}
+                                </button>
+
+                                {/* User Menu */}
+                                {isAuthenticated ? (
+                                    <div className="relative group">
+                                        <button className="flex items-center space-x-2 p-2 text-white/90 hover:text-white transition-colors duration-200 hover:bg-white/10 rounded-lg">
+                                            <UserIcon className="w-5 h-5" />
+                                            <span className="hidden sm:block text-sm font-medium drop-shadow-sm">
+                        {user?.username}
+                      </span>
+                                        </button>
+
+                                        {/* Dropdown Menu */}
+                                        <div className="absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-xl border border-neutral-200 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-50">
+                                            <div className="py-1">
+                                                <Link
+                                                    href="/profile"
+                                                    className="block px-4 py-2 text-sm text-neutral-700 hover:bg-neutral-50 transition-colors"
+                                                >
+                                                    Thông tin cá nhân
+                                                </Link>
+                                                <Link
+                                                    href="/orders"
+                                                    className="block px-4 py-2 text-sm text-neutral-700 hover:bg-neutral-50 transition-colors"
+                                                >
+                                                    Đơn hàng
+                                                </Link>
+                                                <Link
+                                                    href="/wishlist"
+                                                    className="block px-4 py-2 text-sm text-neutral-700 hover:bg-neutral-50 transition-colors"
+                                                >
+                                                    Yêu thích
+                                                </Link>
+                                                <div className="border-t border-neutral-200 my-1"></div>
+                                                <button
+                                                    onClick={handleLogout}
+                                                    className="block w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-red-50 transition-colors"
+                                                >
+                                                    Đăng xuất
+                                                </button>
+                                            </div>
+                                        </div>
+                                    </div>
+                                ) : (
+                                    <div className="flex items-center space-x-2">
+                                        <Link
+                                            href="/auth/login"
+                                            className="text-sm font-medium text-white/90 hover:text-white transition-colors duration-200 px-3 py-2 hover:bg-white/10 rounded-lg"
+                                        >
+                                            Đăng nhập
+                                        </Link>
+                                        <Link
+                                            href="/auth/register"
+                                            className="px-4 py-2 bg-white text-indigo-700 rounded-lg text-sm font-medium hover:bg-white/90 transition-all duration-200 shadow-lg hover:shadow-xl"
+                                        >
+                                            Đăng ký
+                                        </Link>
+                                    </div>
+                                )}
+
+                                {/* Mobile menu button */}
+                                <button
+                                    onClick={() => setIsMenuOpen(!isMenuOpen)}
+                                    className="md:hidden p-2 text-white/90 hover:text-white transition-colors duration-200 hover:bg-white/10 rounded-lg"
+                                    aria-label="Menu"
+                                >
+                                    {isMenuOpen ? (
+                                        <XMarkIcon className="w-6 h-6" />
+                                    ) : (
+                                        <Bars3Icon className="w-6 h-6" />
+                                    )}
+                                </button>
+                            </div>
+                        </div>
+                    )}
+
+                    {/* Mobile Navigation (Customer only) */}
+                    {!isAdminPath && isMenuOpen && (
+                        <motion.div
+                            className="md:hidden border-t border-white/20 mt-2"
+                            initial={{ opacity: 0, height: 0 }}
+                            animate={{ opacity: 1, height: 'auto' }}
+                            exit={{ opacity: 0, height: 0 }}
+                        >
+                            <div className="px-2 pt-2 pb-3 space-y-1">
+                                {navigation.map((item) => (
+                                    <Link
+                                        key={item.name}
+                                        href={item.href}
+                                        className="block px-3 py-2 text-base font-medium text-white/90 hover:text-white hover:bg-white/10 rounded-lg transition-colors duration-200"
+                                        onClick={() => setIsMenuOpen(false)}
+                                    >
+                                        {item.name}
+                                    </Link>
+                                ))}
+                                {!isAuthenticated && (
+                                    <div className="pt-4 pb-3 border-t border-white/20">
+                                        <div className="flex items-center px-3 mb-3">
+                                            <div className="flex-shrink-0">
+                                                <UserIcon className="w-8 h-8 text-white/70" />
+                                            </div>
+                                            <div className="ml-3">
+                                                <div className="text-base font-medium text-white">
+                                                    Khách
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <div className="space-y-1 px-2">
+                                            <Link
+                                                href="/auth/login"
+                                                className="block px-3 py-2 text-base font-medium text-white/90 hover:text-white hover:bg-white/10 rounded-lg transition-colors"
+                                                onClick={() => setIsMenuOpen(false)}
+                                            >
+                                                Đăng nhập
+                                            </Link>
+                                            <Link
+                                                href="/auth/register"
+                                                className="block px-3 py-2 text-base font-medium text-white hover:bg-white/10 rounded-lg transition-colors"
+                                                onClick={() => setIsMenuOpen(false)}
+                                            >
+                                                Đăng ký
+                                            </Link>
+                                        </div>
+                                    </div>
+                                )}
+                            </div>
+                        </motion.div>
+                    )}
+                </div>
+
+                <style jsx global>{`
+          @keyframes gradient-shift {
+            0%, 100% {
+              background-position: 0% 50%;
+            }
+            50% {
+              background-position: 100% 50%;
+            }
+          }
+        `}</style>
+            </header>
+
+            {/* Modals (Customer only) */}
+            {!isAdminPath && (
+                <>
+                    <SearchModal isOpen={isSearchOpen} onClose={() => setIsSearchOpen(false)} />
+                    <CartDrawer isOpen={isCartOpen} onClose={() => setIsCartOpen(false)} />
+                    <NotificationModal isOpen={isNotificationOpen} onClose={() => setIsNotificationOpen(false)} />
+                </>
+            )}
+        </>
+    )
 }
