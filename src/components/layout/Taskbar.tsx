@@ -3,9 +3,9 @@
 import { useState } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
-import { 
+import {
   HomeIcon,
-  ShoppingBagIcon, 
+  ShoppingBagIcon,
   BuildingStorefrontIcon,
   PhoneIcon,
   UserIcon,
@@ -26,7 +26,7 @@ export function Taskbar() {
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false)
   const [isStartMenuOpen, setIsStartMenuOpen] = useState(false)
   const router = useRouter()
-  
+
   const { user, isAuthenticated, logout } = useAuthStore()
   const { totalItems } = useCartStore()
 
@@ -54,7 +54,7 @@ export function Taskbar() {
         <div className="flex items-center justify-between h-12 px-4">
           {/* Left side - Logo */}
           <div className="flex items-center">
-            <button 
+            <button
               onClick={() => setIsStartMenuOpen(!isStartMenuOpen)}
               className="flex items-center space-x-2 px-3 py-1.5 rounded hover:bg-gray-800 transition-colors"
             >
@@ -114,7 +114,7 @@ export function Taskbar() {
             <div className="relative">
               {isAuthenticated ? (
                 <div className="relative">
-                  <button 
+                  <button
                     onClick={() => setIsUserMenuOpen(!isUserMenuOpen)}
                     className="flex items-center space-x-2 p-2 text-gray-300 hover:text-white hover:bg-gray-800 rounded transition-colors"
                     title="Tài khoản"
@@ -122,7 +122,7 @@ export function Taskbar() {
                     <UserIcon className="w-4 h-4" />
                     <span className="text-sm">{user?.username}</span>
                   </button>
-                  
+
                   {/* User Dropdown */}
                   {isUserMenuOpen && (
                     <div className="absolute right-0 mt-2 w-48 bg-gray-800 rounded-lg shadow-lg border border-gray-700">

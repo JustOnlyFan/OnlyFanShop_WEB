@@ -55,7 +55,7 @@ export default function LoginPage() {
           token: response.data.token
         };
         setUser(userData);
-        router.push('/');
+        router.push(userData.role === 'ADMIN' ? '/admin' : '/');
       } else {
         setError('Đăng nhập thất bại. Vui lòng kiểm tra lại thông tin.');
       }

@@ -2,7 +2,6 @@
 
 import { ReactNode, useState, useEffect } from 'react'
 import { useRouter, usePathname } from 'next/navigation'
-import { Taskbar } from './Taskbar'
 import { DesktopBackground } from './DesktopBackground'
 import { MacBookScreen } from '@/components/ui/MacBookScreen'
 import { DesktopWeather } from '@/components/ui/DesktopWeather'
@@ -19,7 +18,7 @@ interface DesktopLayoutProps {
 
 export function DesktopLayout({ children }: DesktopLayoutProps) {
   const pathname = usePathname()
-
+  const isAdminPath = pathname?.startsWith('/admin')
 
   return (
     <div 
@@ -27,14 +26,13 @@ export function DesktopLayout({ children }: DesktopLayoutProps) {
     >
       {/* Desktop Particles Background */}
       
-      {/* Header */}
+      {/* Header (always visible; Header self-adjusts on admin) */}
       <Header />
       
       {/* Desktop Background with Banner */}
       <DesktopBackground />
       
-      {/* Windows-style Taskbar */}
-      <Taskbar />
+      {/* Taskbar removed to avoid conflict with Header */}
       
         
         {/* MacBook Screen with Dynamic Content */}
@@ -52,7 +50,7 @@ export function DesktopLayout({ children }: DesktopLayoutProps) {
       </div>
 
       
-      {/* Desktop Weather - Top Right */}
+      {/* Desktop Weather (visible on all routes including admin) */}
       <DesktopWeather />
     </div>
   )
