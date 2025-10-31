@@ -38,7 +38,7 @@ export function DesktopLayout({ children }: DesktopLayoutProps) {
         {/* MacBook Screen with Dynamic Content */}
       <div className="absolute top-0 left-0 right-0 bottom-0">
         <MacBookScreen>
-          <div className="w-full h-full overflow-y-auto">
+          <div className={`w-full h-full ${['/profile', '/auth/login'].includes(pathname || '') ? 'overflow-hidden' : 'overflow-y-auto'}`}>
             {pathname === '/' && <LandingPage />}
             {pathname === '/products' && <ProductsPage />}
             {pathname === '/brands' && <BrandsPage />}

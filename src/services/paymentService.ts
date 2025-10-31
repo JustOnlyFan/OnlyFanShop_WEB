@@ -11,12 +11,9 @@ export interface PaymentRequest {
 }
 
 export interface VNPayPaymentRequest {
-  orderId: number
   amount: number
-  returnUrl: string
-  cancelUrl: string
-  orderDescription?: string
-  orderType?: string
+  bankCode: string
+  address: string
 }
 
 export interface PaymentResponse {
@@ -83,10 +80,15 @@ export class PaymentService {
     }
   }
 
-  // Create VNPay payment
+  // Create VNPay payment (align with BE GET /payment/vn-pay)
   static async createVNPayPayment(paymentData: VNPayPaymentRequest): Promise<ApiResponse<PaymentResponse>> {
     try {
-      const response = await axios.post(`${API_URL}/api/payment/vnpay/create`, paymentData, {
+      const response = await axios.get(`${API_URL}/payment/vn-pay`, {
+        params: {
+          amount: paymentData.amount,
+          bankCode: paymentData.bankCode,
+          address: paymentData.address
+        },
         headers: this.getAuthHeaders()
       })
       return response.data
@@ -110,7 +112,7 @@ export class PaymentService {
   // Handle VNPay callback
   static async handleVNPayCallback(queryParams: Record<string, string>): Promise<ApiResponse<PaymentResult>> {
     try {
-      const response = await axios.get(`${API_URL}/api/payment/vnpay/callback`, {
+      const response = await axios.get(`${API_URL}/payment/public/vn-pay-callback`, {
         params: queryParams,
         headers: this.getAuthHeaders()
       })

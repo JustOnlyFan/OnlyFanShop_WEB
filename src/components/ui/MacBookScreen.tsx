@@ -10,7 +10,7 @@ interface MacBookScreenProps {
 
 export function MacBookScreen({ children, className = '' }: MacBookScreenProps) {
   return (
-    <div className={`flex justify-center items-center h-full ${className}`}>
+    <div className={`flex justify-center items-end h-full pb-9 md:pb-[52px] lg:pb-[64px] ${className}`}>
       <motion.div
         className="relative -translate-x-16"
         initial={{ opacity: 0, scale: 0.8, y: 50 }}

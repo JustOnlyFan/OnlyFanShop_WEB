@@ -73,12 +73,9 @@ export default function CheckoutPage() {
       });
 
       const response = await PaymentService.createVNPayPayment({
-        orderId: Date.now(),
         amount: totalPrice,
-        returnUrl: `${window.location.origin}/checkout/success`,
-        cancelUrl: `${window.location.origin}/checkout/cancel`,
-        orderDescription: `Order for ${items.length} items`,
-        orderType: 'other'
+        bankCode: 'NCB',
+        address: shippingAddress.trim()
       });
 
       if (response.data?.paymentUrl) {

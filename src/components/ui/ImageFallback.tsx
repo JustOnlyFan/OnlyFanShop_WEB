@@ -21,7 +21,8 @@ export function ImageFallback({
   className = '',
   ...props 
 }: ImageFallbackProps) {
-  const [imgSrc, setImgSrc] = useState(src)
+  const initialSrc = typeof src === 'string' && src.startsWith('http') ? src : fallbackSrc
+  const [imgSrc, setImgSrc] = useState(initialSrc)
   const [isLoading, setIsLoading] = useState(true)
   const [hasError, setHasError] = useState(false)
 
@@ -37,7 +38,7 @@ export function ImageFallback({
   }
 
   return (
-    <div className="relative">
+    <div className="relative w-full h-full">
       {isLoading && (
         <div className="absolute inset-0 bg-gray-200 animate-pulse rounded-lg flex items-center justify-center">
           <div className="w-8 h-8 border-2 border-gray-300 border-t-blue-500 rounded-full animate-spin"></div>
@@ -50,6 +51,7 @@ export function ImageFallback({
         className={`${className} ${isLoading ? 'opacity-0' : 'opacity-100'} transition-opacity duration-300`}
         onError={handleError}
         onLoad={handleLoad}
+        unoptimized
         {...props}
       />
     </div>

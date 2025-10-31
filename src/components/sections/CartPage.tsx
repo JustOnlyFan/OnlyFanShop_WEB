@@ -25,8 +25,8 @@ import Image from 'next/image'
 import toast from 'react-hot-toast'
 
 export function CartPage() {
-  const { items, totalPrice, totalItems, isLoading, removeItem, updateQuantity, clearCart } = useCartStore()
-  const { isAuthenticated } = useAuthStore()
+  const { items, totalPrice, totalItems, isLoading, removeItem, updateQuantity, clearCart, loadCart } = useCartStore()
+  const { isAuthenticated, user } = useAuthStore()
   const [isUpdating, setIsUpdating] = useState<number | null>(null)
   const [savings, setSavings] = useState(0)
 
@@ -37,6 +37,13 @@ export function CartPage() {
       setSavings(calculatedSavings)
     }
   }, [items, totalPrice])
+
+  // Always sync cart from server on mount/auth change to avoid stale local data
+  useEffect(() => {
+    if (isAuthenticated && user) {
+      loadCart(user.userID)
+    }
+  }, [isAuthenticated, user?.userID])
 
   const handleRemoveItem = async (productId: number) => {
     try {
@@ -136,7 +143,7 @@ export function CartPage() {
   }
 
   return (
-    <div className="w-full h-full bg-gradient-to-br from-blue-900 via-blue-800 to-cyan-700">
+    <div className="w-full min-h-screen bg-gradient-to-br from-blue-900 via-blue-800 to-cyan-700">
       {/* Header */}
       <div className="bg-white shadow-sm border-b">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
@@ -222,16 +229,16 @@ export function CartPage() {
                       <div className="flex items-center space-x-3">
                         <div className="flex items-center space-x-2">
                           <button
-                            onClick={() => handleUpdateQuantity(item.product.id, item.quantity - 1)}
-                            disabled={isUpdating === item.product.id}
+                            onClick={() => handleUpdateQuantity((item.product as any).productID || (item.product as any).id, item.quantity - 1)}
+                            disabled={isUpdating === ((item.product as any).productID || (item.product as any).id)}
                             className="w-8 h-8 rounded-full border border-gray-300 flex items-center justify-center hover:bg-blue-50 hover:border-blue-300 disabled:opacity-50 transition-all duration-200"
                           >
                             <MinusIcon className="w-4 h-4" />
                           </button>
                           <span className="w-8 text-center font-medium">{item.quantity}</span>
                           <button
-                            onClick={() => handleUpdateQuantity(item.product.id, item.quantity + 1)}
-                            disabled={isUpdating === item.product.id}
+                            onClick={() => handleUpdateQuantity((item.product as any).productID || (item.product as any).id, item.quantity + 1)}
+                            disabled={isUpdating === ((item.product as any).productID || (item.product as any).id)}
                             className="w-8 h-8 rounded-full border border-gray-300 flex items-center justify-center hover:bg-blue-50 hover:border-blue-300 disabled:opacity-50 transition-all duration-200"
                           >
                             <PlusIcon className="w-4 h-4" />
@@ -246,7 +253,7 @@ export function CartPage() {
                             <ShareIcon className="w-4 h-4" />
                           </button>
                           <button
-                            onClick={() => handleRemoveItem(item.product.id)}
+                            onClick={() => handleRemoveItem((item.product as any).productID || (item.product as any).id)}
                             className="p-2 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-all duration-200"
                           >
                             <TrashIcon className="w-4 h-4" />

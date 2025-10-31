@@ -6,6 +6,7 @@ import { Product } from '@/types'
 import { Star, ShoppingCart, Heart, Eye } from 'lucide-react'
 import { ImageFallback } from '@/components/ui/ImageFallback'
 import Link from 'next/link'
+import { useCartStore } from '@/store/cartStore'
 
 interface ProductCardSimpleProps {
   product: Product
@@ -14,6 +15,8 @@ interface ProductCardSimpleProps {
 
 export function ProductCardSimple({ product, className = '' }: ProductCardSimpleProps) {
   const [isLiked, setIsLiked] = useState(false)
+  const [adding, setAdding] = useState(false)
+  const { addItem } = useCartStore()
 
   const handleLike = (e: React.MouseEvent) => {
     e.preventDefault()
@@ -21,10 +24,15 @@ export function ProductCardSimple({ product, className = '' }: ProductCardSimple
     setIsLiked(!isLiked)
   }
 
-  const handleAddToCart = (e: React.MouseEvent) => {
+  const handleAddToCart = async (e: React.MouseEvent) => {
     e.preventDefault()
     e.stopPropagation()
-    console.log('Added to cart:', product.productName)
+    try {
+      setAdding(true)
+      await addItem(product as any, 1)
+    } finally {
+      setAdding(false)
+    }
   }
 
   return (
@@ -38,13 +46,13 @@ export function ProductCardSimple({ product, className = '' }: ProductCardSimple
       <Link href={`/products/${product.id}`} className="h-full flex flex-col">
         <div className="relative flex flex-col h-full">
           {/* Product Image */}
-          <div className="relative h-64 overflow-hidden rounded-t-xl">
+          <div className="relative h-60 overflow-hidden rounded-t-xl bg-white">
             <ImageFallback
               src={product.imageURL || 'https://images.unsplash.com/photo-1581094794329-c8112a89af12?w=400&h=300&fit=crop&q=80&auto=format'}
               alt={product.productName}
               fill
               sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
-              className="object-cover transition-transform duration-300 group-hover:scale-105"
+              className="object-contain p-3"
               fallbackSrc="https://images.unsplash.com/photo-1581094794329-c8112a89af12?w=400&h=300&fit=crop&q=80&auto=format"
             />
             
@@ -124,10 +132,11 @@ export function ProductCardSimple({ product, className = '' }: ProductCardSimple
             {/* Add to Cart Button */}
             <button
               onClick={handleAddToCart}
-              className="w-full bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white font-medium py-3 px-4 rounded-lg transition-all duration-200 flex items-center justify-center space-x-2 group/btn mt-auto"
+              disabled={adding}
+              className={`w-full bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white font-medium py-3 px-4 rounded-lg transition-all duration-200 flex items-center justify-center space-x-2 group/btn mt-auto ${adding ? 'opacity-70 cursor-not-allowed' : ''}`}
             >
               <ShoppingCart className="w-4 h-4" />
-              <span>Thêm vào giỏ</span>
+              <span>{adding ? 'Đang thêm...' : 'Thêm vào giỏ'}</span>
             </button>
           </div>
         </div>

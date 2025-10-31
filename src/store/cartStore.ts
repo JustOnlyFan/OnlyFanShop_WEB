@@ -213,11 +213,11 @@ export const useCartStore = create<CartState & CartActions>()(
       loadCart: async (userId) => {
         set({ isLoading: true, error: null })
         try {
-          const response = await CartService.getCart(userId)
+          const response = await CartService.getCartByUserId(userId)
           if (response.statusCode === 200 && response.data) {
-            const items = response.data.cartItems || []
-            const totalPrice = response.data.totalPrice || 0
+            const items = (response.data.items || []) as any[]
             const totalItems = CartService.calculateTotalQuantity(items)
+            const totalPrice = items.reduce((sum, it: any) => sum + (it.price || 0), 0)
             
             set({ 
               items, 
@@ -234,11 +234,8 @@ export const useCartStore = create<CartState & CartActions>()(
             })
           }
         } catch (error: any) {
-          set({ 
-            error: error.message || 'Tải giỏ hàng thất bại', 
-            isLoading: false 
-          })
-          throw error
+          // If backend says cart not found, just clear local cart silently
+          set({ items: [], totalPrice: 0, totalItems: 0, isLoading: false })
         }
       },
 
