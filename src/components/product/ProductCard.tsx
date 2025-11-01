@@ -10,7 +10,7 @@ import {
   StarIcon
 } from '@heroicons/react/24/outline'
 import { HeartIcon as HeartSolidIcon, StarIcon as StarSolidIcon } from '@heroicons/react/24/solid'
-import { Product } from '@/services/productService'
+import { Product } from '@/types'
 import { formatPrice } from '@/lib/utils'
 import { Button } from '@/components/ui/Button'
 import { useCartStore } from '@/store/cartStore'

@@ -41,14 +41,16 @@ export default function WishlistPage() {
     setLoading(false);
   }, [isAuthenticated, router]);
 
+  const getProductId = (item: Product): number => item.id || item.productID || 0
+
   const removeFromWishlist = (productId: number) => {
-    const updatedItems = wishlistItems.filter(item => item.id !== productId);
+    const updatedItems = wishlistItems.filter(item => getProductId(item) !== productId);
     setWishlistItems(updatedItems);
     localStorage.setItem('wishlist', JSON.stringify(updatedItems));
   };
 
   const removeSelectedItems = () => {
-    const updatedItems = wishlistItems.filter(item => !selectedItems.includes(item.id));
+    const updatedItems = wishlistItems.filter(item => !selectedItems.includes(getProductId(item)));
     setWishlistItems(updatedItems);
     setSelectedItems([]);
     localStorage.setItem('wishlist', JSON.stringify(updatedItems));
@@ -63,7 +65,7 @@ export default function WishlistPage() {
   };
 
   const selectAllItems = () => {
-    setSelectedItems(wishlistItems.map(item => item.id));
+    setSelectedItems(wishlistItems.map(item => getProductId(item)).filter(id => id > 0));
   };
 
   const clearSelection = () => {
@@ -181,14 +183,16 @@ export default function WishlistPage() {
                 ? 'grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4' 
                 : 'grid-cols-1'
             }`}>
-              {wishlistItems.map((product) => (
-                <div key={product.id} className="relative">
+              {wishlistItems.map((product) => {
+                const productId = getProductId(product)
+                return (
+                <div key={productId} className="relative">
                   {/* Selection Checkbox */}
                   <div className="absolute top-4 left-4 z-10">
                     <input
                       type="checkbox"
-                      checked={selectedItems.includes(product.id)}
-                      onChange={() => toggleItemSelection(product.id)}
+                      checked={selectedItems.includes(productId)}
+                      onChange={() => toggleItemSelection(productId)}
                       className="w-4 h-4 text-blue-600 rounded focus:ring-blue-500"
                     />
                   </div>
@@ -198,7 +202,7 @@ export default function WishlistPage() {
                     <Button
                       variant="outline"
                       size="sm"
-                      onClick={() => removeFromWishlist(product.id)}
+                      onClick={() => removeFromWishlist(productId)}
                       className="bg-white/90 hover:bg-white text-red-600 hover:text-red-700"
                     >
                       <Trash2 className="w-4 h-4" />
@@ -211,7 +215,8 @@ export default function WishlistPage() {
                     className="hover:shadow-lg transition-shadow duration-300"
                   />
                 </div>
-              ))}
+                )
+              })}
             </div>
 
             {/* Selected Items Actions */}

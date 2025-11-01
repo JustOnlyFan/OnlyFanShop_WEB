@@ -123,14 +123,44 @@ export class AuthService {
     }
   }
 
-  // Google Login
-  static async googleLogin(googleToken: string): Promise<ApiResponse<UserDTO>> {
+  // Google Login - supports both Android (token) and web (email, username)
+  static async googleLogin(emailOrToken: string, username?: string): Promise<ApiResponse<UserDTO>> {
     try {
+      // If username is provided, this is the web version
+      if (username !== undefined) {
+        const payloadJson = JSON.stringify({
+          role: 'CUSTOMER',
+          email: emailOrToken,
+          username: username || ''
+        })
+        // Convert to base64url format for browser
+        const base64 = btoa(unescape(encodeURIComponent(payloadJson)))
+        const customToken = base64.replace(/\+/g, '-').replace(/\//g, '_').replace(/=/g, '')
+        
+        const response = await axios.post(`${API_URL}/api/auth/google/login`, 
+          { email: '' }, // Will be extracted from token
+          { 
+            headers: { 
+              'X-Custom-Token': customToken,
+              'Content-Type': 'application/json'
+            } 
+          }
+        )
+        
+        if (response.data.data) {
+          localStorage.setItem('token', response.data.data.token || '')
+          localStorage.setItem('user', JSON.stringify(response.data.data))
+        }
+        
+        return response.data
+      }
+      
+      // Otherwise, this is the Android version with raw token
       const response = await axios.post(`${API_URL}/api/auth/google/login`, 
         { email: '' }, // Will be extracted from token
         { 
           headers: { 
-            'X-Custom-Token': googleToken,
+            'X-Custom-Token': emailOrToken,
             'Content-Type': 'application/json'
           } 
         }

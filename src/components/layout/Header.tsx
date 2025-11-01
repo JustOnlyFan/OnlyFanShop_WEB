@@ -16,20 +16,20 @@ import { useAuthStore } from '@/store/authStore'
 import { useCartStore } from '@/store/cartStore'
 import { useNotification } from '@/hooks/useNotification'
 import { SearchModal } from '@/components/modals/SearchModal'
-import { CartDrawer } from '@/components/cart/CartDrawer'
+// Removed CartDrawer drawer in favor of in-layout cart page
 import { NotificationModal } from '@/components/modals/NotificationModal'
 import { motion } from 'framer-motion'
 
 export function Header() {
     const [isMenuOpen, setIsMenuOpen] = useState(false)
     const [isSearchOpen, setIsSearchOpen] = useState(false)
-    const [isCartOpen, setIsCartOpen] = useState(false)
+    // Drawer removed; navigate to /cart instead
     const [isNotificationOpen, setIsNotificationOpen] = useState(false)
     const router = useRouter()
     const pathname = usePathname()
-    const isAdminPath = pathname?.startsWith('/admin')
-
     const { user, isAuthenticated, logout } = useAuthStore()
+    
+    const isAdminRoute = pathname?.startsWith('/admin')
     const { totalItems } = useCartStore()
     const { notifications } = useNotification()
 
@@ -52,7 +52,7 @@ export function Header() {
 
     return (
         <>
-            <header className="relative overflow-hidden bg-gradient-to-r from-indigo-700 via-blue-600 to-fuchsia-700 sticky top-0 z-50 h-16 text-white">
+            <header className="relative overflow-visible bg-gradient-to-r from-indigo-700 via-blue-600 to-fuchsia-700 sticky top-0 z-50 h-16 text-white">
                 {/* Background Effects - Always render */}
                 <div
                     className="pointer-events-none absolute inset-0 opacity-70 z-0"
@@ -87,7 +87,7 @@ export function Header() {
                 <div className="pointer-events-none absolute -bottom-12 -right-12 w-64 h-64 bg-indigo-500/20 blur-3xl rounded-full z-0" />
 
                 <div className="relative z-10 px-4 sm:px-6 lg:px-8">
-                    {isAdminPath ? (
+                    {isAdminRoute ? (
                         // Admin Layout - Logo centered
                         <div className="flex justify-center items-center h-16">
                             <Link href="/admin" className="flex items-center">
@@ -150,7 +150,7 @@ export function Header() {
 
                                 {/* Cart Button */}
                                 <button
-                                    onClick={() => setIsCartOpen(true)}
+                                    onClick={() => router.push('/cart')}
                                     className="relative p-2 text-white/90 hover:text-white transition-colors duration-200 hover:bg-white/10 rounded-lg"
                                     aria-label="Giỏ hàng"
                                 >
@@ -170,11 +170,27 @@ export function Header() {
                                             <span className="hidden sm:block text-sm font-medium drop-shadow-sm">
                         {user?.username}
                       </span>
+                                            {user?.role === 'ADMIN' && (
+                                                <span className="px-2 py-0.5 text-xs font-bold text-purple-900 bg-yellow-400 rounded-full drop-shadow-sm">
+                                                    ADMIN
+                                                </span>
+                                            )}
                                         </button>
 
                                         {/* Dropdown Menu */}
-                                        <div className="absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-xl border border-neutral-200 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-50">
+                                        <div className="absolute right-0 mt-3.5 w-48 bg-white rounded-lg shadow-xl border border-neutral-200 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-50">
                                             <div className="py-1">
+                                                {user?.role === 'ADMIN' && (
+                                                    <>
+                                                        <Link
+                                                            href="/admin"
+                                                            className="block px-4 py-2 text-sm font-semibold text-purple-700 hover:bg-purple-50 transition-colors"
+                                                        >
+                                                            ⚙️ Trang Quản Trị
+                                                        </Link>
+                                                        <div className="border-t border-neutral-200 my-1"></div>
+                                                    </>
+                                                )}
                                                 <Link
                                                     href="/profile"
                                                     className="block px-4 py-2 text-sm text-neutral-700 hover:bg-neutral-50 transition-colors"
@@ -237,7 +253,7 @@ export function Header() {
                     )}
 
                     {/* Mobile Navigation (Customer only) */}
-                    {!isAdminPath && isMenuOpen && (
+                    {!isAdminRoute && isMenuOpen && (
                         <motion.div
                             className="md:hidden border-t border-white/20 mt-2"
                             initial={{ opacity: 0, height: 0 }}
@@ -303,10 +319,9 @@ export function Header() {
             </header>
 
             {/* Modals (Customer only) */}
-            {!isAdminPath && (
+            {!isAdminRoute && (
                 <>
                     <SearchModal isOpen={isSearchOpen} onClose={() => setIsSearchOpen(false)} />
-                    <CartDrawer isOpen={isCartOpen} onClose={() => setIsCartOpen(false)} />
                     <NotificationModal isOpen={isNotificationOpen} onClose={() => setIsNotificationOpen(false)} />
                 </>
             )}

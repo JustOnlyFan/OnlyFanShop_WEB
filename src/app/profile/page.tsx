@@ -66,7 +66,10 @@ export default function ProfilePage() {
       setSaving(true);
       setError('');
       
-      const response = await UserService.updateUser(formData);
+      const response = await UserService.updateProfile({
+        phoneNumber: formData.phoneNumber,
+        address: formData.address
+      });
       if (response.data) {
         setSuccess('Cập nhật thông tin thành công!');
         setEditing(false);
@@ -108,7 +111,7 @@ export default function ProfilePage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-gray-50 overflow-hidden lg:scrollbar-hide">
       <div className="container mx-auto px-4 py-8">
         <div className="max-w-4xl mx-auto">
           {/* Header */}

@@ -42,7 +42,7 @@ export function ProductsPage() {
   const [selectedCategory, setSelectedCategory] = useState<string>('')
   const [selectedBrand, setSelectedBrand] = useState<string>('')
   const [searchQuery, setSearchQuery] = useState('')
-  const [sortBy, setSortBy] = useState<string>('productID')
+  const [sortBy, setSortBy] = useState<string>('ProductID')
 
   // Fetch products from API
   const { data: productsData, isLoading, error } = useQuery({

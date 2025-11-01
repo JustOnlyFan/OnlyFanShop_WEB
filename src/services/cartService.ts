@@ -47,7 +47,7 @@ export class CartService {
     }
   }
 
-  // Get user's cart
+  // Get user's cart (legacy generic endpoint)
   static async getCart(): Promise<ApiResponse<CartResponse>> {
     try {
       const response = await axios.get(`${API_URL}/api/cart`, {
@@ -59,14 +59,33 @@ export class CartService {
     }
   }
 
-  // Add item to cart
-  static async addToCart(productId: number, quantity: number = 1): Promise<ApiResponse<CartResponse>> {
+  // Get user's cart (BE current contract)
+  static async getCartByUserId(userId: number): Promise<ApiResponse<any>> {
     try {
-      const response = await axios.post(`${API_URL}/api/cart/items`, 
-        { productId, quantity },
-        { headers: this.getAuthHeaders() }
-      )
+      const response = await axios.get(`${API_URL}/cart/${userId}`, {
+        headers: this.getAuthHeaders()
+      })
       return response.data
+    } catch (error: any) {
+      throw new Error(error.response?.data?.message || 'Failed to get cart')
+    }
+  }
+
+  // Add item to cart (supports new BE AddToCartRequest)
+  static async addToCart(requestOrProductId: any, quantity?: number): Promise<ApiResponse<any>> {
+    try {
+      if (typeof requestOrProductId === 'object') {
+        const response = await axios.post(`${API_URL}/cart/addToCart`, requestOrProductId, {
+          headers: this.getAuthHeaders()
+        })
+        return response.data
+      } else {
+        const response = await axios.post(`${API_URL}/api/cart/items`, 
+          { productId: requestOrProductId, quantity: quantity ?? 1 },
+          { headers: this.getAuthHeaders() }
+        )
+        return response.data
+      }
     } catch (error: any) {
       throw new Error(error.response?.data?.message || 'Failed to add item to cart')
     }
@@ -85,22 +104,42 @@ export class CartService {
     }
   }
 
-  // Remove item from cart
-  static async removeFromCart(cartItemId: number): Promise<ApiResponse<CartResponse>> {
-    try {
-      const response = await axios.delete(`${API_URL}/api/cart/items/${cartItemId}`, {
+  // New: Update quantity by username + productId using BE endpoints
+  static async updateQuantity(username: string, productId: number, quantity: number): Promise<void> {
+    // Find current quantity
+    const items = await this.showCartItems(username)
+    const item = items.find(i => (i as any).product?.productID === productId || (i as any).product?.id === productId)
+    const currentQty = item ? (item as any).quantity : 0
+    const delta = quantity - currentQty
+    if (delta === 0) return
+    const path = delta > 0 ? 'addQuantity' : 'minusQuantity'
+    const times = Math.abs(delta)
+    for (let i = 0; i < times; i++) {
+      await axios.post(`${API_URL}/cartItem/${path}`, null, {
+        params: { username, productID: productId },
         headers: this.getAuthHeaders()
       })
-      return response.data
-    } catch (error: any) {
-      throw new Error(error.response?.data?.message || 'Failed to remove item from cart')
     }
   }
 
-  // Clear entire cart
-  static async clearCart(): Promise<ApiResponse<void>> {
+  // Remove item from cart by username + productId (using minusQuantity until zero)
+  static async removeItem(username: string, productId: number): Promise<void> {
+    const items = await this.showCartItems(username)
+    const item = items.find(i => (i as any).product?.productID === productId || (i as any).product?.id === productId)
+    const qty = item ? (item as any).quantity : 0
+    for (let i = 0; i < qty; i++) {
+      await axios.post(`${API_URL}/cartItem/minusQuantity`, null, {
+        params: { username, productID: productId },
+        headers: this.getAuthHeaders()
+      })
+    }
+  }
+
+  // Clear entire cart (BE current contract)
+  static async clearCart(username: string): Promise<ApiResponse<void>> {
     try {
-      const response = await axios.delete(`${API_URL}/api/cart`, {
+      const response = await axios.post(`${API_URL}/cart/clear`, null, {
+        params: { username },
         headers: this.getAuthHeaders()
       })
       return response.data
@@ -137,6 +176,19 @@ export class CartService {
     } catch {
       return null
     }
+  }
+
+  // Helpers for BE current endpoints
+  static async showCartItems(username: string): Promise<any[]> {
+    const response = await axios.get(`${API_URL}/cartItem/showCartItem`, {
+      params: { username },
+      headers: this.getAuthHeaders()
+    })
+    return response.data.data || []
+  }
+
+  static calculateTotalQuantity(items: any[]): number {
+    return items.reduce((sum, item) => sum + (item.quantity || 0), 0)
   }
 
   // Calculate cart totals

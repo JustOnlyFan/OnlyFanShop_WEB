@@ -3,16 +3,22 @@ import axios from 'axios'
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080'
 
 export interface Message {
-  id: string
+  messageId?: string
+  id?: string // Fallback for compatibility
   roomId: string
   senderId: string
   senderName: string
-  senderRole: 'CUSTOMER' | 'ADMIN'
-  content: string
-  messageType: 'TEXT' | 'IMAGE' | 'FILE'
-  timestamp: string
+  senderRole?: 'CUSTOMER' | 'ADMIN'
+  message?: string
+  content?: string // Fallback for compatibility
+  messageType?: 'TEXT' | 'IMAGE' | 'FILE'
+  timestamp?: string | LocalDateTime
+  epochMillis?: number
   isRead: boolean
-  replyTo?: string
+  replyToMessageId?: string
+  replyTo?: string // Fallback for compatibility
+  attachmentUrl?: string
+  attachmentType?: string
 }
 
 export interface ChatRoom {
@@ -28,11 +34,25 @@ export interface ChatRoom {
   updatedAt: string
 }
 
+export interface ChatRoomAdmin {
+  roomId: string
+  participants: Record<string, boolean>
+  lastMessage: string
+  lastMessageTime: string | Date
+  customerName: string
+  customerAvatar?: string
+  isOnline: boolean
+  unreadCount: number
+}
+
 export interface SendMessageRequest {
   roomId: string
-  content: string
-  messageType?: 'TEXT' | 'IMAGE' | 'FILE'
-  replyTo?: string
+  message: string
+  content?: string // Fallback for compatibility
+  attachmentUrl?: string
+  attachmentType?: string
+  replyToMessageId?: string
+  replyTo?: string // Fallback for compatibility
 }
 
 export interface CreateChatRoomRequest {
@@ -84,6 +104,26 @@ export class ChatService {
       return response.data
     } catch (error: any) {
       throw new Error(error.response?.data?.message || 'Failed to get chat rooms')
+    }
+  }
+
+  // Get all chat rooms for admin management
+  static async getAllChatRooms(): Promise<ChatRoomAdmin[]> {
+    try {
+      const response = await axios.get(`${API_URL}/api/chat/rooms`, {
+        headers: this.getAuthHeaders()
+      })
+      console.log('Chat rooms response:', response.data)
+      return response.data.data || []
+    } catch (error: any) {
+      console.error('Error loading chat rooms:', error.response?.status, error.response?.data)
+      if (error.response?.status === 403) {
+        throw new Error('Access denied. Please ensure you are logged in as an admin.')
+      }
+      if (error.response?.status === 401) {
+        throw new Error('Session expired. Please login again.')
+      }
+      throw new Error(error.response?.data?.message || 'Failed to get all chat rooms')
     }
   }
 
