@@ -3,8 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { ProductService } from '@/services/productService';
-import { Brand } from '@/types';
-import { Product } from '@/services/productService';
+import { Brand, Product } from '@/types';
 import { LoadingSpinner } from '@/components/ui/LoadingSpinner';
 import { Button } from '@/components/ui/Button';
 import { 

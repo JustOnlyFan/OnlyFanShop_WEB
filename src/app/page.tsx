@@ -5,7 +5,7 @@ import { useQuery } from '@tanstack/react-query';
 import { ProductService } from '@/services/productService';
 import { BannerService, Banner } from '@/services/bannerService';
 import { Brand, Category } from '@/types';
-import { Product } from '@/services/productService';
+import { Product } from '@/types';
 import { Button } from '@/components/ui/Button';
 import { ProductCard3D } from '@/components/product/ProductCard3D';
 import { LoadingSpinner } from '@/components/ui/LoadingSpinner';

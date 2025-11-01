@@ -1,7 +1,7 @@
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
 import { CartItem } from '@/types'
-import { Product } from '@/services/productService'
+import { Product } from '@/types'
 import { CartService } from '@/services/cartService'
 import { useAuthStore } from './authStore'
 

@@ -2,7 +2,8 @@
 
 import { useState, useEffect } from 'react'
 import { useQuery } from '@tanstack/react-query'
-import { ProductService, Brand, Product } from '@/services/productService'
+import { ProductService } from '@/services/productService'
+import { Brand, Product } from '@/types'
 import { LoadingSpinner } from '@/components/ui/LoadingSpinner'
 import { Button } from '@/components/ui/Button'
 import { 

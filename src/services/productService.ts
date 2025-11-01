@@ -1,9 +1,10 @@
 import axios from 'axios'
+import { Product, Brand, Category, ApiResponse, HomepageResponse } from '@/types'
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080'
 const PROXY_URL = '/api/proxy'
 
-export interface Product {
+export interface ProductFullDetails {
   id: number
   productName: string
   briefDescription: string
@@ -22,36 +23,6 @@ export interface Product {
   isActive: boolean
   createdAt: string
   updatedAt: string
-}
-
-export interface Category {
-  id: number
-  name: string
-  description?: string
-}
-
-export interface Brand {
-  brandID: number
-  name: string
-  description?: string
-}
-
-export interface HomepageResponse {
-  products: Product[]
-  categories: Category[]
-  brands: Brand[]
-  pagination: {
-    currentPage: number
-    totalPages: number
-    totalElements: number
-    size: number
-  }
-}
-
-export interface ApiResponse<T> {
-  statusCode: number
-  message: string
-  data: T
 }
 
 export interface GetHomepageParams {

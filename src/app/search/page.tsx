@@ -47,8 +47,8 @@ export default function SearchPage() {
   });
 
   useEffect(() => {
-    if (categoriesData) setCategories(categoriesData);
-    if (brandsData) setBrands(brandsData);
+    if (categoriesData) setCategories(categoriesData.data);
+    if (brandsData) setBrands(brandsData.data);
   }, [categoriesData, brandsData]);
 
   // Search products

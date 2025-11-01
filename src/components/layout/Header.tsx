@@ -27,9 +27,9 @@ export function Header() {
     const [isNotificationOpen, setIsNotificationOpen] = useState(false)
     const router = useRouter()
     const pathname = usePathname()
-    const isAdminPath = pathname?.startsWith('/admin')
-
     const { user, isAuthenticated, logout } = useAuthStore()
+    
+    const isAdminRoute = pathname?.startsWith('/admin')
     const { totalItems } = useCartStore()
     const { notifications } = useNotification()
 
@@ -87,7 +87,7 @@ export function Header() {
                 <div className="pointer-events-none absolute -bottom-12 -right-12 w-64 h-64 bg-indigo-500/20 blur-3xl rounded-full z-0" />
 
                 <div className="relative z-10 px-4 sm:px-6 lg:px-8">
-                    {isAdminPath ? (
+                    {isAdminRoute ? (
                         // Admin Layout - Logo centered
                         <div className="flex justify-center items-center h-16">
                             <Link href="/admin" className="flex items-center">
@@ -170,11 +170,27 @@ export function Header() {
                                             <span className="hidden sm:block text-sm font-medium drop-shadow-sm">
                         {user?.username}
                       </span>
+                                            {user?.role === 'ADMIN' && (
+                                                <span className="px-2 py-0.5 text-xs font-bold text-purple-900 bg-yellow-400 rounded-full drop-shadow-sm">
+                                                    ADMIN
+                                                </span>
+                                            )}
                                         </button>
 
                                         {/* Dropdown Menu */}
                                         <div className="absolute right-0 mt-3.5 w-48 bg-white rounded-lg shadow-xl border border-neutral-200 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-50">
                                             <div className="py-1">
+                                                {user?.role === 'ADMIN' && (
+                                                    <>
+                                                        <Link
+                                                            href="/admin"
+                                                            className="block px-4 py-2 text-sm font-semibold text-purple-700 hover:bg-purple-50 transition-colors"
+                                                        >
+                                                            ⚙️ Trang Quản Trị
+                                                        </Link>
+                                                        <div className="border-t border-neutral-200 my-1"></div>
+                                                    </>
+                                                )}
                                                 <Link
                                                     href="/profile"
                                                     className="block px-4 py-2 text-sm text-neutral-700 hover:bg-neutral-50 transition-colors"
@@ -237,7 +253,7 @@ export function Header() {
                     )}
 
                     {/* Mobile Navigation (Customer only) */}
-                    {!isAdminPath && isMenuOpen && (
+                    {!isAdminRoute && isMenuOpen && (
                         <motion.div
                             className="md:hidden border-t border-white/20 mt-2"
                             initial={{ opacity: 0, height: 0 }}
@@ -303,7 +319,7 @@ export function Header() {
             </header>
 
             {/* Modals (Customer only) */}
-            {!isAdminPath && (
+            {!isAdminRoute && (
                 <>
                     <SearchModal isOpen={isSearchOpen} onClose={() => setIsSearchOpen(false)} />
                     <NotificationModal isOpen={isNotificationOpen} onClose={() => setIsNotificationOpen(false)} />

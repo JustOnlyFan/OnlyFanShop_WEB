@@ -3,7 +3,7 @@
 import { useState, useRef } from 'react'
 import { motion, useMotionValue, useTransform, useSpring } from 'framer-motion'
 import { useGesture } from '@use-gesture/react'
-import { Product } from '@/services/productService'
+import { Product } from '@/types'
 import { Star, ShoppingCart, Heart, Eye, Zap } from 'lucide-react'
 import { ImageFallback } from '@/components/ui/ImageFallback'
 import Link from 'next/link'
