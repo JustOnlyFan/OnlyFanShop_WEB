@@ -56,9 +56,7 @@ export function BrandsPage() {
   const getBrandStats = (brandId: number) => {
     const brandProducts = featuredProducts.filter(product => product.brand?.brandID === brandId)
     return {
-      productCount: brandProducts.length,
-      avgRating: 4.5 + Math.random() * 0.5, // Mock data
-      totalSales: Math.floor(Math.random() * 10000) + 1000
+      productCount: brandProducts.length
     }
   }
 
@@ -182,13 +180,29 @@ export function BrandsPage() {
                   <div className="relative h-48 bg-gradient-to-br from-blue-500 to-purple-600 p-6">
                     <div className="absolute inset-0 bg-black opacity-20"></div>
                     <div className="relative z-10 flex items-center justify-between h-full">
-                      <div>
-                        <h3 className="text-2xl font-bold text-white mb-2">
-                          {brand.name}
-                        </h3>
-                        <p className="text-blue-100 text-sm">
-                          Thương hiệu uy tín
-                        </p>
+                      <div className="flex items-center gap-4">
+                        {brand.imageURL ? (
+                          <div className="relative w-20 h-20 bg-white rounded-lg p-2 flex-shrink-0">
+                            <Image
+                              src={brand.imageURL}
+                              alt={brand.name}
+                              fill
+                              className="object-contain"
+                            />
+                          </div>
+                        ) : (
+                          <div className="w-20 h-20 bg-white/20 rounded-lg flex items-center justify-center flex-shrink-0">
+                            <Award className="w-10 h-10 text-white" />
+                          </div>
+                        )}
+                        <div>
+                          <h3 className="text-2xl font-bold text-white mb-2">
+                            {brand.name}
+                          </h3>
+                          <p className="text-blue-100 text-sm">
+                            Thương hiệu uy tín
+                          </p>
+                        </div>
                       </div>
                       <div className="w-16 h-16 bg-white/20 rounded-full flex items-center justify-center">
                         <Award className="w-8 h-8 text-white" />
@@ -199,24 +213,12 @@ export function BrandsPage() {
                   {/* Brand Content */}
                   <div className="p-6 flex flex-col flex-grow">
                     {/* Stats */}
-                    <div className="grid grid-cols-3 gap-4 mb-6">
+                    <div className="mb-6">
                       <div className="text-center">
-                        <div className="text-2xl font-bold text-blue-600">
+                        <div className="text-3xl font-bold text-blue-600">
                           {stats.productCount}
                         </div>
-                        <div className="text-xs text-gray-600">Sản phẩm</div>
-                      </div>
-                      <div className="text-center">
-                        <div className="text-2xl font-bold text-green-600">
-                          {stats.avgRating.toFixed(1)}
-                        </div>
-                        <div className="text-xs text-gray-600">Đánh giá</div>
-                      </div>
-                      <div className="text-center">
-                        <div className="text-2xl font-bold text-purple-600">
-                          {stats.totalSales.toLocaleString()}
-                        </div>
-                        <div className="text-xs text-gray-600">Bán ra</div>
+                        <div className="text-sm text-gray-600">Sản phẩm</div>
                       </div>
                     </div>
 
@@ -343,13 +345,29 @@ export function BrandsPage() {
             <div className="relative h-64 bg-gradient-to-br from-blue-500 to-purple-600 p-8">
               <div className="absolute inset-0 bg-black opacity-20"></div>
               <div className="relative z-10 flex items-center justify-between">
-                <div>
-                  <h3 className="text-3xl font-bold text-white mb-2">
-                    {selectedBrand.name}
-                  </h3>
-                  <p className="text-blue-100">
-                    Thương hiệu uy tín hàng đầu
-                  </p>
+                <div className="flex items-center gap-6">
+                  {selectedBrand.imageURL ? (
+                    <div className="relative w-24 h-24 bg-white rounded-lg p-3 flex-shrink-0">
+                      <Image
+                        src={selectedBrand.imageURL}
+                        alt={selectedBrand.name}
+                        fill
+                        className="object-contain"
+                      />
+                    </div>
+                  ) : (
+                    <div className="w-24 h-24 bg-white/20 rounded-lg flex items-center justify-center flex-shrink-0">
+                      <Award className="w-12 h-12 text-white" />
+                    </div>
+                  )}
+                  <div>
+                    <h3 className="text-3xl font-bold text-white mb-2">
+                      {selectedBrand.name}
+                    </h3>
+                    <p className="text-blue-100">
+                      Thương hiệu uy tín hàng đầu
+                    </p>
+                  </div>
                 </div>
                 <Button
                   variant="outline"
@@ -391,14 +409,6 @@ export function BrandsPage() {
                     <div className="flex justify-between">
                       <span className="text-gray-600">Sản phẩm:</span>
                       <span className="font-semibold">{getBrandStats(selectedBrand.brandID).productCount}</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-gray-600">Đánh giá:</span>
-                      <span className="font-semibold">{getBrandStats(selectedBrand.brandID).avgRating.toFixed(1)}/5</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-gray-600">Đã bán:</span>
-                      <span className="font-semibold">{getBrandStats(selectedBrand.brandID).totalSales.toLocaleString()}</span>
                     </div>
                   </div>
                 </div>

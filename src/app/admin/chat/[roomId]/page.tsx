@@ -21,6 +21,7 @@ export default function AdminChatRoomPage() {
   const [messages, setMessages] = useState<Message[]>([])
   const [messageText, setMessageText] = useState('')
   const [sending, setSending] = useState(false)
+  const [deletingId, setDeletingId] = useState<string | null>(null)
   
   const router = useRouter()
   const params = useParams()
@@ -110,6 +111,24 @@ export default function AdminChatRoomPage() {
     }
   }
 
+  const handleDeleteMessage = async (messageId?: string) => {
+    if (!messageId || deletingId) return
+    const confirmed = window.confirm('Xóa tin nhắn này?')
+    if (!confirmed) return
+    try {
+      setDeletingId(messageId)
+      await ChatService.deleteMessage(messageId)
+      // Optimistic update
+      setMessages(prev => prev.filter(m => (m.messageId || m.id) !== messageId))
+      toast.success('Đã xóa tin nhắn')
+    } catch (error: any) {
+      console.error('Error deleting message:', error)
+      toast.error('Không thể xóa tin nhắn')
+    } finally {
+      setDeletingId(null)
+    }
+  }
+
   const formatMessageTime = (timestamp: string | number | undefined) => {
     try {
       let date: Date
@@ -192,9 +211,9 @@ export default function AdminChatRoomPage() {
                 {!showAvatar && <div className="w-8 flex-shrink-0" />}
 
                 {/* Message Bubble */}
-                <div className={`max-w-xs lg:max-w-md px-4 py-2 rounded-2xl ${
+                <div className={`relative max-w-xs lg:max-w-md px-4 py-2 rounded-2xl ${
                   isOwn 
-                    ? 'bg-gradient-to-r from-blue-600 to-indigo-600 text-white' 
+                    ? 'bg-blue-600 text-white' 
                     : 'bg-gray-200 text-gray-900'
                 }`}>
                   {!isOwn && showAvatar && (
@@ -208,6 +227,15 @@ export default function AdminChatRoomPage() {
                   }`}>
                     {formatMessageTime(messageTimestamp)}
                   </p>
+                  {/* Delete button for admin */}
+                  <button
+                    aria-label="Xóa tin nhắn"
+                    title="Xóa tin nhắn"
+                    onClick={() => handleDeleteMessage(message.messageId || message.id)}
+                    className={`absolute -top-2 ${isOwn ? '-left-2' : '-right-2'} p-1 rounded-full bg-white/80 border border-gray-200 shadow hover:bg-white transition text-gray-600`}
+                  >
+                    <X className={`w-3.5 h-3.5 ${deletingId === (message.messageId || message.id) ? 'animate-pulse' : ''}`} />
+                  </button>
                 </div>
               </motion.div>
             )

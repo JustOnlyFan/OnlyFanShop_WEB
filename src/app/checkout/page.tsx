@@ -9,13 +9,14 @@ import { AddressService } from '@/services/addressService';
 import { Button } from '@/components/ui/Button';
 import { LoadingSpinner } from '@/components/ui/LoadingSpinner';
 import { CheckoutInfo, VietnamProvince, VietnamWard } from '@/types';
-import { ArrowLeft, ArrowRight, Building, MapPin, XCircle, Check } from 'lucide-react';
+import { ArrowLeft, ArrowRight, Building, MapPin, XCircle, Check, CreditCard, ShoppingBag, Package, Truck, Home, Store, User, Phone, AlertCircle } from 'lucide-react';
 import Link from 'next/link';
 
 export default function CheckoutPage() {
   const [step, setStep] = useState<'info' | 'payment'>('info');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [showCODConfirm, setShowCODConfirm] = useState(false);
   
   // Address data
   const [provinces, setProvinces] = useState<VietnamProvince[]>([]);
@@ -44,6 +45,17 @@ export default function CheckoutPage() {
     }
     loadProvinces();
   }, [user, items, router]);
+
+  // Auto-fill recipient name and phone when user switches to delivery mode
+  useEffect(() => {
+    if (checkoutInfo.deliveryType === 'delivery' && user) {
+      setCheckoutInfo(prev => ({
+        ...prev,
+        recipientName: prev.recipientName || user.username || '',
+        recipientPhone: prev.recipientPhone || user.phoneNumber || ''
+      }));
+    }
+  }, [checkoutInfo.deliveryType, user]);
 
   const loadProvinces = async () => {
     try {
@@ -203,6 +215,17 @@ export default function CheckoutPage() {
       return;
     }
 
+    // Show confirmation for COD
+    if (paymentMethod === 'cod') {
+      setShowCODConfirm(true);
+      return;
+    }
+
+    // Process payment
+    await processPayment();
+  };
+
+  const processPayment = async () => {
     const token = localStorage.getItem('token');
     if (!token) {
       setError('Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại.');
@@ -231,16 +254,37 @@ export default function CheckoutPage() {
         note: checkoutInfo.deliveryType === 'pickup' ? checkoutInfo.notePickup : checkoutInfo.noteDelivery
       });
 
-      if (paymentMethod === 'COD') {
+      // Get recipient phone number
+      const recipientPhoneNumber = checkoutInfo.deliveryType === 'delivery' 
+        ? (checkoutInfo.recipientPhone || user?.phoneNumber || '')
+        : (user?.phoneNumber || '');
+
+      if (paymentMethod === 'cod') {
         // Handle COD payment
-        // TODO: Call backend to create COD order
-        console.log('COD payment:', { address });
-        setError('Chức năng COD đang được phát triển');
+        const response = await PaymentService.createCODPayment({
+          totalPrice,
+          address,
+          buyMethod: 'ByCart',
+          recipientPhoneNumber,
+          deliveryType: checkoutInfo.deliveryType === 'pickup' ? 'IN_STORE_PICKUP' : 'HOME_DELIVERY',
+          storeId: checkoutInfo.storePickup
+        });
+
+        if (response.data) {
+          // Success - clear cart and redirect to order details
+          clearCart();
+          router.push(`/orders?orderId=${response.data}`);
+        } else {
+          setError('Không thể tạo đơn hàng COD. Vui lòng thử lại.');
+        }
       } else if (paymentMethod === 'vnpay') {
         const response = await PaymentService.createVNPayPayment({
           amount: totalPrice,
           bankCode: 'NCB',
-          address: address
+          address: address,
+          buyMethod: 'ByCart',
+          clientType: 'web',
+          recipientPhoneNumber: recipientPhoneNumber
         });
 
         if (response.data?.paymentUrl) {
@@ -257,6 +301,7 @@ export default function CheckoutPage() {
       );
     } finally {
       setLoading(false);
+      setShowCODConfirm(false);
     }
   };
 
@@ -419,6 +464,29 @@ export default function CheckoutPage() {
                     /* Delivery Form */
                     <div className="space-y-4">
                       <div>
+                        <div className="flex items-center gap-2 p-4 bg-gray-100 rounded-xl mb-4">
+                          <input
+                            type="checkbox"
+                            id="useDefaultAddress"
+                            checked={checkoutInfo.useDefaultAddress || false}
+                            onChange={(e) => setCheckoutInfo(prev => ({ ...prev, useDefaultAddress: e.target.checked }))}
+                            className="w-4 h-4"
+                          />
+                          <label htmlFor="useDefaultAddress" className="text-sm text-gray-900 cursor-pointer">
+                            Địa chỉ mặc định của khách hàng
+                          </label>
+                        </div>
+                        
+                        {checkoutInfo.useDefaultAddress && user?.address && (
+                          <div className="p-4 bg-blue-50 border border-blue-200 rounded-xl mb-4">
+                            <p className="text-sm text-gray-700">
+                              <span className="font-semibold">Địa chỉ:</span> {user.address}
+                            </p>
+                          </div>
+                        )}
+                      </div>
+
+                      <div>
                         <label className="block text-sm font-bold text-gray-900 mb-2">
                           Họ và tên *
                         </label>
@@ -442,21 +510,7 @@ export default function CheckoutPage() {
                         />
                       </div>
 
-                      <div>
-                        <div className="flex items-center gap-2 p-4 bg-gray-100 rounded-xl mb-4">
-                          <input
-                            type="checkbox"
-                            id="useDefaultAddress"
-                            checked={checkoutInfo.useDefaultAddress || false}
-                            onChange={(e) => setCheckoutInfo(prev => ({ ...prev, useDefaultAddress: e.target.checked }))}
-                            className="w-4 h-4"
-                          />
-                          <label htmlFor="useDefaultAddress" className="text-sm text-gray-900 cursor-pointer">
-                            Địa chỉ mặc định của khách hàng
-                          </label>
-                        </div>
-
-                        {!checkoutInfo.useDefaultAddress && (
+                      {!checkoutInfo.useDefaultAddress && (
                           <>
                             <div
                               onClick={() => setCheckoutInfo(prev => ({ ...prev, showNewAddress: !prev.showNewAddress }))}
@@ -533,7 +587,6 @@ export default function CheckoutPage() {
                             )}
                           </>
                         )}
-                      </div>
                     </div>
                   )}
                 </div>
@@ -659,40 +712,57 @@ export default function CheckoutPage() {
                   </h2>
 
                   <div className="space-y-3">
-                    <label className="flex items-center p-4 border-2 border-gray-400 rounded-xl cursor-pointer hover:bg-gray-50 transition-colors bg-green-50">
+                    <label className={`flex items-start p-4 border-2 rounded-xl cursor-pointer hover:bg-gray-50 transition-all ${
+                      paymentMethod === 'cod' ? 'border-yellow-500 bg-yellow-50 shadow-md' : 'border-gray-400'
+                    }`}>
                       <input
                         type="radio"
                         name="payment"
                         value="cod"
                         checked={paymentMethod === 'cod'}
                         onChange={(e) => setPaymentMethod(e.target.value)}
-                        className="w-4 h-4 text-blue-600"
+                        className="w-4 h-4 text-yellow-600 mt-1"
                       />
-                      <div className="ml-3 flex items-center gap-3">
-                        <Building className="w-5 h-5 text-green-600" />
-                        <div>
-                          <div className="font-medium text-gray-900">COD (Thanh toán khi nhận hàng)</div>
+                      <div className="ml-3 flex-1">
+                        <div className="flex items-center gap-3 mb-1">
+                          <Building className="w-5 h-5 text-yellow-600" />
+                          <div className="font-bold text-gray-900">COD (Thanh toán khi nhận hàng)</div>
                         </div>
+                        <div className="text-sm text-gray-600 ml-8">
+                          Thanh toán bằng tiền mặt khi nhận hàng, kiểm tra hàng trước khi thanh toán
+                        </div>
+                        {paymentMethod === 'cod' && (
+                          <div className="mt-2 ml-8 text-xs text-green-600 font-medium">
+                            ✓ Phương thức thanh toán an toàn và tiện lợi
+                          </div>
+                        )}
                       </div>
                     </label>
 
-                    <label className="flex items-center p-4 border-2 border-gray-400 rounded-xl cursor-pointer hover:bg-gray-50 transition-colors">
+                    <label className={`flex items-start p-4 border-2 rounded-xl cursor-pointer hover:bg-gray-50 transition-all ${
+                      paymentMethod === 'vnpay' ? 'border-blue-500 bg-blue-50 shadow-md' : 'border-gray-400'
+                    }`}>
                       <input
                         type="radio"
                         name="payment"
                         value="vnpay"
                         checked={paymentMethod === 'vnpay'}
                         onChange={(e) => setPaymentMethod(e.target.value)}
-                        className="w-4 h-4 text-blue-600"
+                        className="w-4 h-4 text-blue-600 mt-1"
                       />
-                      <div className="ml-3 flex items-center gap-3">
-                        <MapPin className="w-5 h-5 text-blue-600" />
-                        <div>
-                          <div className="font-medium text-gray-900">VNPay</div>
-                          <div className="text-sm text-gray-600">
-                            Thanh toán qua VNPay (ATM, Visa, Mastercard)
-                          </div>
+                      <div className="ml-3 flex-1">
+                        <div className="flex items-center gap-3 mb-1">
+                          <CreditCard className="w-5 h-5 text-blue-600" />
+                          <div className="font-bold text-gray-900">VNPay</div>
                         </div>
+                        <div className="text-sm text-gray-600 ml-8">
+                          Thanh toán qua VNPay (ATM, Visa, Mastercard)
+                        </div>
+                        {paymentMethod === 'vnpay' && (
+                          <div className="mt-2 ml-8 text-xs text-blue-600 font-medium">
+                            ✓ Thanh toán nhanh chóng và bảo mật
+                          </div>
+                        )}
                       </div>
                     </label>
                   </div>
@@ -795,6 +865,59 @@ export default function CheckoutPage() {
           )}
         </div>
       </div>
+
+      {/* COD Confirmation Modal */}
+      {showCODConfirm && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 animate-scale-in">
+          <div className="bg-white rounded-lg shadow-xl max-w-md w-full mx-4 p-6 animate-scale-in">
+            <div className="text-center">
+              <div className="w-16 h-16 bg-yellow-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                <Building className="w-8 h-8 text-yellow-600" />
+              </div>
+              
+              <h3 className="text-xl font-bold text-gray-900 mb-2">
+                Xác nhận đặt hàng COD
+              </h3>
+              
+              <p className="text-gray-600 mb-6">
+                Bạn đang đặt hàng với phương thức thanh toán khi nhận hàng (COD).
+                Bạn có chắc chắn muốn tiếp tục?
+              </p>
+
+              <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
+                <div className="flex items-start gap-3">
+                  <div className="text-blue-600 text-xl">ℹ️</div>
+                  <div className="text-left text-sm text-gray-700">
+                    <p className="font-semibold mb-1">Lưu ý:</p>
+                    <ul className="list-disc list-inside space-y-1">
+                      <li>Thanh toán khi nhận hàng</li>
+                      <li>Vui lòng kiểm tra hàng trước khi thanh toán</li>
+                      <li>Đơn hàng sẽ được xử lý trong 24h</li>
+                    </ul>
+                  </div>
+                </div>
+              </div>
+
+              <div className="flex gap-3">
+                <Button
+                  onClick={() => setShowCODConfirm(false)}
+                  className="flex-1 bg-gray-200 hover:bg-gray-300 text-gray-900 py-3 px-4 rounded-lg font-medium"
+                >
+                  Hủy
+                </Button>
+                
+                <Button
+                  onClick={processPayment}
+                  disabled={loading}
+                  className="flex-1 bg-yellow-600 hover:bg-yellow-700 text-white py-3 px-4 rounded-lg font-medium disabled:opacity-50"
+                >
+                  {loading ? <LoadingSpinner /> : 'Xác nhận'}
+                </Button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

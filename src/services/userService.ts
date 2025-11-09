@@ -84,10 +84,28 @@ export class UserService {
   // Get user profile
   static async getProfile(): Promise<ApiResponse<UserProfile>> {
     try {
-      const response = await axios.get(`${API_URL}/api/users/profile`, {
+      const response = await axios.get(`${API_URL}/users/getUser`, {
         headers: this.getAuthHeaders()
       })
-      return response.data
+      // Map backend UserDTO to frontend UserProfile
+      const userDTO = response.data.data
+      const userProfile: UserProfile = {
+        id: userDTO.userID,
+        username: userDTO.username || '',
+        email: userDTO.email || '',
+        fullName: userDTO.username || '',
+        phoneNumber: userDTO.phoneNumber || '',
+        address: userDTO.address || '',
+        role: userDTO.role || 'CUSTOMER',
+        isActive: true,
+        createdAt: '',
+        updatedAt: ''
+      }
+      return {
+        statusCode: response.data.statusCode,
+        message: response.data.message,
+        data: userProfile
+      }
     } catch (error: any) {
       throw new Error(error.response?.data?.message || 'Failed to get profile')
     }
@@ -96,10 +114,33 @@ export class UserService {
   // Update user profile
   static async updateProfile(profileData: UpdateProfileRequest): Promise<ApiResponse<UserProfile>> {
     try {
-      const response = await axios.put(`${API_URL}/api/users/profile`, profileData, {
+      // Map frontend UpdateProfileRequest to backend UserDTO
+      const userDTO = {
+        phoneNumber: profileData.phoneNumber || '',
+        address: profileData.address || ''
+      }
+      const response = await axios.put(`${API_URL}/users/updateUser`, userDTO, {
         headers: this.getAuthHeaders()
       })
-      return response.data
+      // Map backend UserDTO to frontend UserProfile
+      const updatedUserDTO = response.data.data
+      const userProfile: UserProfile = {
+        id: updatedUserDTO.userID,
+        username: updatedUserDTO.username || '',
+        email: updatedUserDTO.email || '',
+        fullName: updatedUserDTO.username || '',
+        phoneNumber: updatedUserDTO.phoneNumber || '',
+        address: updatedUserDTO.address || '',
+        role: updatedUserDTO.role || 'CUSTOMER',
+        isActive: true,
+        createdAt: '',
+        updatedAt: ''
+      }
+      return {
+        statusCode: response.data.statusCode,
+        message: response.data.message,
+        data: userProfile
+      }
     } catch (error: any) {
       throw new Error(error.response?.data?.message || 'Failed to update profile')
     }

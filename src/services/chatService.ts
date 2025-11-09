@@ -86,6 +86,10 @@ export class ChatService {
   // Get or create customer chat room
   static async getOrCreateCustomerRoom(): Promise<ApiResponse<string>> {
     try {
+      const token = localStorage.getItem('token')
+      if (!token) {
+        throw new Error('Vui lòng đăng nhập để sử dụng tính năng chat')
+      }
       const response = await axios.get(`${API_URL}/api/chat/rooms/customer`, {
         headers: this.getAuthHeaders()
       })

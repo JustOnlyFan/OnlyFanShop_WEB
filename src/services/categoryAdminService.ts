@@ -27,24 +27,62 @@ class CategoryAdminService {
   // Create category
   static async createCategory(category: { categoryName: string; active: boolean }): Promise<CategoryManagement> {
     try {
-      const response = await axios.post(`${API_URL}/category/create`, category, {
+      // Backend nhận Category entity với field 'name', map từ categoryName
+      const requestData: { name: string; description?: string; parentId?: number } = {
+        name: category.categoryName
+      }
+      
+      const response = await axios.post(`${API_URL}/category/create`, requestData, {
         headers: this.getAuthHeaders()
       })
       return response.data
     } catch (error: any) {
-      throw new Error(error.response?.data?.message || 'Failed to create category')
+      // Xử lý lỗi validation từ backend
+      if (error.response?.data?.message) {
+        throw new Error(error.response.data.message)
+      }
+      if (error.response?.data?.error) {
+        throw new Error(error.response.data.error)
+      }
+      if (error.response?.status === 400) {
+        throw new Error('Dữ liệu không hợp lệ. Vui lòng kiểm tra lại thông tin.')
+      }
+      throw new Error(error.message || 'Failed to create category')
     }
   }
 
   // Update category
   static async updateCategory(categoryID: number, category: Partial<CategoryManagement>): Promise<CategoryManagement> {
     try {
-      const response = await axios.put(`${API_URL}/category/${categoryID}`, category, {
+      // Backend nhận Category entity với field 'name', map từ categoryName
+      const requestData: { name?: string; description?: string; parentId?: number } = {}
+      
+      if (category.categoryName !== undefined) {
+        requestData.name = category.categoryName
+      }
+      if (category.description !== undefined) {
+        requestData.description = category.description
+      }
+      if (category.parentId !== undefined) {
+        requestData.parentId = category.parentId
+      }
+      
+      const response = await axios.put(`${API_URL}/category/${categoryID}`, requestData, {
         headers: this.getAuthHeaders()
       })
       return response.data
     } catch (error: any) {
-      throw new Error(error.response?.data?.message || 'Failed to update category')
+      // Xử lý lỗi validation từ backend
+      if (error.response?.data?.message) {
+        throw new Error(error.response.data.message)
+      }
+      if (error.response?.data?.error) {
+        throw new Error(error.response.data.error)
+      }
+      if (error.response?.status === 400) {
+        throw new Error('Dữ liệu không hợp lệ. Vui lòng kiểm tra lại thông tin.')
+      }
+      throw new Error(error.message || 'Failed to update category')
     }
   }
 

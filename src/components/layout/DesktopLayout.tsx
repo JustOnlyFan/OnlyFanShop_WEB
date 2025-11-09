@@ -4,7 +4,6 @@ import { ReactNode, useState, useEffect } from 'react'
 import { useRouter, usePathname } from 'next/navigation'
 import { DesktopBackground } from './DesktopBackground'
 import { MacBookScreen } from '@/components/ui/MacBookScreen'
-import { DesktopWeather } from '@/components/ui/DesktopWeather'
 import { LandingPage } from '@/components/sections/LandingPage'
 import { ProductsPage } from '@/components/sections/ProductsPage'
 import { BrandsPage } from '@/components/sections/BrandsPage'
@@ -58,9 +57,6 @@ export function DesktopLayout({ children }: DesktopLayoutProps) {
           </div>
         </MacBookScreen>
       </div>
-      
-      {/* Desktop Weather (visible on all routes including admin) */}
-      <DesktopWeather />
     </div>
   )
 }

@@ -8,11 +8,11 @@ import { useAuthStore } from '@/store/authStore';
 import { AuthService } from '@/services/authService';
 import { Button } from '@/components/ui/Button';
 import { LoadingSpinner } from '@/components/ui/LoadingSpinner';
-import { Eye, EyeOff, Mail, Lock, Wind, Zap, Shield, CheckCircle } from 'lucide-react';
+import { Eye, EyeOff, User, Lock, Wind, Zap, Shield, CheckCircle } from 'lucide-react';
 
 export default function LoginPage() {
   const [formData, setFormData] = useState({
-    email: '',
+    username: '',
     password: ''
   });
   const [showPassword, setShowPassword] = useState(false);
@@ -36,21 +36,38 @@ export default function LoginPage() {
     setLoading(true);
     setError('');
 
+    // Validate input
+    if (!formData.username || !formData.username.trim()) {
+      setError('Vui lòng nhập tên người dùng');
+      setLoading(false);
+      return;
+    }
+    
+    if (!formData.password) {
+      setError('Vui lòng nhập mật khẩu');
+      setLoading(false);
+      return;
+    }
+
     try {
       const response = await AuthService.login({
-        email: formData.email,
+        username: formData.username.trim(),
         password: formData.password
       });
 
       if (response.data) {
         // Map UserDTO to User type
+        // Backend returns roleName as string, not role object
+        const roleName = response.data.roleName || response.data.role?.name || 'CUSTOMER';
+        const role = roleName.toUpperCase() === 'ADMIN' ? 'ADMIN' : 'CUSTOMER';
+        
         const userData = {
           userID: response.data.userID,
           username: response.data.username,
           email: response.data.email,
           phoneNumber: response.data.phoneNumber,
           address: response.data.address,
-          role: response.data.role,
+          role: role,
           authProvider: response.data.authProvider || 'LOCAL',
           token: response.data.token
         };
@@ -60,7 +77,9 @@ export default function LoginPage() {
         setError('Đăng nhập thất bại. Vui lòng kiểm tra lại thông tin.');
       }
     } catch (error: any) {
-      setError(error.response?.data?.message || 'Đăng nhập thất bại. Vui lòng thử lại.');
+      console.error('Login error:', error);
+      const errorMessage = error.response?.data?.message || error.message || 'Đăng nhập thất bại. Vui lòng thử lại.';
+      setError(errorMessage);
     } finally {
       setLoading(false);
     }
@@ -213,22 +232,22 @@ export default function LoginPage() {
                 animate={{ opacity: 1, x: 0 }}
                 transition={{ delay: 0.6 }}
               >
-                <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-2">
-                  Email
+                <label htmlFor="username" className="block text-sm font-medium text-gray-700 mb-2">
+                  Tên người dùng
                 </label>
                 <div className="relative">
                   <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                    <Mail className="h-5 w-5 text-gray-400" />
+                    <User className="h-5 w-5 text-gray-400" />
                   </div>
                   <input
-                    id="email"
-                    name="email"
-                    type="email"
-                    autoComplete="email"
+                    id="username"
+                    name="username"
+                    type="text"
+                    autoComplete="username"
                     required
                     className="appearance-none block w-full pl-10 pr-3 py-3 border border-gray-300 rounded-lg placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 sm:text-sm transition-all duration-200"
-                    placeholder="Nhập email của bạn"
-                    value={formData.email}
+                    placeholder="Nhập tên người dùng"
+                    value={formData.username}
                     onChange={handleInputChange}
                   />
                 </div>

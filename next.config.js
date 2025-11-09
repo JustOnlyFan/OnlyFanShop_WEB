@@ -1,4 +1,5 @@
 /** @type {import('next').NextConfig} */
+const isDev = process.env.NODE_ENV !== 'production'
 const nextConfig = {
   experimental: {
     optimizeCss: true,
@@ -36,7 +37,32 @@ const nextConfig = {
     pagesBufferLength: 2,
   },
   env: {
-    NEXT_PUBLIC_API_URL: process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080',
+    // In development, use same-origin URLs and let rewrites proxy to backend to avoid CORS
+    NEXT_PUBLIC_API_URL: isDev ? '' : (process.env.NEXT_PUBLIC_API_URL || ''),
+  },
+  async rewrites() {
+    // Proxy API calls to backend at localhost:8080 in development to bypass CORS
+    if (isDev) {
+      return [
+        {
+          source: '/api/:path*',
+          destination: 'http://localhost:8080/api/:path*',
+        },
+        {
+          source: '/login/:path*',
+          destination: 'http://localhost:8080/login/:path*',
+        },
+        {
+          source: '/store-locations',
+          destination: 'http://localhost:8080/store-locations',
+        },
+        {
+          source: '/store-locations/:path*',
+          destination: 'http://localhost:8080/store-locations/:path*',
+        },
+      ]
+    }
+    return []
   },
   webpack: (config, { dev, isServer }) => {
     // Optimize bundle size

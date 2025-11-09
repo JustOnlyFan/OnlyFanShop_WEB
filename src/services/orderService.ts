@@ -30,7 +30,7 @@ export interface Order {
   shippingAddress: ShippingAddress
   paymentMethod: 'COD' | 'VNPAY' | 'BANK_TRANSFER'
   paymentStatus: 'PENDING' | 'PAID' | 'FAILED' | 'REFUNDED'
-  orderStatus: 'PENDING' | 'CONFIRMED' | 'PROCESSING' | 'SHIPPED' | 'DELIVERED' | 'CANCELLED'
+  orderStatus: 'PENDING' | 'PICKING' | 'SHIPPING' | 'DELIVERED' | 'RETURNS_REFUNDS' | 'CANCELLED'
   totalItems: number
   subtotal: number
   shippingFee: number
@@ -51,7 +51,7 @@ export interface CreateOrderRequest {
 }
 
 export interface UpdateOrderStatusRequest {
-  orderStatus: 'PENDING' | 'CONFIRMED' | 'PROCESSING' | 'SHIPPED' | 'DELIVERED' | 'CANCELLED'
+  orderStatus: 'PENDING' | 'PICKING' | 'SHIPPING' | 'DELIVERED' | 'RETURNS_REFUNDS' | 'CANCELLED'
   notes?: string
 }
 
@@ -113,8 +113,8 @@ export class OrderService {
     }
   }
 
-  // Get user's order history
-  static async getOrderHistory(filters: OrderFilter = {}): Promise<ApiResponse<OrderHistoryResponse>> {
+  // Get user's order history - Updated to use correct endpoint
+  static async getOrderHistory(filters: OrderFilter = {}): Promise<ApiResponse<Order[]>> {
     try {
       const params = new URLSearchParams()
       
@@ -127,7 +127,7 @@ export class OrderService {
       if (filters.sortBy) params.append('sortBy', filters.sortBy)
       if (filters.order) params.append('order', filters.order)
 
-      const response = await axios.get(`${API_URL}/api/orders/history?${params}`, {
+      const response = await axios.get(`${API_URL}/order/getOrders?${params}`, {
         headers: this.getAuthHeaders()
       })
       return response.data
@@ -136,16 +136,28 @@ export class OrderService {
     }
   }
 
-  // Cancel order
-  static async cancelOrder(orderId: number, reason?: string): Promise<ApiResponse<Order>> {
+  // Cancel order - Updated to use correct endpoint
+  static async cancelOrder(orderId: number): Promise<ApiResponse<void>> {
     try {
-      const response = await axios.put(`${API_URL}/api/orders/${orderId}/cancel`, 
-        { reason },
+      const response = await axios.put(`${API_URL}/order/cancelOrder?orderId=${orderId}`, 
+        {},
         { headers: this.getAuthHeaders() }
       )
       return response.data
     } catch (error: any) {
       throw new Error(error.response?.data?.message || 'Failed to cancel order')
+    }
+  }
+
+  // Get order details
+  static async getOrderDetails(orderId: number): Promise<ApiResponse<any>> {
+    try {
+      const response = await axios.get(`${API_URL}/order/getOrderDetails?orderId=${orderId}`, {
+        headers: this.getAuthHeaders()
+      })
+      return response.data
+    } catch (error: any) {
+      throw new Error(error.response?.data?.message || 'Failed to get order details')
     }
   }
 
@@ -161,8 +173,21 @@ export class OrderService {
     }
   }
 
-  // Get all orders (Admin only)
-  static async getAllOrders(filters: OrderFilter = {}): Promise<ApiResponse<OrderHistoryResponse>> {
+  // Set order status - Backend endpoint mapping
+  static async setOrderStatus(orderId: number, status: string): Promise<ApiResponse<void>> {
+    try {
+      const response = await axios.put(`${API_URL}/order/setOrderStatus`, {}, {
+        params: { orderId, status },
+        headers: this.getAuthHeaders()
+      })
+      return response.data
+    } catch (error: any) {
+      throw new Error(error.response?.data?.message || 'Failed to set order status')
+    }
+  }
+
+  // Get all orders (Admin only) - Updated to use correct endpoint
+  static async getAllOrders(filters: OrderFilter = {}): Promise<ApiResponse<Order[]>> {
     try {
       const params = new URLSearchParams()
       
@@ -175,7 +200,7 @@ export class OrderService {
       if (filters.sortBy) params.append('sortBy', filters.sortBy)
       if (filters.order) params.append('order', filters.order)
 
-      const response = await axios.get(`${API_URL}/api/orders?${params}`, {
+      const response = await axios.get(`${API_URL}/order/getAllOrders?${params}`, {
         headers: this.getAuthHeaders()
       })
       return response.data
@@ -210,14 +235,14 @@ export class OrderService {
     }
   }
 
-  // Get order status options
+  // Get order status options - updated to match backend OrderStatus enum
   static getOrderStatusOptions() {
     return [
       { value: 'PENDING', label: 'Chờ xác nhận', color: 'bg-yellow-100 text-yellow-800' },
-      { value: 'CONFIRMED', label: 'Đã xác nhận', color: 'bg-blue-100 text-blue-800' },
-      { value: 'PROCESSING', label: 'Đang xử lý', color: 'bg-purple-100 text-purple-800' },
-      { value: 'SHIPPED', label: 'Đang giao', color: 'bg-indigo-100 text-indigo-800' },
+      { value: 'PICKING', label: 'Đang lấy hàng', color: 'bg-blue-100 text-blue-800' },
+      { value: 'SHIPPING', label: 'Đang giao', color: 'bg-purple-100 text-purple-800' },
       { value: 'DELIVERED', label: 'Đã giao', color: 'bg-green-100 text-green-800' },
+      { value: 'RETURNS_REFUNDS', label: 'Trả hàng/Hoàn tiền', color: 'bg-orange-100 text-orange-800' },
       { value: 'CANCELLED', label: 'Đã hủy', color: 'bg-red-100 text-red-800' }
     ]
   }
@@ -230,6 +255,51 @@ export class OrderService {
       { value: 'FAILED', label: 'Thanh toán thất bại', color: 'bg-red-100 text-red-800' },
       { value: 'REFUNDED', label: 'Đã hoàn tiền', color: 'bg-gray-100 text-gray-800' }
     ]
+  }
+
+  // Get orders by status - new dedicated endpoints
+  static async getOrdersPending(): Promise<ApiResponse<Order[]>> {
+    try {
+      const response = await axios.get(`${API_URL}/order/getOrdersPending`, {
+        headers: this.getAuthHeaders()
+      })
+      return response.data
+    } catch (error: any) {
+      throw new Error(error.response?.data?.message || 'Failed to get pending orders')
+    }
+  }
+
+  static async getOrdersPicking(): Promise<ApiResponse<Order[]>> {
+    try {
+      const response = await axios.get(`${API_URL}/order/getOrdersPicking`, {
+        headers: this.getAuthHeaders()
+      })
+      return response.data
+    } catch (error: any) {
+      throw new Error(error.response?.data?.message || 'Failed to get picking orders')
+    }
+  }
+
+  static async getOrdersShipping(): Promise<ApiResponse<Order[]>> {
+    try {
+      const response = await axios.get(`${API_URL}/order/getOrdersShipping`, {
+        headers: this.getAuthHeaders()
+      })
+      return response.data
+    } catch (error: any) {
+      throw new Error(error.response?.data?.message || 'Failed to get shipping orders')
+    }
+  }
+
+  static async getOrdersCompleted(): Promise<ApiResponse<Order[]>> {
+    try {
+      const response = await axios.get(`${API_URL}/order/getOrdersCompleted`, {
+        headers: this.getAuthHeaders()
+      })
+      return response.data
+    } catch (error: any) {
+      throw new Error(error.response?.data?.message || 'Failed to get completed orders')
+    }
   }
 
   // Calculate order totals

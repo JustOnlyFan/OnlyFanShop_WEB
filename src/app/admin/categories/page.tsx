@@ -69,7 +69,10 @@ export default function AdminCategoriesPage() {
       setShowAddForm(false)
       loadCategories()
     } catch (error: any) {
-      toast.error(error.message || 'Không thể thêm danh mục')
+      console.error('Add category error:', error)
+      // Hiển thị thông báo lỗi chi tiết từ backend
+      const errorMessage = error.message || 'Không thể thêm danh mục'
+      toast.error(errorMessage)
     }
   }
 
@@ -93,7 +96,10 @@ export default function AdminCategoriesPage() {
       setEditValue('')
       loadCategories()
     } catch (error: any) {
-      toast.error(error.message || 'Không thể cập nhật danh mục')
+      console.error('Update category error:', error)
+      // Hiển thị thông báo lỗi chi tiết từ backend
+      const errorMessage = error.message || 'Không thể cập nhật danh mục'
+      toast.error(errorMessage)
     }
   }
 

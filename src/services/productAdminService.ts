@@ -37,7 +37,7 @@ class ProductAdminService {
           params: {
             page: params.page ?? 1,
             size: params.size ?? 10,
-            sortBy: params.sortBy ?? 'ProductID',
+            sortBy: params.sortBy ?? 'id',
             order: params.order ?? 'DESC',
             keyword: params.keyword,
             categoryId: params.categoryId,
@@ -62,24 +62,79 @@ class ProductAdminService {
   // Add product
   static async addProduct(product: ProductRequest): Promise<ProductDTO> {
     try {
+      const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null
+      if (!token) {
+        throw new Error('No authentication token found. Please login again.')
+      }
+      
       const response = await axios.post(`${API_URL}/product`, product, {
         headers: this.getAuthHeaders()
       })
-      return response.data.data
+      // Backend may return Product directly or wrapped in ApiResponse
+      // Check if response.data has data field (ApiResponse) or is Product directly
+      if (response.data && response.data.data) {
+        return response.data.data
+      }
+      return response.data
     } catch (error: any) {
-      throw new Error(error.response?.data?.message || 'Failed to add product')
+      console.error('Error adding product:', error.response?.status, error.response?.data)
+      
+      // Handle different HTTP status codes
+      if (error.response?.status === 403 || error.response?.data?.statusCode === 403) {
+        const message = error.response?.data?.message || 'Access Denied. Please ensure you are logged in as an admin or staff.'
+        throw new Error(message)
+      }
+      if (error.response?.status === 401 || error.response?.data?.statusCode === 401) {
+        const message = error.response?.data?.message || 'Session expired. Please login again.'
+        throw new Error(message)
+      }
+      
+      // Extract error message from ApiResponse
+      let errorMessage = 'Failed to add product'
+      if (error.response?.data?.message) {
+        errorMessage = error.response.data.message
+      } else if (error.response?.data?.error) {
+        errorMessage = error.response.data.error
+      } else if (error.response?.data && typeof error.response.data === 'string') {
+        errorMessage = error.response.data
+      } else if (error.message) {
+        errorMessage = error.message
+      }
+      
+      // Log full error for debugging
+      console.error('Full error details:', {
+        status: error.response?.status,
+        statusCode: error.response?.data?.statusCode,
+        message: error.response?.data?.message,
+        data: error.response?.data
+      })
+      
+      throw new Error(errorMessage)
     }
   }
 
   // Update product
   static async updateProduct(productID: number, product: ProductRequest): Promise<ProductDTO> {
     try {
+      const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null
+      if (!token) {
+        throw new Error('No authentication token found. Please login again.')
+      }
+      
       const response = await axios.put(`${API_URL}/product/${productID}`, product, {
         headers: this.getAuthHeaders()
       })
       return response.data
     } catch (error: any) {
-      throw new Error(error.response?.data?.message || 'Failed to update product')
+      console.error('Error updating product:', error.response?.status, error.response?.data)
+      if (error.response?.status === 403) {
+        throw new Error('Access Denied. Please ensure you are logged in as an admin.')
+      }
+      if (error.response?.status === 401) {
+        throw new Error('Session expired. Please login again.')
+      }
+      const errorMessage = error.response?.data?.message || error.response?.data?.error || error.message || 'Failed to update product'
+      throw new Error(errorMessage)
     }
   }
 

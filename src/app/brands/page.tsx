@@ -56,9 +56,7 @@ export default function BrandsPage() {
   const getBrandStats = (brandId: number) => {
     const brandProducts = featuredProducts.filter(product => product.brand?.brandID === brandId);
     return {
-      productCount: brandProducts.length,
-      avgRating: 4.5 + Math.random() * 0.5, // Mock data
-      totalSales: Math.floor(Math.random() * 10000) + 1000
+      productCount: brandProducts.length
     };
   };
 
@@ -199,24 +197,12 @@ export default function BrandsPage() {
                   {/* Brand Content */}
                   <div className="p-6">
                     {/* Stats */}
-                    <div className="grid grid-cols-3 gap-4 mb-6">
+                    <div className="mb-6">
                       <div className="text-center">
-                        <div className="text-2xl font-bold text-blue-600">
+                        <div className="text-3xl font-bold text-blue-600">
                           {stats.productCount}
                         </div>
-                        <div className="text-xs text-gray-600">Sản phẩm</div>
-                      </div>
-                      <div className="text-center">
-                        <div className="text-2xl font-bold text-green-600">
-                          {stats.avgRating.toFixed(1)}
-                        </div>
-                        <div className="text-xs text-gray-600">Đánh giá</div>
-                      </div>
-                      <div className="text-center">
-                        <div className="text-2xl font-bold text-purple-600">
-                          {stats.totalSales.toLocaleString()}
-                        </div>
-                        <div className="text-xs text-gray-600">Bán ra</div>
+                        <div className="text-sm text-gray-600">Sản phẩm</div>
                       </div>
                     </div>
 
@@ -389,14 +375,6 @@ export default function BrandsPage() {
                     <div className="flex justify-between">
                       <span className="text-gray-600">Sản phẩm:</span>
                       <span className="font-semibold">{getBrandStats(selectedBrand.brandID).productCount}</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-gray-600">Đánh giá:</span>
-                      <span className="font-semibold">{getBrandStats(selectedBrand.brandID).avgRating.toFixed(1)}/5</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-gray-600">Đã bán:</span>
-                      <span className="font-semibold">{getBrandStats(selectedBrand.brandID).totalSales.toLocaleString()}</span>
                     </div>
                   </div>
                 </div>

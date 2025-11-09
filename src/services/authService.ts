@@ -1,9 +1,12 @@
 import axios from 'axios'
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080'
+// Respect empty string from next.config rewrites (same-origin proxy in dev)
+const API_URL = typeof process.env.NEXT_PUBLIC_API_URL !== 'undefined'
+  ? process.env.NEXT_PUBLIC_API_URL as string
+  : 'http://localhost:8080'
 
 export interface LoginRequest {
-  email: string
+  username: string
   password: string
 }
 

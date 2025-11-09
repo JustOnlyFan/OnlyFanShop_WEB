@@ -18,7 +18,7 @@ export function MacBookScreen({ children, className = '' }: MacBookScreenProps) 
         transition={{ duration: 0.8, ease: "easeOut" }}
       >
         {/* MacBook Base */}
-        <div className="relative w-[1200px] h-[800px] bg-gray-900 rounded-2xl shadow-2xl z-40">
+        <div className="relative w-[1600px] h-[800px] bg-gray-900 rounded-2xl shadow-2xl z-40">
           {/* MacBook Screen */}
           <div className="absolute inset-0 bg-black rounded-xl overflow-hidden">
             {/* Screen Content */}
