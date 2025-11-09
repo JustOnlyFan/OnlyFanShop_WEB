@@ -63,8 +63,8 @@ export default function AdminProductsPage() {
     try {
       const data = await ProductAdminService.getProductList({
         page: 1,
-        size: 50,
-        sortBy: 'ProductID',
+        size: 24,
+        sortBy: 'productID',
         order: 'DESC',
         keyword: searchTerm || undefined,
         brandId: selectedBrand,
@@ -95,10 +95,12 @@ export default function AdminProductsPage() {
   }
 
   useEffect(() => {
-    if (hasHydrated) {
+    if (!hasHydrated) return
+    const handler = setTimeout(() => {
       loadProducts()
-    }
-  }, [searchTerm, selectedBrand, selectedCategory])
+    }, 300)
+    return () => clearTimeout(handler)
+  }, [searchTerm, selectedBrand, selectedCategory, hasHydrated])
 
   const handleAddProduct = () => {
     setEditingProduct(null)
@@ -131,6 +133,11 @@ export default function AdminProductsPage() {
     setShowModal(false)
     setEditingProduct(null)
     loadProducts()
+  }
+
+  const handleSaved = (created: ProductDTO) => {
+    // Optimistically add the new product to the top for immediate feedback
+    setProducts(prev => [created, ...prev])
   }
 
   if (!hasHydrated || loading) {
@@ -307,6 +314,7 @@ export default function AdminProductsPage() {
           brands={brands}
           categories={categories}
           onClose={handleModalClose}
+          onSaved={handleSaved}
         />
       )}
     </div>

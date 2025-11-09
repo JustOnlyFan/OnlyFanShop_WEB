@@ -16,7 +16,7 @@ interface AuthActions {
   setLoading: (loading: boolean) => void
   setError: (error: string | null) => void
   setHasHydrated: (hydrated: boolean) => void
-  login: (email: string, password: string) => Promise<void>
+  login: (username: string, password: string) => Promise<void>
   register: (userData: {
     username: string
     email: string
@@ -59,10 +59,10 @@ export const useAuthStore = create<AuthState & AuthActions>()(
 
       clearError: () => set({ error: null }),
 
-      login: async (email, password) => {
+      login: async (username, password) => {
         set({ isLoading: true, error: null })
         try {
-          const response = await AuthService.login({ email, password })
+          const response = await AuthService.login({ username, password })
           if (response.statusCode === 200 && response.data) {
             AuthService.setToken(response.data.token || '')
             AuthService.setUser(response.data)

@@ -71,24 +71,27 @@ export default function ProfilePage() {
         address: formData.address
       });
       if (response.data) {
+        // Update formData with response data
+        setFormData({
+          username: response.data.username || formData.username,
+          email: response.data.email || formData.email,
+          phoneNumber: response.data.phoneNumber || '',
+          address: response.data.address || ''
+        });
         setSuccess('Cập nhật thông tin thành công!');
         setEditing(false);
         setTimeout(() => setSuccess(''), 3000);
       }
     } catch (error: any) {
-      setError(error.response?.data?.message || 'Cập nhật thất bại. Vui lòng thử lại.');
+      setError(error.response?.data?.message || error.message || 'Cập nhật thất bại. Vui lòng thử lại.');
     } finally {
       setSaving(false);
     }
   };
 
   const handleCancel = () => {
-    setFormData({
-      username: user?.username || '',
-      email: user?.email || '',
-      phoneNumber: user?.phoneNumber || '',
-      address: user?.address || ''
-    });
+    // Reload data from backend
+    fetchUserData();
     setEditing(false);
     setError('');
   };
@@ -96,6 +99,14 @@ export default function ProfilePage() {
   const handleLogout = () => {
     logout();
     router.push('/');
+  };
+
+  const openOrderHistory = (status?: string) => {
+    if (status) {
+      router.push(`/orders?status=${status}`);
+    } else {
+      router.push('/orders');
+    }
   };
 
   if (loading) {
@@ -147,7 +158,10 @@ export default function ProfilePage() {
                     <Lock className="w-5 h-5" />
                     Đổi mật khẩu
                   </button>
-                  <button className="w-full flex items-center gap-3 px-4 py-3 text-left text-gray-600 hover:text-gray-900 hover:bg-gray-50 rounded-lg">
+                  <button 
+                    onClick={() => openOrderHistory()}
+                    className="w-full flex items-center gap-3 px-4 py-3 text-left text-gray-600 hover:text-gray-900 hover:bg-gray-50 rounded-lg"
+                  >
                     <ShoppingBag className="w-5 h-5" />
                     Đơn hàng của tôi
                   </button>

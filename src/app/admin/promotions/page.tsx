@@ -14,3 +14,23 @@ export default function AdminPromotionsPage() {
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

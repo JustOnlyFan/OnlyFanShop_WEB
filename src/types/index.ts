@@ -11,7 +11,7 @@ export interface User {
 }
 
 export interface LoginRequest {
-  email: string
+  username: string
   password: string
 }
 
@@ -42,6 +42,8 @@ export interface Product {
 export interface ProductDetail {
   id: number
   productName: string
+  slug?: string
+  sku?: string
   briefDescription: string
   fullDescription: string
   technicalSpecifications: string
@@ -49,11 +51,17 @@ export interface ProductDetail {
   imageURL: string
   brand: Brand
   category: Category
+  // New fields from updated Product entity
+  powerWatt?: number // Công suất (W)
+  bladeDiameterCm?: number // Đường kính cánh quạt (cm)
+  colorDefault?: string // Màu sắc mặc định
+  warrantyMonths?: number // Bảo hành (tháng)
 }
 
 export interface Brand {
   brandID: number
   name: string
+  imageURL?: string
 }
 
 export interface BrandManagement {
@@ -61,6 +69,7 @@ export interface BrandManagement {
   name: string
   country: string
   description: string
+  imageURL?: string
   active: boolean
 }
 
@@ -77,6 +86,7 @@ export interface CategoryManagement {
 
 export interface ProductRequest {
   productName: string
+  // SKU and Slug are auto-generated, not accepted from request
   briefDescription: string
   fullDescription: string
   technicalSpecifications: string
@@ -84,6 +94,30 @@ export interface ProductRequest {
   imageURL: string
   brandID: number
   categoryID: number
+  // New fields from updated Product entity
+  powerWatt?: number // Công suất (W)
+  bladeDiameterCm?: number // Đường kính cánh quạt (cm)
+  colorDefault?: string // Legacy field, keep for backward compatibility
+  warrantyMonths?: number // Legacy field, keep for backward compatibility
+  // New relationship fields
+  colorIds?: number[] // List of color IDs
+  warrantyId?: number // Warranty ID
+}
+
+export interface Color {
+  id: number
+  name: string
+  hexCode?: string
+  description?: string
+}
+
+export interface Warranty {
+  id: number
+  name: string
+  durationMonths: number
+  description?: string
+  termsAndConditions?: string
+  coverage?: string
 }
 
 // ProductDTO is an alias for Product for consistency with backend

@@ -48,46 +48,10 @@ export const useCartStore = create<CartState & CartActions>()(
         try {
           const { user } = useAuthStore.getState()
           if (!user) {
-            // For demo purposes, add to local cart even without user
-            const existingItem = get().items.find(item => item.product.id === product.id)
-            if (existingItem) {
-              set({
-                items: get().items.map(item =>
-                  item.product.id === product.id
-                    ? { ...item, quantity: item.quantity + quantity }
-                    : item
-                ),
-                totalItems: get().totalItems + quantity,
-                totalPrice: get().totalPrice + (product.price * quantity),
-                isLoading: false
-              })
-            } else {
-            const newItem = {
-              cartItemID: Date.now(),
-              product,
-              quantity,
-              price: product.price,
-              cart: {
-                cartID: 1,
-                totalPrice: 0,
-                status: 'ACTIVE',
-                user: {
-                  userID: 1,
-                  username: 'demo_user',
-                  email: 'demo@example.com',
-                  role: 'CUSTOMER' as const,
-                  authProvider: 'LOCAL' as const
-                },
-                cartItems: []
-              }
-            }
-              set({
-                items: [...get().items, newItem],
-                totalItems: get().totalItems + quantity,
-                totalPrice: get().totalPrice + (product.price * quantity),
-                isLoading: false
-              })
-            }
+            set({ 
+              isLoading: false, 
+              error: 'Vui lòng đăng nhập để thêm sản phẩm vào giỏ hàng' 
+            })
             return
           }
 
@@ -101,46 +65,10 @@ export const useCartStore = create<CartState & CartActions>()(
           await get().loadCart(user.userID)
         } catch (error: any) {
           console.error('Error adding to cart:', error)
-          // For demo purposes, still add to local cart
-          const existingItem = get().items.find(item => item.product.id === product.id)
-          if (existingItem) {
-            set({
-              items: get().items.map(item =>
-                item.product.id === product.id
-                  ? { ...item, quantity: item.quantity + quantity }
-                  : item
-              ),
-              totalItems: get().totalItems + quantity,
-              totalPrice: get().totalPrice + (product.price * quantity),
-              isLoading: false
-            })
-          } else {
-            const newItem = {
-              cartItemID: Date.now(),
-              product,
-              quantity,
-              price: product.price,
-              cart: {
-                cartID: 1,
-                totalPrice: 0,
-                status: 'ACTIVE',
-                user: {
-                  userID: 1,
-                  username: 'demo_user',
-                  email: 'demo@example.com',
-                  role: 'CUSTOMER' as const,
-                  authProvider: 'LOCAL' as const
-                },
-                cartItems: []
-              }
-            }
-            set({
-              items: [...get().items, newItem],
-              totalItems: get().totalItems + quantity,
-              totalPrice: get().totalPrice + (product.price * quantity),
-              isLoading: false
-            })
-          }
+          set({ 
+            isLoading: false, 
+            error: error.message || 'Không thể thêm sản phẩm vào giỏ hàng' 
+          })
         }
       },
 
@@ -214,6 +142,7 @@ export const useCartStore = create<CartState & CartActions>()(
         set({ isLoading: true, error: null })
         try {
           const response = await CartService.getCartByUserId(userId)
+          
           if (response.statusCode === 200 && response.data) {
             const items = (response.data.items || []) as any[]
             const totalItems = CartService.calculateTotalQuantity(items)

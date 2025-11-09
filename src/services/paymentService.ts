@@ -14,6 +14,18 @@ export interface VNPayPaymentRequest {
   amount: number
   bankCode: string
   address: string
+  buyMethod: 'Instant' | 'ByCart'
+  recipientPhoneNumber?: string
+  clientType?: 'web' | 'app'
+}
+
+export interface CODPaymentRequest {
+  totalPrice: number
+  address: string
+  buyMethod: 'Instant' | 'ByCart'
+  recipientPhoneNumber?: string
+  deliveryType?: 'HOME_DELIVERY' | 'IN_STORE_PICKUP'
+  storeId?: number
 }
 
 export interface PaymentResponse {
@@ -83,12 +95,23 @@ export class PaymentService {
   // Create VNPay payment (align with BE GET /payment/vn-pay)
   static async createVNPayPayment(paymentData: VNPayPaymentRequest): Promise<ApiResponse<PaymentResponse>> {
     try {
+      const params: any = {
+        amount: paymentData.amount,
+        bankCode: paymentData.bankCode,
+        address: paymentData.address,
+        buyMethod: paymentData.buyMethod || 'ByCart'
+      }
+      
+      // Add optional params if provided
+      if (paymentData.recipientPhoneNumber) {
+        params.recipientPhoneNumber = paymentData.recipientPhoneNumber
+      }
+      if (paymentData.clientType) {
+        params.clientType = paymentData.clientType
+      }
+      
       const response = await axios.get(`${API_URL}/payment/vn-pay`, {
-        params: {
-          amount: paymentData.amount,
-          bankCode: paymentData.bankCode,
-          address: paymentData.address
-        },
+        params,
         headers: this.getAuthHeaders()
       })
       return response.data
@@ -106,6 +129,36 @@ export class PaymentService {
       return response.data
     } catch (error: any) {
       throw new Error(error.response?.data?.message || 'Failed to create payment')
+    }
+  }
+
+  // Create COD payment (align with BE POST /payment/cod)
+  static async createCODPayment(paymentData: CODPaymentRequest): Promise<ApiResponse<number>> {
+    try {
+      const params: any = {
+        totalPrice: paymentData.totalPrice,
+        address: paymentData.address,
+        buyMethod: paymentData.buyMethod || 'ByCart'
+      }
+      
+      // Add optional params if provided
+      if (paymentData.recipientPhoneNumber) {
+        params.recipientPhoneNumber = paymentData.recipientPhoneNumber
+      }
+      if (paymentData.deliveryType) {
+        params.deliveryType = paymentData.deliveryType
+      }
+      if (paymentData.storeId) {
+        params.storeId = paymentData.storeId
+      }
+      
+      const response = await axios.post(`${API_URL}/payment/cod`, null, {
+        params,
+        headers: this.getAuthHeaders()
+      })
+      return response.data
+    } catch (error: any) {
+      throw new Error(error.response?.data?.message || 'Failed to create COD order')
     }
   }
 

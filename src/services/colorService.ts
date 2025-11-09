@@ -1,0 +1,63 @@
+import axios from 'axios'
+import { Color } from '@/types'
+
+const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080'
+
+class ColorService {
+  private static getAuthHeaders() {
+    const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null
+    return {
+      'Authorization': `Bearer ${token}`,
+      'Content-Type': 'application/json'
+    }
+  }
+
+  // Get all colors (public endpoint, no auth required)
+  static async getAllColors(): Promise<Color[]> {
+    try {
+      const response = await axios.get(`${API_URL}/colors/public`)
+      return response.data
+    } catch (error: any) {
+      const errorMessage = error.response?.data?.message || error.response?.data?.error || error.message || 'Failed to load colors'
+      throw new Error(errorMessage)
+    }
+  }
+
+  // Create color
+  static async createColor(color: { name: string; hexCode?: string; description?: string }): Promise<Color> {
+    try {
+      const response = await axios.post(`${API_URL}/colors/create`, color, {
+        headers: this.getAuthHeaders()
+      })
+      return response.data
+    } catch (error: any) {
+      throw new Error(error.response?.data?.message || 'Failed to create color')
+    }
+  }
+
+  // Update color
+  static async updateColor(colorID: number, color: Partial<Color>): Promise<Color> {
+    try {
+      const response = await axios.put(`${API_URL}/colors/${colorID}`, color, {
+        headers: this.getAuthHeaders()
+      })
+      return response.data
+    } catch (error: any) {
+      throw new Error(error.response?.data?.message || 'Failed to update color')
+    }
+  }
+
+  // Delete color
+  static async deleteColor(colorID: number): Promise<void> {
+    try {
+      await axios.delete(`${API_URL}/colors/${colorID}`, {
+        headers: this.getAuthHeaders()
+      })
+    } catch (error: any) {
+      throw new Error(error.response?.data?.message || 'Failed to delete color')
+    }
+  }
+}
+
+export { ColorService as default }
+

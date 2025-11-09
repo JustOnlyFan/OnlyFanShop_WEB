@@ -1,6 +1,9 @@
 import axios from 'axios'
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080'
+// Respect empty string from next.config rewrites (same-origin proxy in dev)
+const API_URL = typeof process.env.NEXT_PUBLIC_API_URL !== 'undefined'
+  ? (process.env.NEXT_PUBLIC_API_URL as string)
+  : 'http://localhost:8080'
 
 export interface StoreLocation {
   id: number
@@ -85,15 +88,19 @@ export class StoreLocationService {
     }
   }
 
-  // Get all store locations
-  static async getStoreLocations(page: number = 0, size: number = 20, city?: string): Promise<ApiResponse<StoreLocationResponse>> {
+  // Get store locations (backend may not support pagination; send only provided params)
+  static async getStoreLocations(page?: number, size?: number, city?: string): Promise<ApiResponse<any>> {
     try {
       const params = new URLSearchParams()
-      params.append('page', page.toString())
-      params.append('size', size.toString())
+      if (typeof page === 'number') params.append('page', page.toString())
+      if (typeof size === 'number') params.append('size', size.toString())
       if (city) params.append('city', city)
 
-      const response = await axios.get(`${API_URL}/api/store-locations?${params}`)
+      const query = params.toString()
+      const url = query
+        ? `${API_URL}/store-locations?${query}`
+        : `${API_URL}/store-locations`
+      const response = await axios.get(url, { headers: this.getAuthHeaders() })
       return response.data
     } catch (error: any) {
       throw new Error(error.response?.data?.message || 'Failed to get store locations')
@@ -103,7 +110,9 @@ export class StoreLocationService {
   // Get store location by ID
   static async getStoreLocationById(storeId: number): Promise<ApiResponse<StoreLocation>> {
     try {
-      const response = await axios.get(`${API_URL}/api/store-locations/${storeId}`)
+      const response = await axios.get(`${API_URL}/store-locations/${storeId}`,
+        { headers: this.getAuthHeaders() }
+      )
       return response.data
     } catch (error: any) {
       throw new Error(error.response?.data?.message || 'Failed to get store location')
@@ -129,7 +138,7 @@ export class StoreLocationService {
   // Create store location (Admin only)
   static async createStoreLocation(storeData: CreateStoreLocationRequest): Promise<ApiResponse<StoreLocation>> {
     try {
-      const response = await axios.post(`${API_URL}/api/store-locations`, storeData, {
+      const response = await axios.post(`${API_URL}/store-locations`, storeData, {
         headers: this.getAuthHeaders()
       })
       return response.data
@@ -141,7 +150,7 @@ export class StoreLocationService {
   // Update store location (Admin only)
   static async updateStoreLocation(storeId: number, storeData: UpdateStoreLocationRequest): Promise<ApiResponse<StoreLocation>> {
     try {
-      const response = await axios.put(`${API_URL}/api/store-locations/${storeId}`, storeData, {
+      const response = await axios.put(`${API_URL}/store-locations/${storeId}`, storeData, {
         headers: this.getAuthHeaders()
       })
       return response.data
@@ -153,7 +162,7 @@ export class StoreLocationService {
   // Delete store location (Admin only)
   static async deleteStoreLocation(storeId: number): Promise<ApiResponse<void>> {
     try {
-      const response = await axios.delete(`${API_URL}/api/store-locations/${storeId}`, {
+      const response = await axios.delete(`${API_URL}/store-locations/${storeId}`, {
         headers: this.getAuthHeaders()
       })
       return response.data
@@ -399,6 +408,54 @@ export class StoreLocationService {
       return `https://www.google.com/maps/dir/${userLat},${userLon}/${store.latitude},${store.longitude}`
     } else {
       return `https://www.google.com/maps/dir//${store.latitude},${store.longitude}`
+    }
+  }
+
+  // Upload store image (Admin only)
+  static async uploadStoreImage(file: File): Promise<ApiResponse<string>> {
+    try {
+      const formData = new FormData()
+      formData.append('file', file)
+      
+      // Build headers specifically for multipart: only include Authorization if token exists
+      const token = localStorage.getItem('token')
+      const headers: Record<string, string> = {}
+      if (token) headers['Authorization'] = `Bearer ${token}`
+      
+      // Optional explicit override via env
+      const override = (process.env.NEXT_PUBLIC_UPLOAD_URL as string) || ''
+
+      // Try multiple known endpoints (backend variants)
+      const candidates = [
+        override && `${API_URL}${override.startsWith('/') ? '' : '/'}${override}`,
+        `${API_URL}/api/upload/store-image`,
+        `${API_URL}/api/upload/image`,
+        `${API_URL}/api/upload/brand-image`,
+        `${API_URL}/upload/store-image`,
+      ].filter(Boolean) as string[]
+
+      let lastError: any = null
+      for (const url of candidates) {
+        try {
+          const response = await axios.post(url, formData, { headers })
+          return response.data
+        } catch (err: any) {
+          lastError = err
+          // Continue to next candidate on 404/403/405
+          const status = err?.response?.status
+          if (![400, 404, 403, 405].includes(status)) {
+            throw err
+          }
+        }
+      }
+      throw lastError || new Error('No working upload endpoint found')
+    } catch (error: any) {
+      console.error('Upload image error:', error)
+      const errorMessage = error.response?.data?.message 
+        || error.response?.data?.error 
+        || error.message 
+        || 'Failed to upload image'
+      throw new Error(errorMessage)
     }
   }
 }
