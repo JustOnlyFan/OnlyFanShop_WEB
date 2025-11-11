@@ -1,5 +1,6 @@
 import axios from 'axios'
 import { ApiResponse, ProductRequest, ProductDTO, HomepageResponse } from '@/types'
+import { tokenStorage } from '@/utils/tokenStorage'
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080'
 
@@ -15,7 +16,7 @@ export interface GetProductListParams {
 
 class ProductAdminService {
   private static getAuthHeaders() {
-    const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null
+    const token = tokenStorage.getAccessToken()
     return {
       'Authorization': `Bearer ${token}`,
       'Content-Type': 'application/json'
@@ -25,7 +26,7 @@ class ProductAdminService {
   // Get product list for admin
   static async getProductList(params: GetProductListParams = {}): Promise<HomepageResponse> {
     try {
-      const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null
+      const token = tokenStorage.getAccessToken()
       if (!token) {
         throw new Error('No authentication token found. Please login again.')
       }
@@ -62,7 +63,7 @@ class ProductAdminService {
   // Add product
   static async addProduct(product: ProductRequest): Promise<ProductDTO> {
     try {
-      const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null
+      const token = tokenStorage.getAccessToken()
       if (!token) {
         throw new Error('No authentication token found. Please login again.')
       }
@@ -116,7 +117,7 @@ class ProductAdminService {
   // Update product
   static async updateProduct(productID: number, product: ProductRequest): Promise<ProductDTO> {
     try {
-      const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null
+      const token = tokenStorage.getAccessToken()
       if (!token) {
         throw new Error('No authentication token found. Please login again.')
       }
@@ -161,10 +162,14 @@ class ProductAdminService {
       const formData = new FormData()
       formData.append('file', file)
 
+      const token = tokenStorage.getAccessToken()
+      const headers: Record<string, string> = {}
+      if (token) {
+        headers['Authorization'] = `Bearer ${token}`
+      }
+
       const response = await axios.post(`${API_URL}/api/upload/image`, formData, {
-        headers: {
-          'Authorization': `Bearer ${typeof window !== 'undefined' ? localStorage.getItem('token') : null}`
-        }
+        headers
       })
       return response.data.data
     } catch (error: any) {

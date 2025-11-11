@@ -18,7 +18,8 @@ import {
   BarChart3,
   Megaphone,
   ShieldCheck,
-  Palette
+  Palette,
+  Warehouse
 } from 'lucide-react'
 
 interface DesktopAppIcon {
@@ -30,11 +31,11 @@ interface DesktopAppIcon {
 
 const apps: DesktopAppIcon[] = [
   { title: 'User Management', href: '/admin/users', Icon: Users, accentClass: 'from-blue-500/20 to-blue-500/5 hover:from-blue-500/30' },
-  { title: 'Product Management', href: '/admin/products', Icon: Package, accentClass: 'from-green-500/20 to-green-500/5 hover:from-green-500/30' },
+  { title: 'Warehouse Management', href: '/admin/warehouses', Icon: Warehouse, accentClass: 'from-orange-500/20 to-orange-500/5 hover:from-orange-500/30' },
   { title: 'Brand Management', href: '/admin/brands', Icon: Tags, accentClass: 'from-purple-500/20 to-purple-500/5 hover:from-purple-500/30' },
   { title: 'Category Management', href: '/admin/categories', Icon: Grid3X3, accentClass: 'from-amber-500/20 to-amber-500/5 hover:from-amber-500/30' },
-  { title: 'Warranty Management', href: '/admin/warranties', Icon: ShieldCheck, accentClass: 'from-teal-500/20 to-teal-500/5 hover:from-teal-500/30' },
   { title: 'Color Management', href: '/admin/colors', Icon: Palette, accentClass: 'from-pink-500/20 to-pink-500/5 hover:from-pink-500/30' },
+  { title: 'Warranty Management', href: '/admin/warranties', Icon: ShieldCheck, accentClass: 'from-teal-500/20 to-teal-500/5 hover:from-teal-500/30' },
   { title: 'Chat Management', href: '/admin/chat', Icon: MessagesSquare, accentClass: 'from-cyan-500/20 to-cyan-500/5 hover:from-cyan-500/30' },
   { title: 'Store Management', href: '/admin/stores', Icon: Store, accentClass: 'from-rose-500/20 to-rose-500/5 hover:from-rose-500/30' },
   { title: 'Order Management', href: '/admin/orders', Icon: ShoppingCart, accentClass: 'from-emerald-500/20 to-emerald-500/5 hover:from-emerald-500/30' },

@@ -1,15 +1,19 @@
 import axios from 'axios'
 import { Warranty } from '@/types'
+import { tokenStorage } from '@/utils/tokenStorage'
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080'
 
 class WarrantyService {
   private static getAuthHeaders() {
-    const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null
-    return {
-      'Authorization': `Bearer ${token}`,
+    const token = tokenStorage.getAccessToken()
+    const headers: Record<string, string> = {
       'Content-Type': 'application/json'
     }
+    if (token) {
+      headers['Authorization'] = `Bearer ${token}`
+    }
+    return headers
   }
 
   // Get all warranties (public endpoint, no auth required)

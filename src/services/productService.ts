@@ -39,6 +39,7 @@ export class ProductService {
   // Get homepage data with products, categories, and brands
   static async getHomepage(params: GetHomepageParams = {}): Promise<ApiResponse<HomepageResponse>> {
     try {
+      console.log('Fetching homepage data with params:', params);
       const response = await axios.post(`${API_URL}/product/public/homepage`, null, {
         params: {
           keyword: params.keyword,
@@ -46,13 +47,29 @@ export class ProductService {
           brandId: params.brandId,
           page: params.page ?? 1,
           size: params.size ?? 12,
-          sortBy: params.sortBy ?? 'ProductID',
+          sortBy: params.sortBy ?? 'id',
           order: params.order ?? 'DESC'
         }
       })
-      return response.data
+      console.log('Homepage API response:', response.data);
+      
+      // Ensure response has the correct structure
+      if (response.data && response.data.data) {
+        return response.data;
+      } else if (response.data) {
+        // If data is directly in response, wrap it
+        return {
+          statusCode: 200,
+          message: 'Success',
+          data: response.data
+        };
+      }
+      
+      throw new Error('Invalid response format from homepage API');
     } catch (error: any) {
-      throw new Error(error.response?.data?.message || 'Failed to load homepage products')
+      console.error('Error fetching homepage data:', error);
+      console.error('Error response:', error.response?.data);
+      throw new Error(error.response?.data?.message || error.message || 'Failed to load homepage products')
     }
   }
 

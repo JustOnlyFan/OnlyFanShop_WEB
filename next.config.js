@@ -53,6 +53,34 @@ const nextConfig = {
           destination: 'http://localhost:8080/login/:path*',
         },
         {
+          source: '/users/:path*',
+          destination: 'http://localhost:8080/users/:path*',
+        },
+        {
+          source: '/order/:path*',
+          destination: 'http://localhost:8080/order/:path*',
+        },
+        {
+          source: '/product/:path*',
+          destination: 'http://localhost:8080/product/:path*',
+        },
+        {
+          source: '/category/:path*',
+          destination: 'http://localhost:8080/category/:path*',
+        },
+        {
+          source: '/brands/:path*',
+          destination: 'http://localhost:8080/brands/:path*',
+        },
+        {
+          source: '/colors/:path*',
+          destination: 'http://localhost:8080/colors/:path*',
+        },
+        {
+          source: '/warranties/:path*',
+          destination: 'http://localhost:8080/warranties/:path*',
+        },
+        {
           source: '/store-locations',
           destination: 'http://localhost:8080/store-locations',
         },

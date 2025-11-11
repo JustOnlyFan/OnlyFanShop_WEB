@@ -5,6 +5,7 @@ import { motion, AnimatePresence } from 'framer-motion'
 import { X, Loader2, MapPin, Crosshair, Upload as UploadIcon, Trash2 } from 'lucide-react'
 import toast from 'react-hot-toast'
 import { StoreLocationService, CreateStoreLocationRequest, UpdateStoreLocationRequest } from '@/services/storeLocationService'
+import { WarehouseService, Warehouse } from '@/services/warehouseService'
 import AddressPickerModal from './AddressPickerModal'
 
 interface StoreManagementModalProps {
@@ -34,6 +35,8 @@ export default function StoreManagementModal({ store, onClose, onSaved }: StoreM
   })
   const [uploadingImage, setUploadingImage] = useState(false)
   const [addressModalOpen, setAddressModalOpen] = useState(false)
+  const [regionalWarehouses, setRegionalWarehouses] = useState<Warehouse[]>([])
+  const [selectedRegionalId, setSelectedRegionalId] = useState<number | ''>('')
 
   useEffect(() => {
     if (store) {
@@ -54,6 +57,10 @@ export default function StoreManagementModal({ store, onClose, onSaved }: StoreM
         services: (store.services as string[]) || []
       }))
     }
+    // Load regional warehouses for selection
+    WarehouseService.getWarehousesByType('regional')
+      .then((res) => setRegionalWarehouses(res.data || []))
+      .catch(() => setRegionalWarehouses([]))
   }, [store])
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -62,6 +69,12 @@ export default function StoreManagementModal({ store, onClose, onSaved }: StoreM
     const validation = StoreLocationService.validateStoreLocationData(formData)
     if (!validation.isValid) {
       toast.error(validation.errors[0] || 'Vui lòng kiểm tra lại thông tin')
+      return
+    }
+
+    // Require regional warehouse when creating a new store
+    if (!isEditMode && selectedRegionalId === '') {
+      toast.error('Vui lòng chọn Kho Khu Vực (cha) để tạo kho Chi Nhánh')
       return
     }
 
@@ -74,7 +87,11 @@ export default function StoreManagementModal({ store, onClose, onSaved }: StoreM
         await StoreLocationService.updateStoreLocation((store as any).id, payload)
         toast.success('Cập nhật cửa hàng thành công!')
       } else {
-        await StoreLocationService.createStoreLocation(formData)
+        const payload: CreateStoreLocationRequest = {
+          ...formData,
+          parentRegionalWarehouseId: typeof selectedRegionalId === 'number' ? selectedRegionalId : undefined
+        }
+        await StoreLocationService.createStoreLocation(payload)
         toast.success('Thêm cửa hàng thành công!')
       }
       onSaved?.()
@@ -90,6 +107,35 @@ export default function StoreManagementModal({ store, onClose, onSaved }: StoreM
     try {
       const { latitude, longitude } = await StoreLocationService.getCurrentLocation()
       setFormData(prev => ({ ...prev, latitude, longitude }))
+
+      // After getting coordinates, reverse geocode to fill human-readable address
+      try {
+        const params = new URLSearchParams({
+          lat: String(latitude),
+          lon: String(longitude),
+          format: 'json',
+          addressdetails: '1',
+          'accept-language': 'vi'
+        })
+        const resp = await fetch(`https://nominatim.openstreetmap.org/reverse?${params.toString()}`, {
+          headers: { 'Accept-Language': 'vi' }
+        })
+        const result = await resp.json()
+        const addr = result?.address
+        if (addr) {
+          const road = addr.road || addr.street || addr.pedestrian || ''
+          const house = addr.house_number ? `${addr.house_number} ` : ''
+          const ward = addr.quarter || addr.neighbourhood || addr.village || addr.suburb || ''
+          const city = addr.state || addr.city || addr.town || addr.county || ''
+          setFormData(prev => ({
+            ...prev,
+            address: (house + road).trim() || prev.address,
+            city: city || prev.city,
+            district: '',
+            ward: ward || prev.ward
+          }))
+        }
+      } catch {}
       toast.success('Đã lấy vị trí hiện tại')
     } catch (err: any) {
       toast.error(err.message || 'Không thể lấy vị trí')
@@ -235,6 +281,23 @@ export default function StoreManagementModal({ store, onClose, onSaved }: StoreM
                     <MapPin className="w-4 h-4" /> Địa chỉ
                   </button>
                 </div>
+                {/* Show selected address nicely under the label */}
+                <div className="mt-2 text-sm text-gray-700">
+                  {(() => {
+                    const parts = [formData.address, formData.ward, formData.city].filter(Boolean)
+                    const text = parts.length ? parts.join(', ') : 'Chưa chọn'
+                    return (
+                      <div className="flex flex-wrap items-center gap-2">
+                        <span className="truncate">{text}</span>
+                        {Number.isFinite(formData.latitude) && Number.isFinite(formData.longitude) && (formData.latitude !== 0 || formData.longitude !== 0) && (
+                          <span className="px-2 py-0.5 rounded-full bg-gray-100 text-gray-600 text-xs">
+                            {formData.latitude.toFixed(5)}, {formData.longitude.toFixed(5)}
+                          </span>
+                        )}
+                      </div>
+                    )
+                  })()}
+                </div>
               </div>
               <div className="hidden">
                 <label className="block text-sm font-medium text-gray-700 mb-2">Tỉnh/Thành phố *</label>
@@ -243,7 +306,7 @@ export default function StoreManagementModal({ store, onClose, onSaved }: StoreM
                   value={formData.city}
                   onChange={(e) => setFormData(prev => ({ ...prev, city: e.target.value }))}
                   className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500"
-                  required
+                  
                 />
                 <datalist id="vn-cities">
                   {StoreLocationService.getVietnameseCities().map(c => (
@@ -258,7 +321,7 @@ export default function StoreManagementModal({ store, onClose, onSaved }: StoreM
                   value={formData.district}
                   onChange={(e) => setFormData(prev => ({ ...prev, district: e.target.value }))}
                   className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500"
-                  required
+                  
                 />
               </div>
               <div className="hidden">
@@ -268,7 +331,7 @@ export default function StoreManagementModal({ store, onClose, onSaved }: StoreM
                   value={formData.ward}
                   onChange={(e) => setFormData(prev => ({ ...prev, ward: e.target.value }))}
                   className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500"
-                  required
+                  
                 />
               </div>
               <div className="hidden">
@@ -279,7 +342,7 @@ export default function StoreManagementModal({ store, onClose, onSaved }: StoreM
                   value={formData.latitude}
                   onChange={(e) => setFormData(prev => ({ ...prev, latitude: Number(e.target.value) }))}
                   className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500"
-                  required
+                  
                 />
               </div>
               <div className="hidden">
@@ -290,7 +353,7 @@ export default function StoreManagementModal({ store, onClose, onSaved }: StoreM
                   value={formData.longitude}
                   onChange={(e) => setFormData(prev => ({ ...prev, longitude: Number(e.target.value) }))}
                   className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500"
-                  required
+                  
                 />
               </div>
               <div>
@@ -312,6 +375,25 @@ export default function StoreManagementModal({ store, onClose, onSaved }: StoreM
                   className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500"
                   required
                 />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Kho Khu Vực (cha) khi tạo Kho Chi Nhánh</label>
+                <select
+                  value={selectedRegionalId}
+                  onChange={(e) => setSelectedRegionalId(e.target.value ? Number(e.target.value) : '')}
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 bg-white"
+                  required={!isEditMode}
+                >
+                  <option value="">-- Chọn kho Khu Vực --</option>
+                  {regionalWarehouses.map(w => (
+                    <option key={w.id} value={w.id}>
+                      {w.name} ({w.code})
+                    </option>
+                  ))}
+                </select>
+                <p className="mt-1 text-xs text-gray-500">
+                  Bắt buộc chọn để hệ thống tự tạo kho Chi Nhánh gắn với cửa hàng mới (lấy hàng từ kho Khu Vực đã chọn).
+                </p>
               </div>
               <div className="md:col-span-2">
                 <label className="block text-sm font-medium text-gray-700 mb-2">Mô tả</label>

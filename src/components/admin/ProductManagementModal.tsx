@@ -2,10 +2,11 @@
 
 import { useState, useEffect, useRef } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { X, Upload as UploadIcon, Loader2, Plus, ChevronDown, Check } from 'lucide-react'
+import { X, Upload as UploadIcon, Loader2, Plus, ChevronDown, Check, Building2 } from 'lucide-react'
 import ProductAdminService from '@/services/productAdminService'
 import ColorService from '@/services/colorService'
 import WarrantyService from '@/services/warrantyService'
+import { WarehouseService, Warehouse } from '@/services/warehouseService'
 import { ProductDTO, Brand, Category, ProductRequest, Color, Warranty } from '@/types'
 import toast from 'react-hot-toast'
 
@@ -13,11 +14,12 @@ interface ProductManagementModalProps {
   product: ProductDTO | null
   brands: Brand[]
   categories: Category[]
+  warehouseIds?: number[] // Optional: if provided, product will be added to these warehouses
   onClose: () => void
   onSaved?: (product: ProductDTO) => void
 }
 
-export function ProductManagementModal({ product, brands, categories, onClose, onSaved }: ProductManagementModalProps) {
+export function ProductManagementModal({ product, brands, categories, warehouseIds, onClose, onSaved }: ProductManagementModalProps) {
   const [loading, setLoading] = useState(false)
   const [formData, setFormData] = useState<ProductRequest>({
     productName: '',
@@ -33,7 +35,34 @@ export function ProductManagementModal({ product, brands, categories, onClose, o
     colorDefault: '',
     warrantyMonths: undefined,
     colorIds: [],
-    warrantyId: undefined
+    warrantyId: undefined,
+    quantity: 0,
+    // Technical specifications
+    voltage: undefined,
+    windSpeedLevels: undefined,
+    airflow: undefined,
+    bladeMaterial: undefined,
+    bodyMaterial: undefined,
+    bladeCount: undefined,
+    noiseLevel: undefined,
+    motorSpeed: undefined,
+    weight: undefined,
+    adjustableHeight: undefined,
+    // Features
+    remoteControl: false,
+    timer: undefined,
+    naturalWindMode: false,
+    sleepMode: false,
+    oscillation: false,
+    heightAdjustable: false,
+    autoShutoff: false,
+    temperatureSensor: false,
+    energySaving: false,
+    // Other information
+    safetyStandards: undefined,
+    manufacturingYear: undefined,
+    accessories: undefined,
+    energyRating: undefined
   })
   const [uploadingImage, setUploadingImage] = useState(false)
   const [colors, setColors] = useState<Color[]>([])
@@ -42,6 +71,8 @@ export function ProductManagementModal({ product, brands, categories, onClose, o
   const [displaySlug, setDisplaySlug] = useState<string>('')
   const [showColorDropdown, setShowColorDropdown] = useState(false)
   const colorDropdownRef = useRef<HTMLDivElement>(null)
+  const [mainWarehouses, setMainWarehouses] = useState<Warehouse[]>([])
+  const [selectedWarehouseIds, setSelectedWarehouseIds] = useState<number[]>(warehouseIds || [])
 
   const isEditMode = !!product
 
@@ -107,7 +138,32 @@ export function ProductManagementModal({ product, brands, categories, onClose, o
 
   useEffect(() => {
     loadColorsAndWarranties()
-  }, [])
+    if (!isEditMode) {
+      loadMainWarehouses()
+    }
+  }, [isEditMode])
+
+  // Load main warehouses for selection
+  const loadMainWarehouses = async () => {
+    try {
+      const response = await WarehouseService.getMainWarehouses()
+      setMainWarehouses(response.data || [])
+    } catch (error: any) {
+      console.error('Failed to load main warehouses:', error)
+      setMainWarehouses([])
+    }
+  }
+
+  // Toggle warehouse selection
+  const toggleWarehouse = (warehouseId: number) => {
+    setSelectedWarehouseIds(prev => {
+      if (prev.includes(warehouseId)) {
+        return prev.filter(id => id !== warehouseId)
+      } else {
+        return [...prev, warehouseId]
+      }
+    })
+  }
 
   // Listen for storage event to refresh when warranty is added in another tab
   useEffect(() => {
@@ -140,7 +196,34 @@ export function ProductManagementModal({ product, brands, categories, onClose, o
         colorDefault: productDetail.colorDefault || '',
         warrantyMonths: productDetail.warrantyMonths || undefined,
         colorIds: productDetail.colors?.map((c: Color) => c.id) || [],
-        warrantyId: productDetail.warranty?.id || undefined
+        warrantyId: productDetail.warranty?.id || undefined,
+        quantity: productDetail.quantity || 0,
+        // Technical specifications
+        voltage: productDetail.voltage || undefined,
+        windSpeedLevels: productDetail.windSpeedLevels || undefined,
+        airflow: productDetail.airflow || undefined,
+        bladeMaterial: productDetail.bladeMaterial || undefined,
+        bodyMaterial: productDetail.bodyMaterial || undefined,
+        bladeCount: productDetail.bladeCount || undefined,
+        noiseLevel: productDetail.noiseLevel || undefined,
+        motorSpeed: productDetail.motorSpeed || undefined,
+        weight: productDetail.weight || undefined,
+        adjustableHeight: productDetail.adjustableHeight || undefined,
+        // Features
+        remoteControl: productDetail.remoteControl || false,
+        timer: productDetail.timer || undefined,
+        naturalWindMode: productDetail.naturalWindMode || false,
+        sleepMode: productDetail.sleepMode || false,
+        oscillation: productDetail.oscillation || false,
+        heightAdjustable: productDetail.heightAdjustable || false,
+        autoShutoff: productDetail.autoShutoff || false,
+        temperatureSensor: productDetail.temperatureSensor || false,
+        energySaving: productDetail.energySaving || false,
+        // Other information
+        safetyStandards: productDetail.safetyStandards || undefined,
+        manufacturingYear: productDetail.manufacturingYear || undefined,
+        accessories: productDetail.accessories || undefined,
+        energyRating: productDetail.energyRating || undefined
       })
     } else {
       // Reset form when not in edit mode
@@ -160,7 +243,34 @@ export function ProductManagementModal({ product, brands, categories, onClose, o
         colorDefault: '',
         warrantyMonths: undefined,
         colorIds: [],
-        warrantyId: undefined
+        warrantyId: undefined,
+        quantity: 0,
+        // Technical specifications
+        voltage: undefined,
+        windSpeedLevels: undefined,
+        airflow: undefined,
+        bladeMaterial: undefined,
+        bodyMaterial: undefined,
+        bladeCount: undefined,
+        noiseLevel: undefined,
+        motorSpeed: undefined,
+        weight: undefined,
+        adjustableHeight: undefined,
+        // Features
+        remoteControl: false,
+        timer: undefined,
+        naturalWindMode: false,
+        sleepMode: false,
+        oscillation: false,
+        heightAdjustable: false,
+        autoShutoff: false,
+        temperatureSensor: false,
+        energySaving: false,
+        // Other information
+        safetyStandards: undefined,
+        manufacturingYear: undefined,
+        accessories: undefined,
+        energyRating: undefined
       })
     }
   }, [product])
@@ -228,7 +338,37 @@ export function ProductManagementModal({ product, brands, categories, onClose, o
         ...(formData.colorDefault && formData.colorDefault.trim() && { colorDefault: formData.colorDefault.trim() }),
         ...(formData.warrantyMonths !== undefined && formData.warrantyMonths !== null && formData.warrantyMonths > 0 && { warrantyMonths: formData.warrantyMonths }),
         ...(formData.colorIds && formData.colorIds.length > 0 && { colorIds: formData.colorIds }),
-        ...(formData.warrantyId && formData.warrantyId > 0 && { warrantyId: formData.warrantyId })
+        ...(formData.warrantyId && formData.warrantyId > 0 && { warrantyId: formData.warrantyId }),
+        ...(formData.quantity !== undefined && formData.quantity !== null && formData.quantity >= 0 && { quantity: formData.quantity }),
+        // Technical specifications
+        ...(formData.voltage && { voltage: formData.voltage }),
+        ...(formData.windSpeedLevels && { windSpeedLevels: formData.windSpeedLevels }),
+        ...(formData.airflow !== undefined && formData.airflow !== null && formData.airflow > 0 && { airflow: formData.airflow }),
+        ...(formData.bladeMaterial && { bladeMaterial: formData.bladeMaterial }),
+        ...(formData.bodyMaterial && { bodyMaterial: formData.bodyMaterial }),
+        ...(formData.bladeCount !== undefined && formData.bladeCount !== null && formData.bladeCount > 0 && { bladeCount: formData.bladeCount }),
+        ...(formData.noiseLevel !== undefined && formData.noiseLevel !== null && formData.noiseLevel > 0 && { noiseLevel: formData.noiseLevel }),
+        ...(formData.motorSpeed !== undefined && formData.motorSpeed !== null && formData.motorSpeed > 0 && { motorSpeed: formData.motorSpeed }),
+        ...(formData.weight !== undefined && formData.weight !== null && formData.weight > 0 && { weight: formData.weight }),
+        ...(formData.adjustableHeight && { adjustableHeight: formData.adjustableHeight }),
+        // Features
+        ...(formData.remoteControl !== undefined && { remoteControl: formData.remoteControl }),
+        ...(formData.timer && { timer: formData.timer }),
+        ...(formData.naturalWindMode !== undefined && { naturalWindMode: formData.naturalWindMode }),
+        ...(formData.sleepMode !== undefined && { sleepMode: formData.sleepMode }),
+        ...(formData.oscillation !== undefined && { oscillation: formData.oscillation }),
+        ...(formData.heightAdjustable !== undefined && { heightAdjustable: formData.heightAdjustable }),
+        ...(formData.autoShutoff !== undefined && { autoShutoff: formData.autoShutoff }),
+        ...(formData.temperatureSensor !== undefined && { temperatureSensor: formData.temperatureSensor }),
+        ...(formData.energySaving !== undefined && { energySaving: formData.energySaving }),
+        // Other information
+        ...(formData.safetyStandards && { safetyStandards: formData.safetyStandards }),
+        ...(formData.manufacturingYear !== undefined && formData.manufacturingYear !== null && formData.manufacturingYear > 0 && { manufacturingYear: formData.manufacturingYear }),
+        ...(formData.accessories && { accessories: formData.accessories }),
+        ...(formData.energyRating && { energyRating: formData.energyRating }),
+        // If selectedWarehouseIds provided, use first one for product creation (backend will add to that warehouse)
+        // Then we'll add to other warehouses separately
+        ...(selectedWarehouseIds && selectedWarehouseIds.length > 0 && { warehouseId: selectedWarehouseIds[0] })
       }
       
       console.log('Submitting product data:', JSON.stringify(submitData, null, 2))
@@ -241,9 +381,48 @@ export function ProductManagementModal({ product, brands, categories, onClose, o
       } else {
         const created = await ProductAdminService.addProduct(submitData)
         if (created) {
+          const productId = created.id || created.productID
+          
+          // If multiple warehouses selected, add product to each warehouse
+          if (selectedWarehouseIds && selectedWarehouseIds.length > 1 && productId && formData.quantity && formData.quantity > 0) {
+            try {
+              // Add product to remaining warehouses (first one already added by backend)
+              const remainingWarehouses = selectedWarehouseIds.slice(1)
+              let successCount = 0
+              let errorCount = 0
+              
+              for (const warehouseId of remainingWarehouses) {
+                try {
+                  await WarehouseService.addProductToWarehouse({
+                    warehouseId,
+                    productId: Number(productId), // Ensure it's a number
+                    quantity: formData.quantity,
+                    note: 'Thêm sản phẩm mới vào kho tổng'
+                  })
+                  successCount++
+                } catch (error: any) {
+                  console.error(`Error adding product to warehouse ${warehouseId}:`, error)
+                  errorCount++
+                }
+              }
+              
+              if (successCount > 0) {
+                toast.success(`Đã thêm sản phẩm vào ${successCount + 1} kho tổng${errorCount > 0 ? ` (${errorCount} lỗi)` : ''}`)
+              } else if (errorCount > 0) {
+                toast.error('Sản phẩm đã được tạo nhưng có lỗi khi thêm vào các kho bổ sung')
+              }
+            } catch (error: any) {
+              console.error('Error adding product to additional warehouses:', error)
+              toast.error('Sản phẩm đã được tạo nhưng có lỗi khi thêm vào một số kho')
+            }
+          } else if (selectedWarehouseIds && selectedWarehouseIds.length === 1) {
+            toast.success('Thêm sản phẩm thành công!')
+          } else {
+            toast.success('Thêm sản phẩm thành công!')
+          }
+          
           onSaved?.(created)
         }
-        toast.success('Thêm sản phẩm thành công!')
       }
       onClose()
     } catch (error: any) {
@@ -270,7 +449,7 @@ export function ProductManagementModal({ product, brands, categories, onClose, o
           initial={{ opacity: 0, scale: 0.95 }}
           animate={{ opacity: 1, scale: 1 }}
           exit={{ opacity: 0, scale: 0.95 }}
-          className="relative bg-white rounded-xl shadow-2xl w-full max-w-4xl max-h-[90vh] overflow-hidden flex flex-col"
+          className="relative bg-white rounded-xl shadow-2xl w-full max-w-5xl max-h-[90vh] overflow-hidden flex flex-col"
         >
           {/* Header */}
           <div className="sticky top-0 bg-white border-b border-gray-200 px-6 py-4 flex items-center justify-between z-10">
@@ -362,27 +541,27 @@ export function ProductManagementModal({ product, brands, categories, onClose, o
               />
             </div>
 
-            {/* Technical Specifications - Note: This will be auto-generated from technical fields */}
+            {/* Technical Specifications - Optional text field */}
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
-                Thông số kỹ thuật (tùy chọn - sẽ tự động tạo từ các thông số bên dưới)
+                Thông số kỹ thuật (mô tả thêm - tùy chọn)
               </label>
               <textarea
                 value={formData.technicalSpecifications}
                 onChange={(e) => setFormData(prev => ({ ...prev, technicalSpecifications: e.target.value }))}
                 rows={3}
                 className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500"
-                placeholder="Có thể để trống, thông số sẽ tự động tạo từ các field kỹ thuật bên dưới"
+                placeholder="Nhập thêm các thông số kỹ thuật khác (nếu có)..."
               />
             </div>
 
             {/* Divider */}
             <div className="border-t border-gray-200 pt-4">
-              <h3 className="text-lg font-semibold text-gray-900 mb-4">Thông tin kỹ thuật</h3>
+              <h3 className="text-lg font-semibold text-gray-900 mb-4">Thông số kỹ thuật cơ bản</h3>
             </div>
 
             {/* Grid: SKU, Slug - Read only */}
-            <div className="grid md:grid-cols-2 gap-4">
+            <div className="grid md:grid-cols-2 gap-4 mb-4">
               {/* SKU - Read only */}
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -412,8 +591,8 @@ export function ProductManagementModal({ product, brands, categories, onClose, o
               </div>
             </div>
 
-            {/* Grid: Power Watt, Blade Diameter */}
-            <div className="grid md:grid-cols-2 gap-4">
+            {/* Grid: Power Watt, Blade Diameter, Quantity */}
+            <div className="grid md:grid-cols-3 gap-4 mb-4">
               {/* Power Watt */}
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -423,7 +602,7 @@ export function ProductManagementModal({ product, brands, categories, onClose, o
                   type="number"
                   value={formData.powerWatt || ''}
                   onChange={(e) => setFormData(prev => ({ ...prev, powerWatt: e.target.value ? Number(e.target.value) : undefined }))}
-                  placeholder="VD: 60"
+                  placeholder="VD: 45"
                   min="0"
                   className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500"
                 />
@@ -439,7 +618,22 @@ export function ProductManagementModal({ product, brands, categories, onClose, o
                   step="0.01"
                   value={formData.bladeDiameterCm || ''}
                   onChange={(e) => setFormData(prev => ({ ...prev, bladeDiameterCm: e.target.value ? Number(e.target.value) : undefined }))}
-                  placeholder="VD: 40.5"
+                  placeholder="VD: 40"
+                  min="0"
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500"
+                />
+              </div>
+
+              {/* Quantity */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Số lượng sản phẩm
+                </label>
+                <input
+                  type="number"
+                  value={formData.quantity || 0}
+                  onChange={(e) => setFormData(prev => ({ ...prev, quantity: e.target.value ? Number(e.target.value) : 0 }))}
+                  placeholder="VD: 100"
                   min="0"
                   className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500"
                 />
@@ -672,6 +866,388 @@ export function ProductManagementModal({ product, brands, categories, onClose, o
                 </select>
               </div>
             </div>
+
+            {/* Thông số kỹ thuật chi tiết */}
+            <div className="border-t border-gray-200 pt-6 mt-6">
+              <h3 className="text-lg font-semibold text-gray-900 mb-4">Thông số kỹ thuật chi tiết</h3>
+              
+              {/* Grid 1: Voltage, Wind Speed Levels, Airflow */}
+              <div className="grid md:grid-cols-3 gap-4 mb-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Điện áp sử dụng
+                  </label>
+                  <input
+                    type="text"
+                    value={formData.voltage || ''}
+                    onChange={(e) => setFormData(prev => ({ ...prev, voltage: e.target.value }))}
+                    placeholder="VD: 220V / 50Hz"
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Tốc độ gió
+                  </label>
+                  <input
+                    type="text"
+                    value={formData.windSpeedLevels || ''}
+                    onChange={(e) => setFormData(prev => ({ ...prev, windSpeedLevels: e.target.value }))}
+                    placeholder="VD: 3 mức (thấp/trung bình/cao)"
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Lưu lượng gió (m³/phút)
+                  </label>
+                  <input
+                    type="number"
+                    value={formData.airflow || ''}
+                    onChange={(e) => setFormData(prev => ({ ...prev, airflow: e.target.value ? Number(e.target.value) : undefined }))}
+                    placeholder="VD: 65"
+                    min="0"
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500"
+                  />
+                </div>
+              </div>
+
+              {/* Grid 2: Blade Material, Body Material, Blade Count */}
+              <div className="grid md:grid-cols-3 gap-4 mb-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Chất liệu cánh quạt
+                  </label>
+                  <input
+                    type="text"
+                    value={formData.bladeMaterial || ''}
+                    onChange={(e) => setFormData(prev => ({ ...prev, bladeMaterial: e.target.value }))}
+                    placeholder="VD: Nhựa ABS"
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Chất liệu thân quạt
+                  </label>
+                  <input
+                    type="text"
+                    value={formData.bodyMaterial || ''}
+                    onChange={(e) => setFormData(prev => ({ ...prev, bodyMaterial: e.target.value }))}
+                    placeholder="VD: Nhựa cao cấp"
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Số lượng cánh
+                  </label>
+                  <input
+                    type="number"
+                    value={formData.bladeCount || ''}
+                    onChange={(e) => setFormData(prev => ({ ...prev, bladeCount: e.target.value ? Number(e.target.value) : undefined }))}
+                    placeholder="VD: 3 hoặc 5"
+                    min="0"
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500"
+                  />
+                </div>
+              </div>
+
+              {/* Grid 3: Noise Level, Motor Speed, Weight */}
+              <div className="grid md:grid-cols-3 gap-4 mb-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Mức độ ồn (dB)
+                  </label>
+                  <input
+                    type="number"
+                    value={formData.noiseLevel || ''}
+                    onChange={(e) => setFormData(prev => ({ ...prev, noiseLevel: e.target.value ? Number(e.target.value) : undefined }))}
+                    placeholder="VD: 55"
+                    min="0"
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Tốc độ quay motor (vòng/phút)
+                  </label>
+                  <input
+                    type="number"
+                    value={formData.motorSpeed || ''}
+                    onChange={(e) => setFormData(prev => ({ ...prev, motorSpeed: e.target.value ? Number(e.target.value) : undefined }))}
+                    placeholder="VD: 1200"
+                    min="0"
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Trọng lượng (kg)
+                  </label>
+                  <input
+                    type="number"
+                    step="0.01"
+                    value={formData.weight || ''}
+                    onChange={(e) => setFormData(prev => ({ ...prev, weight: e.target.value ? Number(e.target.value) : undefined }))}
+                    placeholder="VD: 6.5"
+                    min="0"
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500"
+                  />
+                </div>
+              </div>
+
+              {/* Grid 4: Adjustable Height */}
+              <div className="grid md:grid-cols-3 gap-4 mb-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Chiều cao điều chỉnh
+                  </label>
+                  <input
+                    type="text"
+                    value={formData.adjustableHeight || ''}
+                    onChange={(e) => setFormData(prev => ({ ...prev, adjustableHeight: e.target.value }))}
+                    placeholder="VD: 1.1 – 1.4 m"
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500"
+                  />
+                </div>
+              </div>
+            </div>
+
+            {/* Tính năng & tiện ích */}
+            <div className="border-t border-gray-200 pt-6 mt-6">
+              <h3 className="text-lg font-semibold text-gray-900 mb-4">Tính năng & tiện ích</h3>
+              
+              {/* Features Grid - Checkboxes */}
+              <div className="grid md:grid-cols-3 gap-4 mb-4">
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={formData.remoteControl || false}
+                    onChange={(e) => setFormData(prev => ({ ...prev, remoteControl: e.target.checked }))}
+                    className="w-4 h-4 text-green-600 border-gray-300 rounded focus:ring-green-500"
+                  />
+                  <span className="text-sm text-gray-700">Điều khiển từ xa</span>
+                </label>
+
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={formData.naturalWindMode || false}
+                    onChange={(e) => setFormData(prev => ({ ...prev, naturalWindMode: e.target.checked }))}
+                    className="w-4 h-4 text-green-600 border-gray-300 rounded focus:ring-green-500"
+                  />
+                  <span className="text-sm text-gray-700">Chế độ gió tự nhiên</span>
+                </label>
+
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={formData.sleepMode || false}
+                    onChange={(e) => setFormData(prev => ({ ...prev, sleepMode: e.target.checked }))}
+                    className="w-4 h-4 text-green-600 border-gray-300 rounded focus:ring-green-500"
+                  />
+                  <span className="text-sm text-gray-700">Chế độ ngủ</span>
+                </label>
+
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={formData.oscillation || false}
+                    onChange={(e) => setFormData(prev => ({ ...prev, oscillation: e.target.checked }))}
+                    className="w-4 h-4 text-green-600 border-gray-300 rounded focus:ring-green-500"
+                  />
+                  <span className="text-sm text-gray-700">Đảo chiều gió</span>
+                </label>
+
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={formData.heightAdjustable || false}
+                    onChange={(e) => setFormData(prev => ({ ...prev, heightAdjustable: e.target.checked }))}
+                    className="w-4 h-4 text-green-600 border-gray-300 rounded focus:ring-green-500"
+                  />
+                  <span className="text-sm text-gray-700">Điều chỉnh độ cao</span>
+                </label>
+
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={formData.autoShutoff || false}
+                    onChange={(e) => setFormData(prev => ({ ...prev, autoShutoff: e.target.checked }))}
+                    className="w-4 h-4 text-green-600 border-gray-300 rounded focus:ring-green-500"
+                  />
+                  <span className="text-sm text-gray-700">Ngắt điện tự động</span>
+                </label>
+
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={formData.temperatureSensor || false}
+                    onChange={(e) => setFormData(prev => ({ ...prev, temperatureSensor: e.target.checked }))}
+                    className="w-4 h-4 text-green-600 border-gray-300 rounded focus:ring-green-500"
+                  />
+                  <span className="text-sm text-gray-700">Cảm biến nhiệt</span>
+                </label>
+
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={formData.energySaving || false}
+                    onChange={(e) => setFormData(prev => ({ ...prev, energySaving: e.target.checked }))}
+                    className="w-4 h-4 text-green-600 border-gray-300 rounded focus:ring-green-500"
+                  />
+                  <span className="text-sm text-gray-700">Tiết kiệm điện</span>
+                </label>
+              </div>
+
+              {/* Timer */}
+              <div className="mb-4">
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Hẹn giờ tắt
+                </label>
+                <input
+                  type="text"
+                  value={formData.timer || ''}
+                  onChange={(e) => setFormData(prev => ({ ...prev, timer: e.target.value }))}
+                  placeholder="VD: 1 – 4 giờ"
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500"
+                />
+              </div>
+            </div>
+
+            {/* Thông tin khác */}
+            <div className="border-t border-gray-200 pt-6 mt-6">
+              <h3 className="text-lg font-semibold text-gray-900 mb-4">Thông tin khác</h3>
+              
+              <div className="grid md:grid-cols-2 gap-4 mb-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Tiêu chuẩn an toàn
+                  </label>
+                  <input
+                    type="text"
+                    value={formData.safetyStandards || ''}
+                    onChange={(e) => setFormData(prev => ({ ...prev, safetyStandards: e.target.value }))}
+                    placeholder="VD: TCVN / IEC / RoHS"
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Năm sản xuất
+                  </label>
+                  <input
+                    type="number"
+                    value={formData.manufacturingYear || ''}
+                    onChange={(e) => setFormData(prev => ({ ...prev, manufacturingYear: e.target.value ? Number(e.target.value) : undefined }))}
+                    placeholder="VD: 2025"
+                    min="2000"
+                    max="2100"
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500"
+                  />
+                </div>
+              </div>
+
+              <div className="grid md:grid-cols-2 gap-4 mb-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Phụ kiện đi kèm
+                  </label>
+                  <textarea
+                    value={formData.accessories || ''}
+                    onChange={(e) => setFormData(prev => ({ ...prev, accessories: e.target.value }))}
+                    placeholder="VD: Điều khiển / Pin / HDSD"
+                    rows={2}
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Mức tiết kiệm điện năng
+                  </label>
+                  <input
+                    type="text"
+                    value={formData.energyRating || ''}
+                    onChange={(e) => setFormData(prev => ({ ...prev, energyRating: e.target.value }))}
+                    placeholder="VD: 5 sao"
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500"
+                  />
+                </div>
+              </div>
+            </div>
+
+            {/* Warehouse Selection - Only show when adding new product */}
+            {!isEditMode && (
+              <div className="border-t border-gray-200 pt-6 mt-6">
+                <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
+                  <Building2 className="w-5 h-5 mr-2 text-indigo-600" />
+                  Chọn kho để thêm sản phẩm
+                </h3>
+                <p className="text-sm text-gray-600 mb-4">
+                  Chọn một hoặc nhiều kho tổng để thêm sản phẩm vào ({selectedWarehouseIds.length} đã chọn)
+                </p>
+                {mainWarehouses.length === 0 ? (
+                  <div className="text-center py-8 bg-gray-50 rounded-lg">
+                    <Building2 className="w-12 h-12 mx-auto text-gray-400 mb-2" />
+                    <p className="text-gray-600 text-sm">Chưa có kho tổng nào. Vui lòng tạo kho tổng trước.</p>
+                  </div>
+                ) : (
+                  <div className="space-y-2 max-h-60 overflow-y-auto">
+                    {mainWarehouses.map((warehouse) => {
+                      const isSelected = selectedWarehouseIds.includes(warehouse.id)
+                      return (
+                        <motion.div
+                          key={warehouse.id}
+                          initial={{ opacity: 0, y: 10 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          onClick={() => toggleWarehouse(warehouse.id)}
+                          className={`p-3 border-2 rounded-lg cursor-pointer transition-all ${
+                            isSelected
+                              ? 'border-indigo-500 bg-indigo-50'
+                              : 'border-gray-200 hover:border-gray-300 hover:bg-gray-50'
+                          }`}
+                        >
+                          <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-3">
+                              <div
+                                className={`w-5 h-5 rounded border-2 flex items-center justify-center flex-shrink-0 ${
+                                  isSelected
+                                    ? 'border-indigo-500 bg-indigo-500'
+                                    : 'border-gray-300 bg-white'
+                                }`}
+                              >
+                                {isSelected && <Check className="w-3 h-3 text-white" />}
+                              </div>
+                              <div>
+                                <h4 className="font-medium text-gray-900 text-sm">{warehouse.name}</h4>
+                                <p className="text-xs text-gray-600">Mã: {warehouse.code}</p>
+                                {warehouse.addressLine1 && (
+                                  <p className="text-xs text-gray-500 mt-0.5">
+                                    {warehouse.addressLine1}, {warehouse.city}
+                                  </p>
+                                )}
+                              </div>
+                            </div>
+                            <span className="px-2 py-1 text-xs font-semibold rounded-full bg-blue-100 text-blue-800 flex-shrink-0">
+                              Kho Tổng
+                            </span>
+                          </div>
+                        </motion.div>
+                      )
+                    })}
+                  </div>
+                )}
+              </div>
+            )}
 
             </form>
           </div>

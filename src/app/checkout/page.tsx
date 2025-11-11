@@ -11,6 +11,7 @@ import { LoadingSpinner } from '@/components/ui/LoadingSpinner';
 import { CheckoutInfo, VietnamProvince, VietnamWard } from '@/types';
 import { ArrowLeft, ArrowRight, Building, MapPin, XCircle, Check, CreditCard, ShoppingBag, Package, Truck, Home, Store, User, Phone, AlertCircle } from 'lucide-react';
 import Link from 'next/link';
+import { tokenStorage } from '@/utils/tokenStorage';
 
 export default function CheckoutPage() {
   const [step, setStep] = useState<'info' | 'payment'>('info');
@@ -73,11 +74,11 @@ export default function CheckoutPage() {
       
       if (type === 'pickup') {
         setPickupWards(wards);
-        // Reset district when province changes
-        setCheckoutInfo(prev => ({ ...prev, districtPickup: undefined, storePickup: undefined }));
+        // Reset ward when province changes
+        setCheckoutInfo(prev => ({ ...prev, wardPickup: undefined, storePickup: undefined }));
       } else {
         setDeliveryWards(wards);
-        setCheckoutInfo(prev => ({ ...prev, districtDelivery: undefined, wardDelivery: undefined }));
+        setCheckoutInfo(prev => ({ ...prev, wardDelivery: undefined }));
       }
     } catch (error) {
       console.error('Failed to load wards:', error);
@@ -94,12 +95,12 @@ export default function CheckoutPage() {
     }
   };
 
-  const handleDistrictChange = (wardName: string, type: 'pickup' | 'delivery') => {
-    // In v2 API, districts are actually wards
+  const handleWardChange = (wardName: string, type: 'pickup' | 'delivery') => {
+    // After merger, only provinces and wards exist (no districts)
     if (type === 'pickup') {
-      setCheckoutInfo(prev => ({ ...prev, districtPickup: wardName }));
+      setCheckoutInfo(prev => ({ ...prev, wardPickup: wardName }));
     } else {
-      setCheckoutInfo(prev => ({ ...prev, districtDelivery: wardName }));
+      setCheckoutInfo(prev => ({ ...prev, wardDelivery: wardName }));
     }
   };
 
@@ -119,8 +120,8 @@ export default function CheckoutPage() {
       parts.push(checkoutInfo.homeAddress);
     }
     
-    if (checkoutInfo.districtDelivery) {
-      parts.push(String(checkoutInfo.districtDelivery));
+    if (checkoutInfo.wardDelivery) {
+      parts.push(String(checkoutInfo.wardDelivery));
     }
     
     const provinceName = checkoutInfo.provinceDelivery 
@@ -149,8 +150,8 @@ export default function CheckoutPage() {
       parts.push(checkoutInfo.homeAddress);
     }
     
-    if (checkoutInfo.districtDelivery) {
-      parts.push(String(checkoutInfo.districtDelivery));
+    if (checkoutInfo.wardDelivery) {
+      parts.push(String(checkoutInfo.wardDelivery));
     }
     
     const provinceName = checkoutInfo.provinceDelivery 
@@ -170,8 +171,8 @@ export default function CheckoutPage() {
         setError('Vui lòng chọn tỉnh/thành phố');
         return false;
       }
-      if (!checkoutInfo.districtPickup) {
-        setError('Vui lòng chọn quận/huyện');
+      if (!checkoutInfo.wardPickup) {
+        setError('Vui lòng chọn phường/xã');
         return false;
       }
       // Store is optional for now
@@ -189,8 +190,8 @@ export default function CheckoutPage() {
           setError('Vui lòng chọn tỉnh/thành phố');
           return false;
         }
-        if (!checkoutInfo.districtDelivery) {
-          setError('Vui lòng chọn quận/huyện');
+        if (!checkoutInfo.wardDelivery) {
+          setError('Vui lòng chọn phường/xã');
           return false;
         }
         if (!checkoutInfo.homeAddress?.trim()) {
@@ -226,7 +227,7 @@ export default function CheckoutPage() {
   };
 
   const processPayment = async () => {
-    const token = localStorage.getItem('token');
+    const token = tokenStorage.getAccessToken();
     if (!token) {
       setError('Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại.');
       return;
@@ -241,14 +242,14 @@ export default function CheckoutPage() {
         ? provinces.find(p => p.code === checkoutInfo.provincePickup)?.name
         : provinces.find(p => p.code === checkoutInfo.provinceDelivery)?.name;
       
-      const districtName = checkoutInfo.deliveryType === 'pickup'
-        ? String(checkoutInfo.districtPickup)
-        : String(checkoutInfo.districtDelivery);
+      const wardName = checkoutInfo.deliveryType === 'pickup'
+        ? String(checkoutInfo.wardPickup || '')
+        : String(checkoutInfo.wardDelivery || '');
 
       const address = AddressService.formatAddress({
         deliveryType: checkoutInfo.deliveryType,
         provinceName,
-        districtName: districtName,
+        wardName: wardName,
         storeName: String(checkoutInfo.storePickup || ''),
         homeAddress: checkoutInfo.homeAddress,
         note: checkoutInfo.deliveryType === 'pickup' ? checkoutInfo.notePickup : checkoutInfo.noteDelivery
@@ -416,15 +417,15 @@ export default function CheckoutPage() {
 
                       <div>
                         <label className="block text-sm font-bold text-gray-900 mb-2">
-                          Quận/Huyện *
+                          Phường/Xã *
                         </label>
                         <select
-                          value={checkoutInfo.districtPickup || ''}
-                          onChange={(e) => handleDistrictChange(e.target.value, 'pickup')}
+                          value={checkoutInfo.wardPickup || ''}
+                          onChange={(e) => handleWardChange(e.target.value, 'pickup')}
                           disabled={!pickupWards.length}
                           className="w-full px-3 py-3 border-2 border-gray-400 rounded-xl text-gray-900 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 disabled:bg-gray-100"
                         >
-                          <option value="">Chọn quận/huyện</option>
+                          <option value="">Chọn phường/xã</option>
                           {pickupWards.map((ward) => (
                             <option key={ward.code} value={ward.name}>
                               {ward.name}
@@ -541,15 +542,15 @@ export default function CheckoutPage() {
 
                                 <div>
                                   <label className="block text-sm font-bold text-gray-900 mb-2">
-                                    Quận/Huyện *
+                                    Phường/Xã *
                                   </label>
                                   <select
-                                    value={checkoutInfo.districtDelivery || ''}
-                                    onChange={(e) => handleDistrictChange(e.target.value, 'delivery')}
+                                    value={checkoutInfo.wardDelivery || ''}
+                                    onChange={(e) => handleWardChange(e.target.value, 'delivery')}
                                     disabled={!deliveryWards.length}
                                     className="w-full px-3 py-3 border-2 border-gray-400 rounded-xl text-gray-900 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 disabled:bg-gray-100"
                                   >
-                                    <option value="">Chọn quận/huyện</option>
+                                    <option value="">Chọn phường/xã</option>
                                     {deliveryWards.map((ward) => (
                                       <option key={ward.code} value={ward.name}>
                                         {ward.name}

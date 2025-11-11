@@ -1,4 +1,5 @@
 import axios from 'axios'
+import { tokenStorage } from '@/utils/tokenStorage'
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080'
 
@@ -82,7 +83,10 @@ export interface ApiResponse<T> {
 
 export class OrderService {
   private static getAuthHeaders() {
-    const token = localStorage.getItem('token')
+    const token = tokenStorage.getAccessToken()
+    if (!token) {
+      throw new Error('No authentication token found. Please login again.')
+    }
     return {
       'Authorization': `Bearer ${token}`,
       'Content-Type': 'application/json'
@@ -189,23 +193,49 @@ export class OrderService {
   // Get all orders (Admin only) - Updated to use correct endpoint
   static async getAllOrders(filters: OrderFilter = {}): Promise<ApiResponse<Order[]>> {
     try {
-      const params = new URLSearchParams()
-      
-      if (filters.status) params.append('status', filters.status)
-      if (filters.paymentStatus) params.append('paymentStatus', filters.paymentStatus)
-      if (filters.startDate) params.append('startDate', filters.startDate)
-      if (filters.endDate) params.append('endDate', filters.endDate)
-      if (filters.page) params.append('page', filters.page.toString())
-      if (filters.size) params.append('size', filters.size.toString())
-      if (filters.sortBy) params.append('sortBy', filters.sortBy)
-      if (filters.order) params.append('order', filters.order)
+      // Backend endpoint getAllOrders() doesn't accept parameters
+      // Use getOrders with admin role for filtering
+      const token = tokenStorage.getAccessToken()
+      if (!token) {
+        throw new Error('No authentication token found')
+      }
 
-      const response = await axios.get(`${API_URL}/order/getAllOrders?${params}`, {
-        headers: this.getAuthHeaders()
-      })
-      return response.data
+      // If status filter is provided, use getOrders endpoint with status
+      if (filters.status) {
+        const response = await axios.get(`${API_URL}/order/getOrders`, {
+          params: { status: filters.status },
+          headers: this.getAuthHeaders()
+        })
+        return response.data
+      }
+
+      // Otherwise, get all orders
+      // Note: Backend throws exception if no orders, so we handle it gracefully
+      try {
+        const response = await axios.get(`${API_URL}/order/getAllOrders`, {
+          headers: this.getAuthHeaders()
+        })
+        return response.data
+      } catch (error: any) {
+        // If backend returns error for empty list, return empty array
+        if (error.response?.status === 400 || error.response?.data?.message?.includes('CART_NOTFOUND')) {
+          return {
+            statusCode: 200,
+            message: 'Không có đơn hàng nào',
+            data: []
+          }
+        }
+        throw error
+      }
     } catch (error: any) {
-      throw new Error(error.response?.data?.message || 'Failed to get orders')
+      console.error('Error getting orders:', error.response?.status, error.response?.data)
+      if (error.response?.status === 401) {
+        throw new Error('Session expired. Please login again.')
+      }
+      if (error.response?.status === 403) {
+        throw new Error('Access denied. Admin access required.')
+      }
+      throw new Error(error.response?.data?.message || error.message || 'Failed to get orders')
     }
   }
 

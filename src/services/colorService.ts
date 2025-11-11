@@ -1,15 +1,19 @@
 import axios from 'axios'
 import { Color } from '@/types'
+import { tokenStorage } from '@/utils/tokenStorage'
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080'
 
 class ColorService {
   private static getAuthHeaders() {
-    const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null
-    return {
-      'Authorization': `Bearer ${token}`,
+    const token = tokenStorage.getAccessToken()
+    const headers: Record<string, string> = {
       'Content-Type': 'application/json'
     }
+    if (token) {
+      headers['Authorization'] = `Bearer ${token}`
+    }
+    return headers
   }
 
   // Get all colors (public endpoint, no auth required)

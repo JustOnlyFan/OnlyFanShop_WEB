@@ -27,6 +27,7 @@ import {
 } from 'lucide-react';
 import Link from 'next/link';
 import Image from 'next/image';
+import { ProductReviews } from '@/components/product/ProductReviews';
 
 export default function ProductDetailPage() {
   const [product, setProduct] = useState<Product | null>(null);
@@ -383,11 +384,7 @@ export default function ProductDetailPage() {
 
               {activeTab === 'reviews' && (
                 <div>
-                  <h3 className="text-lg font-semibold text-gray-900 mb-4">Đánh giá sản phẩm</h3>
-                  <div className="text-center py-12">
-                    <Star className="w-16 h-16 text-gray-400 mx-auto mb-4" />
-                    <p className="text-gray-500">Chưa có đánh giá nào</p>
-                  </div>
+                  <ProductReviews productId={product.id || parseInt(productId)} />
                 </div>
               )}
 

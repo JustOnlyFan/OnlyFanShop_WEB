@@ -1,15 +1,19 @@
 import axios from 'axios'
 import { ApiResponse, BrandManagement } from '@/types'
+import { tokenStorage } from '@/utils/tokenStorage'
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080'
 
 class BrandAdminService {
   private static getAuthHeaders() {
-    const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null
-    return {
-      'Authorization': `Bearer ${token}`,
+    const token = tokenStorage.getAccessToken()
+    const headers: Record<string, string> = {
       'Content-Type': 'application/json'
     }
+    if (token) {
+      headers['Authorization'] = `Bearer ${token}`
+    }
+    return headers
   }
 
   // Get all brands
@@ -62,7 +66,7 @@ class BrandAdminService {
       const formData = new FormData()
       formData.append('file', file)
 
-      const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null
+      const token = tokenStorage.getAccessToken()
       if (!token || token.trim() === '') {
         throw new Error('No authentication token found. Please login again.')
       }
@@ -88,16 +92,16 @@ class BrandAdminService {
         // Handle 403 Forbidden - token invalid or expired
         if (error.response.status === 403) {
           // Clear invalid token
+          tokenStorage.clearAll()
           if (typeof window !== 'undefined') {
-            localStorage.removeItem('token')
             localStorage.removeItem('user')
           }
           throw new Error('Phiên đăng nhập đã hết hạn hoặc token không hợp lệ. Vui lòng đăng nhập lại.')
         }
         // Handle 401 Unauthorized
         if (error.response.status === 401) {
+          tokenStorage.clearAll()
           if (typeof window !== 'undefined') {
-            localStorage.removeItem('token')
             localStorage.removeItem('user')
           }
           throw new Error('Không có quyền truy cập. Vui lòng đăng nhập lại.')

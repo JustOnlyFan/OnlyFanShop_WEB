@@ -1,4 +1,5 @@
 import axios from 'axios'
+import { tokenStorage } from '@/utils/tokenStorage'
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080'
 
@@ -76,19 +77,22 @@ export interface ApiResponse<T> {
 
 export class ChatService {
   private static getAuthHeaders() {
-    const token = localStorage.getItem('token')
-    return {
-      'Authorization': `Bearer ${token}`,
+    const token = tokenStorage.getAccessToken()
+    const headers: Record<string, string> = {
       'Content-Type': 'application/json'
     }
+    if (token) {
+      headers['Authorization'] = `Bearer ${token}`
+    }
+    return headers
   }
 
   // Get or create customer chat room
   static async getOrCreateCustomerRoom(): Promise<ApiResponse<string>> {
     try {
-      const token = localStorage.getItem('token')
+      const token = tokenStorage.getAccessToken()
       if (!token) {
-        throw new Error('Vui lòng đăng nhập để sử dụng tính năng chat')
+        throw new Error('User not logged in')
       }
       const response = await axios.get(`${API_URL}/api/chat/rooms/customer`, {
         headers: this.getAuthHeaders()
@@ -199,11 +203,16 @@ export class ChatService {
       formData.append('file', file)
       formData.append('roomId', roomId)
 
+      const token = tokenStorage.getAccessToken()
+      const headers: Record<string, string> = {
+        'Content-Type': 'multipart/form-data'
+      }
+      if (token) {
+        headers['Authorization'] = `Bearer ${token}`
+      }
+
       const response = await axios.post(`${API_URL}/api/chat/upload`, formData, {
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`,
-          'Content-Type': 'multipart/form-data'
-        }
+        headers
       })
       return response.data
     } catch (error: any) {

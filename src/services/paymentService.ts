@@ -1,4 +1,5 @@
-import axios from 'axios'
+import axios from 'axios';
+import { tokenStorage } from '@/utils/tokenStorage';
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080'
 
@@ -85,7 +86,7 @@ export interface ApiResponse<T> {
 
 export class PaymentService {
   private static getAuthHeaders() {
-    const token = localStorage.getItem('token')
+    const token = tokenStorage.getAccessToken();
     return {
       'Authorization': `Bearer ${token}`,
       'Content-Type': 'application/json'
