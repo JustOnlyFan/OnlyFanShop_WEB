@@ -153,12 +153,16 @@
 @layer base {
   html {
     font-family: 'Inter', system-ui, sans-serif;
-    overflow: hidden;
   }
   
   body {
-    overflow: hidden;
     height: 100vh;
+  }
+  
+  /* Allow scrolling on auth pages */
+  html.auth-page, body.auth-page {
+    overflow-y: auto;
+    overflow-x: hidden;
   }
   
   h1, h2, h3, h4, h5, h6 {

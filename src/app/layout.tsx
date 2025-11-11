@@ -6,6 +6,7 @@ import { DesktopLayout } from '@/components/layout/DesktopLayout'
 import { Footer } from '@/components/layout/Footer'
 import { ErrorBoundary } from '@/components/ErrorBoundary'
 import { Toaster } from 'react-hot-toast'
+import { ChatButton } from '@/components/chat/ChatButton'
 
 const inter = Inter({ 
   subsets: ['latin'],
@@ -24,6 +25,11 @@ export const metadata: Metadata = {
   description: 'Cửa hàng quạt điện cao cấp với đa dạng sản phẩm từ các thương hiệu uy tín. Quạt đứng, quạt trần, quạt hơi nước và nhiều hơn nữa.',
   keywords: 'quạt điện, quạt đứng, quạt trần, quạt hơi nước, quạt không cánh, OnlyFan',
   authors: [{ name: 'OnlyFan Shop Team' }],
+  icons: {
+    icon: '/favicon.svg',
+    shortcut: '/favicon.svg',
+    apple: '/favicon.svg',
+  },
   openGraph: {
     title: 'OnlyFan Shop - Quạt điện cao cấp',
     description: 'Cửa hàng quạt điện cao cấp với đa dạng sản phẩm từ các thương hiệu uy tín.',
@@ -46,6 +52,7 @@ export default function RootLayout({
               {children}
             </DesktopLayout>
             <Footer />
+            <ChatButton />
           </ErrorBoundary>
           <Toaster 
             position="top-right"

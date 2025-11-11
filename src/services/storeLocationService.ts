@@ -1,4 +1,6 @@
 import axios from 'axios'
+import { apiClient } from '@/lib/api'
+import { tokenStorage } from '@/utils/tokenStorage'
 
 // Respect empty string from next.config rewrites (same-origin proxy in dev)
 const API_URL = typeof process.env.NEXT_PUBLIC_API_URL !== 'undefined'
@@ -9,12 +11,13 @@ export interface StoreLocation {
   id: number
   name: string
   address: string
-  city: string
-  district: string
-  ward: string
+  city?: string
+  district?: string
+  ward?: string
   latitude: number
   longitude: number
-  phoneNumber: string
+  phoneNumber?: string
+  phone?: string
   email?: string
   openingHours: string
   description?: string
@@ -28,9 +31,9 @@ export interface StoreLocation {
 export interface CreateStoreLocationRequest {
   name: string
   address: string
-  city: string
-  district: string
-  ward: string
+  city?: string
+  district?: string
+  ward?: string
   latitude: number
   longitude: number
   phoneNumber: string
@@ -39,6 +42,8 @@ export interface CreateStoreLocationRequest {
   description?: string
   images?: string[]
   services?: string[]
+  // Optional: create branch warehouse under this regional parent
+  parentRegionalWarehouseId?: number
 }
 
 export interface UpdateStoreLocationRequest {
@@ -81,11 +86,14 @@ export interface ApiResponse<T> {
 
 export class StoreLocationService {
   private static getAuthHeaders() {
-    const token = localStorage.getItem('token')
-    return {
-      'Authorization': `Bearer ${token}`,
+    const token = tokenStorage.getAccessToken()
+    const headers: Record<string, string> = {
       'Content-Type': 'application/json'
     }
+    if (token) {
+      headers['Authorization'] = `Bearer ${token}`
+    }
+    return headers
   }
 
   // Get store locations (backend may not support pagination; send only provided params)
@@ -138,9 +146,7 @@ export class StoreLocationService {
   // Create store location (Admin only)
   static async createStoreLocation(storeData: CreateStoreLocationRequest): Promise<ApiResponse<StoreLocation>> {
     try {
-      const response = await axios.post(`${API_URL}/store-locations`, storeData, {
-        headers: this.getAuthHeaders()
-      })
+      const response = await apiClient.post(`${API_URL}/store-locations`, storeData)
       return response.data
     } catch (error: any) {
       throw new Error(error.response?.data?.message || 'Failed to create store location')
@@ -347,17 +353,7 @@ export class StoreLocationService {
       errors.push('Address is required')
     }
 
-    if (!storeData.city?.trim()) {
-      errors.push('City is required')
-    }
-
-    if (!storeData.district?.trim()) {
-      errors.push('District is required')
-    }
-
-    if (!storeData.ward?.trim()) {
-      errors.push('Ward is required')
-    }
+    // City/ward are optional depending on reverse-geocode; address must exist
 
     if (!storeData.latitude || storeData.latitude < -90 || storeData.latitude > 90) {
       errors.push('Invalid latitude')
@@ -383,7 +379,8 @@ export class StoreLocationService {
 
   // Format store address
   static formatStoreAddress(store: StoreLocation): string {
-    return `${store.address}, ${store.ward}, ${store.district}, ${store.city}`
+    const parts = [store.address, store.ward, store.city].filter(Boolean)
+    return parts.join(', ')
   }
 
   // Get store status color
@@ -418,7 +415,7 @@ export class StoreLocationService {
       formData.append('file', file)
       
       // Build headers specifically for multipart: only include Authorization if token exists
-      const token = localStorage.getItem('token')
+      const token = tokenStorage.getAccessToken()
       const headers: Record<string, string> = {}
       if (token) headers['Authorization'] = `Bearer ${token}`
       

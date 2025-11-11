@@ -175,6 +175,11 @@ export function Header() {
                                                     ADMIN
                                                 </span>
                                             )}
+                                            {user?.role === 'STAFF' && (
+                                                <span className="px-2 py-0.5 text-xs font-bold text-blue-900 bg-blue-300 rounded-full drop-shadow-sm">
+                                                    STAFF
+                                                </span>
+                                            )}
                                         </button>
 
                                         {/* Dropdown Menu */}
@@ -187,6 +192,17 @@ export function Header() {
                                                             className="block px-4 py-2 text-sm font-semibold text-purple-700 hover:bg-purple-50 transition-colors"
                                                         >
                                                             ⚙️ Trang Quản Trị
+                                                        </Link>
+                                                        <div className="border-t border-neutral-200 my-1"></div>
+                                                    </>
+                                                )}
+                                                {user?.role === 'STAFF' && (
+                                                    <>
+                                                        <Link
+                                                            href="/staff"
+                                                            className="block px-4 py-2 text-sm font-semibold text-blue-700 hover:bg-blue-50 transition-colors"
+                                                        >
+                                                            👤 Trang Nhân Viên
                                                         </Link>
                                                         <div className="border-t border-neutral-200 my-1"></div>
                                                     </>

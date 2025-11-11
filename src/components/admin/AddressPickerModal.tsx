@@ -11,7 +11,7 @@ import type { VietnamProvince, VietnamWard } from '@/types'
 type AddressState = {
   address: string
   city: string
-  district: string
+  district: string // Deprecated - kept for backward compatibility
   ward: string
   latitude: number
   longitude: number
@@ -78,7 +78,7 @@ export default function AddressPickerModal({ initial, onClose, onApply }: Addres
           const pos = marker.getLatLng()
           setValue((prev) => ({ ...prev, latitude: pos.lat, longitude: pos.lng }))
           // Reverse geocode to get accurate address
-          reverseGeocode(pos.lat, pos.lng)
+          reverseGeocode(pos.lat, pos.lng, { recenter: false })
         })
         
         // Click on map to move marker and get address
@@ -87,12 +87,17 @@ export default function AddressPickerModal({ initial, onClose, onApply }: Addres
           const lng = e.latlng.lng
           marker.setLatLng([lat, lng])
           setValue((prev) => ({ ...prev, latitude: lat, longitude: lng }))
-          reverseGeocode(lat, lng)
+          reverseGeocode(lat, lng, { recenter: false })
         })
         
         markerRef.current = marker
         mapInstanceRef.current = map
         ;(map as any)._leaflet_id // keep ref
+
+        // If we came in with coordinates but missing address, fetch it once
+        if ((!initial.address || !initial.city) && (initial.latitude && initial.longitude)) {
+          reverseGeocode(initial.latitude, initial.longitude, { recenter: true })
+        }
       })
       .catch(() => toast.error('Không thể tải bản đồ'))
 
@@ -108,7 +113,7 @@ export default function AddressPickerModal({ initial, onClose, onApply }: Addres
     }
   }, [])
 
-  const reverseGeocode = async (lat: number, lon: number) => {
+  const reverseGeocode = async (lat: number, lon: number, opts?: { recenter?: boolean }) => {
     try {
       const params = new URLSearchParams({
         lat: lat.toString(),
@@ -123,17 +128,26 @@ export default function AddressPickerModal({ initial, onClose, onApply }: Addres
       const result = await resp.json()
       if (result && result.address) {
         const addr = result.address
+        // Prefer explicit fields. Vietnam has provinces (state/city), no districts (post-merger).
+        const road = addr.road || addr.street || addr.pedestrian || ''
+        const house = addr.house_number ? `${addr.house_number} ` : ''
+        const ward = addr.quarter || addr.neighbourhood || addr.village || addr.suburb || ''
+        const city = addr.state || addr.city || addr.town || addr.county || ''
+
         setValue((prev) => ({
           ...prev,
-          address: addr.house_number 
-            ? `${addr.house_number} ${addr.road || addr.street || addr.pedestrian || ''}`.trim()
-            : (addr.road || addr.street || addr.pedestrian || prev.address),
-          city: addr.state || addr.city || prev.city,
-          district: addr.suburb || addr.city_district || prev.district,
-          ward: addr.quarter || addr.neighbourhood || addr.village || prev.ward,
+          address: (house + road).trim() || prev.address,
+          city: city || prev.city,
+          district: '', // deprecated
+          ward: ward || prev.ward,
           latitude: lat,
           longitude: lon
         }))
+        // Recenter and zoom closer if requested
+        if (opts?.recenter && mapInstanceRef.current && markerRef.current) {
+          mapInstanceRef.current.setView([lat, lon], 17)
+          markerRef.current.setLatLng([lat, lon])
+        }
         toast.success('Đã cập nhật địa chỉ từ vị trí')
       }
     } catch (err) {
@@ -147,11 +161,10 @@ export default function AddressPickerModal({ initial, onClose, onApply }: Addres
       return
     }
     
-    // Build query with proper format for Vietnam addresses
+    // Build query with proper format for Vietnam addresses (no district after merger)
     const parts: string[] = []
     if (value.address?.trim()) parts.push(value.address.trim())
     if (value.ward?.trim()) parts.push(value.ward.trim())
-    if (value.district?.trim()) parts.push(value.district.trim())
     if (value.city?.trim()) parts.push(value.city.trim())
     parts.push('Vietnam')
     
@@ -268,7 +281,7 @@ export default function AddressPickerModal({ initial, onClose, onApply }: Addres
           </div>
 
           <div className="p-6 space-y-4">
-            <div className="grid md:grid-cols-3 gap-3">
+            <div className="grid md:grid-cols-2 gap-3">
               <select
                 className="px-3 py-2 border rounded-lg bg-white"
                 value={value.city}
@@ -284,6 +297,7 @@ export default function AddressPickerModal({ initial, onClose, onApply }: Addres
                 className="px-3 py-2 border rounded-lg bg-white"
                 value={value.ward}
                 onChange={(e) => setValue({ ...value, ward: e.target.value })}
+                disabled={!value.city || wards.length === 0}
               >
                 <option value="">Chọn Phường/Xã</option>
                 {wards.map((w) => (

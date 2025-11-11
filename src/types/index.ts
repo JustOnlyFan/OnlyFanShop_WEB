@@ -5,9 +5,12 @@ export interface User {
   email: string
   phoneNumber?: string
   address?: string
-  role: 'ADMIN' | 'CUSTOMER'
+  role: 'ADMIN' | 'CUSTOMER' | 'STAFF'
   authProvider: 'LOCAL' | 'GOOGLE' | 'FACEBOOK'
   token?: string
+  refreshToken?: string
+  storeLocationId?: number
+  storeLocation?: StoreLocation
 }
 
 export interface LoginRequest {
@@ -56,6 +59,33 @@ export interface ProductDetail {
   bladeDiameterCm?: number // Đường kính cánh quạt (cm)
   colorDefault?: string // Màu sắc mặc định
   warrantyMonths?: number // Bảo hành (tháng)
+  quantity?: number // Số lượng sản phẩm
+  // Technical specifications
+  voltage?: string // Điện áp sử dụng: "220V / 50Hz"
+  windSpeedLevels?: string // Tốc độ gió: "3 mức" hoặc "Điều chỉnh vô cấp"
+  airflow?: number // Lưu lượng gió: m³/phút
+  bladeMaterial?: string // Chất liệu cánh quạt: "Nhựa ABS" / "Kim loại"
+  bodyMaterial?: string // Chất liệu thân quạt: "Nhựa cao cấp" / "Thép sơn tĩnh điện"
+  bladeCount?: number // Số lượng cánh: 3 / 5
+  noiseLevel?: number // Mức độ ồn: dB
+  motorSpeed?: number // Tốc độ quay motor: vòng/phút
+  weight?: number // Trọng lượng: kg
+  adjustableHeight?: string // Chiều cao điều chỉnh: "1.1 – 1.4 m"
+  // Features
+  remoteControl?: boolean // Điều khiển từ xa
+  timer?: string // Hẹn giờ tắt: "1 – 4 giờ"
+  naturalWindMode?: boolean // Chế độ gió tự nhiên
+  sleepMode?: boolean // Chế độ ngủ
+  oscillation?: boolean // Đảo chiều gió
+  heightAdjustable?: boolean // Điều chỉnh độ cao
+  autoShutoff?: boolean // Ngắt điện tự động khi quá tải
+  temperatureSensor?: boolean // Cảm biến nhiệt
+  energySaving?: boolean // Tiết kiệm điện
+  // Other information
+  safetyStandards?: string // Tiêu chuẩn an toàn: "TCVN / IEC / RoHS"
+  manufacturingYear?: number // Năm sản xuất: 2025
+  accessories?: string // Phụ kiện đi kèm: "Điều khiển / Pin / HDSD"
+  energyRating?: string // Mức tiết kiệm điện năng: "5 sao"
 }
 
 export interface Brand {
@@ -99,9 +129,43 @@ export interface ProductRequest {
   bladeDiameterCm?: number // Đường kính cánh quạt (cm)
   colorDefault?: string // Legacy field, keep for backward compatibility
   warrantyMonths?: number // Legacy field, keep for backward compatibility
+  
+  // Technical specifications
+  voltage?: string // Điện áp sử dụng: "220V / 50Hz"
+  windSpeedLevels?: string // Tốc độ gió: "3 mức" hoặc "Điều chỉnh vô cấp"
+  airflow?: number // Lưu lượng gió: m³/phút
+  bladeMaterial?: string // Chất liệu cánh quạt: "Nhựa ABS" / "Kim loại"
+  bodyMaterial?: string // Chất liệu thân quạt: "Nhựa cao cấp" / "Thép sơn tĩnh điện"
+  bladeCount?: number // Số lượng cánh: 3 / 5
+  noiseLevel?: number // Mức độ ồn: dB
+  motorSpeed?: number // Tốc độ quay motor: vòng/phút
+  weight?: number // Trọng lượng: kg
+  adjustableHeight?: string // Chiều cao điều chỉnh: "1.1 – 1.4 m"
+  
+  // Features
+  remoteControl?: boolean // Điều khiển từ xa
+  timer?: string // Hẹn giờ tắt: "1 – 4 giờ"
+  naturalWindMode?: boolean // Chế độ gió tự nhiên
+  sleepMode?: boolean // Chế độ ngủ
+  oscillation?: boolean // Đảo chiều gió
+  heightAdjustable?: boolean // Điều chỉnh độ cao
+  autoShutoff?: boolean // Ngắt điện tự động khi quá tải
+  temperatureSensor?: boolean // Cảm biến nhiệt
+  energySaving?: boolean // Tiết kiệm điện
+  
+  // Other information
+  safetyStandards?: string // Tiêu chuẩn an toàn: "TCVN / IEC / RoHS"
+  manufacturingYear?: number // Năm sản xuất: 2025
+  accessories?: string // Phụ kiện đi kèm: "Điều khiển / Pin / HDSD"
+  energyRating?: string // Mức tiết kiệm điện năng: "5 sao"
+  
   // New relationship fields
   colorIds?: number[] // List of color IDs
   warrantyId?: number // Warranty ID
+  // Quantity field
+  quantity?: number // Số lượng sản phẩm
+  // Warehouse field (optional - if specified, add product to this warehouse instead of first main warehouse)
+  warehouseId?: number // ID của kho tổng để thêm sản phẩm
 }
 
 export interface Color {
@@ -264,15 +328,14 @@ export interface CheckoutInfo {
   deliveryType: 'pickup' | 'delivery'
   // Pickup fields
   provincePickup?: number
-  districtPickup?: number | string
+  wardPickup?: string // Changed from districtPickup - after merger, only wards exist
   storePickup?: number
   notePickup?: string
   // Delivery fields
   recipientName?: string
   recipientPhone?: string
   provinceDelivery?: number
-  districtDelivery?: number | string
-  wardDelivery?: number
+  wardDelivery?: string // Changed from districtDelivery - after merger, only wards exist
   homeAddress?: string
   noteDelivery?: string
   useDefaultAddress?: boolean

@@ -1,4 +1,6 @@
 import axios from 'axios'
+import { apiClient } from '@/lib/api'
+import { tokenStorage } from '@/utils/tokenStorage'
 
 // Respect empty string from next.config rewrites (same-origin proxy in dev)
 const API_URL = typeof process.env.NEXT_PUBLIC_API_URL !== 'undefined'
@@ -20,6 +22,7 @@ export interface RegisterRequest {
 }
 
 export interface UserDTO {
+    roleName: any;
   userID: number
   username: string
   email: string
@@ -28,6 +31,7 @@ export interface UserDTO {
   role: 'CUSTOMER' | 'ADMIN'
   authProvider: 'LOCAL' | 'GOOGLE' | 'FACEBOOK'
   token?: string
+  refreshToken?: string
 }
 
 export interface ApiResponse<T> {
@@ -37,13 +41,6 @@ export interface ApiResponse<T> {
 }
 
 export class AuthService {
-  private static getAuthHeaders() {
-    const token = localStorage.getItem('token')
-    return {
-      'Authorization': `Bearer ${token}`,
-      'Content-Type': 'application/json'
-    }
-  }
 
   // Login
   static async login(credentials: LoginRequest): Promise<ApiResponse<UserDTO>> {
@@ -52,15 +49,25 @@ export class AuthService {
       
       // Only save to localStorage if login is successful
       if (response.data && response.data.statusCode === 200 && response.data.data) {
-        localStorage.setItem('token', response.data.data.token || '')
-        localStorage.setItem('user', JSON.stringify(response.data.data))
+        const { token, refreshToken } = response.data.data
+        if (token) {
+          tokenStorage.setAccessToken(token)
+        }
+        if (refreshToken) {
+          tokenStorage.setRefreshToken(refreshToken, true)
+        }
+        if (typeof window !== 'undefined') {
+          localStorage.setItem('user', JSON.stringify(response.data.data))
+        }
       }
       
       return response.data
     } catch (error: any) {
       // Clear any existing auth data on login failure
-      localStorage.removeItem('token')
-      localStorage.removeItem('user')
+      tokenStorage.clearAll()
+      if (typeof window !== 'undefined') {
+        localStorage.removeItem('user')
+      }
       throw new Error(error.response?.data?.message || 'Login failed')
     }
   }
@@ -68,20 +75,35 @@ export class AuthService {
   // Register
   static async register(userData: RegisterRequest): Promise<ApiResponse<void>> {
     try {
+      console.log('Register API call with data:', userData);
       const response = await axios.post(`${API_URL}/login/register`, userData)
+      console.log('Register API response:', response.data);
       return response.data
     } catch (error: any) {
-      throw new Error(error.response?.data?.message || 'Registration failed')
+      console.error('Register API error:', error.response?.data || error.message);
+      const errorMessage = error.response?.data?.message || error.message || 'Registration failed';
+      const statusCode = error.response?.data?.statusCode || error.response?.status || 500;
+      // Create error object that matches ApiResponse structure
+      const errorResponse: ApiResponse<void> = {
+        statusCode: statusCode,
+        message: errorMessage,
+        data: undefined as any
+      };
+      // Throw error with response data for better handling
+      const err = new Error(errorMessage);
+      (err as any).response = { data: errorResponse };
+      throw err;
     }
   }
 
   // Send OTP
   static async sendOtp(email: string): Promise<ApiResponse<void>> {
     try {
-      const response = await axios.post(`${API_URL}/login/send-otp`, 
-        { email }, 
-        { headers: { 'Content-Type': 'application/x-www-form-urlencoded' } }
-      )
+      const params = new URLSearchParams()
+      params.append('email', email)
+      const response = await axios.post(`${API_URL}/login/send-otp`, params, {
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' }
+      })
       return response.data
     } catch (error: any) {
       throw new Error(error.response?.data?.message || 'Failed to send OTP')
@@ -91,10 +113,12 @@ export class AuthService {
   // Verify OTP
   static async verifyOtp(email: string, otp: string): Promise<ApiResponse<void>> {
     try {
-      const response = await axios.post(`${API_URL}/login/verify-otp`, 
-        { email, otp }, 
-        { headers: { 'Content-Type': 'application/x-www-form-urlencoded' } }
-      )
+      const params = new URLSearchParams()
+      params.append('email', email)
+      params.append('otp', otp)
+      const response = await axios.post(`${API_URL}/login/verify-otp`, params, {
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' }
+      })
       return response.data
     } catch (error: any) {
       throw new Error(error.response?.data?.message || 'OTP verification failed')
@@ -151,8 +175,16 @@ export class AuthService {
         )
         
         if (response.data.data) {
-          localStorage.setItem('token', response.data.data.token || '')
-          localStorage.setItem('user', JSON.stringify(response.data.data))
+          const { token, refreshToken } = response.data.data
+          if (token) {
+            tokenStorage.setAccessToken(token)
+          }
+          if (refreshToken) {
+            tokenStorage.setRefreshToken(refreshToken, true)
+          }
+          if (typeof window !== 'undefined') {
+            localStorage.setItem('user', JSON.stringify(response.data.data))
+          }
         }
         
         return response.data
@@ -170,8 +202,16 @@ export class AuthService {
       )
       
       if (response.data.data) {
-        localStorage.setItem('token', response.data.data.token || '')
-        localStorage.setItem('user', JSON.stringify(response.data.data))
+        const { token, refreshToken } = response.data.data
+        if (token) {
+          tokenStorage.setAccessToken(token)
+        }
+        if (refreshToken) {
+          tokenStorage.setRefreshToken(refreshToken, true)
+        }
+        if (typeof window !== 'undefined') {
+          localStorage.setItem('user', JSON.stringify(response.data.data))
+        }
       }
       
       return response.data
@@ -183,6 +223,7 @@ export class AuthService {
   // Get current user
   static getCurrentUser(): UserDTO | null {
     try {
+      if (typeof window === 'undefined') return null
       const userStr = localStorage.getItem('user')
       return userStr ? JSON.parse(userStr) : null
     } catch {
@@ -192,7 +233,11 @@ export class AuthService {
 
   // Get token
   static getToken(): string | null {
-    return localStorage.getItem('token')
+    return tokenStorage.getAccessToken()
+  }
+
+  static getRefreshToken(): string | null {
+    return tokenStorage.getRefreshToken()
   }
 
   // Check if user is authenticated
@@ -204,28 +249,40 @@ export class AuthService {
 
   // Set user data
   static setUser(user: UserDTO): void {
-    localStorage.setItem('user', JSON.stringify(user))
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('user', JSON.stringify(user))
+    }
+    if (user.token) {
+      tokenStorage.setAccessToken(user.token)
+    }
+    if (user.refreshToken) {
+      tokenStorage.setRefreshToken(user.refreshToken, true)
+    }
   }
 
   // Set token
   static setToken(token: string): void {
-    localStorage.setItem('token', token)
+    tokenStorage.setAccessToken(token)
   }
 
   // Remove token
   static removeToken(): void {
-    localStorage.removeItem('token')
+    tokenStorage.setAccessToken(null)
   }
 
   // Remove user
   static removeUser(): void {
-    localStorage.removeItem('user')
+    if (typeof window !== 'undefined') {
+      localStorage.removeItem('user')
+    }
   }
 
   // Clear all auth data
   static clearAuth(): void {
-    localStorage.removeItem('token')
-    localStorage.removeItem('user')
+    tokenStorage.clearAll()
+    if (typeof window !== 'undefined') {
+      localStorage.removeItem('user')
+    }
   }
 
   // Logout
@@ -237,9 +294,7 @@ export class AuthService {
   // Update profile
   static async updateProfile(userData: Partial<UserDTO>): Promise<ApiResponse<UserDTO>> {
     try {
-      const response = await axios.put(`${API_URL}/api/users/profile`, userData, {
-        headers: this.getAuthHeaders()
-      })
+      const response = await apiClient.put<ApiResponse<UserDTO>>(`/api/users/profile`, userData)
       
       if (response.data.data) {
         localStorage.setItem('user', JSON.stringify(response.data.data))
@@ -254,9 +309,8 @@ export class AuthService {
   // Change password
   static async changePassword(currentPassword: string, newPassword: string): Promise<ApiResponse<void>> {
     try {
-      const response = await axios.put(`${API_URL}/api/users/change-password`, 
-        { currentPassword, newPassword },
-        { headers: this.getAuthHeaders() }
+      const response = await apiClient.put<ApiResponse<void>>(`/api/users/change-password`, 
+        { currentPassword, newPassword }
       )
       return response.data
     } catch (error: any) {
