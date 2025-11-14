@@ -7,6 +7,8 @@ const API_URL = typeof process.env.NEXT_PUBLIC_API_URL !== 'undefined'
   ? (process.env.NEXT_PUBLIC_API_URL as string)
   : 'http://localhost:8080'
 
+export type StoreStatus = 'ACTIVE' | 'PAUSED' | 'CLOSED'
+
 export interface StoreLocation {
   id: number
   name: string
@@ -21,7 +23,8 @@ export interface StoreLocation {
   email?: string
   openingHours: string
   description?: string
-  isActive: boolean
+  status: StoreStatus
+  isActive?: boolean
   images?: string[]
   services?: string[]
   createdAt: string
@@ -44,6 +47,7 @@ export interface CreateStoreLocationRequest {
   services?: string[]
   // Optional: create branch warehouse under this regional parent
   parentRegionalWarehouseId?: number
+  status?: StoreStatus
 }
 
 export interface UpdateStoreLocationRequest {
@@ -58,7 +62,7 @@ export interface UpdateStoreLocationRequest {
   email?: string
   openingHours?: string
   description?: string
-  isActive?: boolean
+  status?: StoreStatus
   images?: string[]
   services?: string[]
 }
@@ -384,13 +388,50 @@ export class StoreLocationService {
   }
 
   // Get store status color
-  static getStoreStatusColor(isActive: boolean): string {
-    return isActive ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
+  static getStoreStatusColor(status?: StoreStatus | string | null, fallback?: boolean): string {
+    const normalized = this.normalizeStoreStatus(status, fallback)
+    switch (normalized) {
+      case 'ACTIVE':
+        return 'bg-green-100 text-green-800'
+      case 'PAUSED':
+        return 'bg-yellow-100 text-yellow-800'
+      case 'CLOSED':
+        return 'bg-red-100 text-red-800'
+      default:
+        return 'bg-gray-100 text-gray-600'
+    }
   }
 
   // Get store status label
-  static getStoreStatusLabel(isActive: boolean): string {
-    return isActive ? 'Hoạt động' : 'Tạm dừng'
+  static getStoreStatusLabel(status?: StoreStatus | string | null, fallback?: boolean): string {
+    const normalized = this.normalizeStoreStatus(status, fallback)
+    switch (normalized) {
+      case 'ACTIVE':
+        return 'Hoạt động'
+      case 'PAUSED':
+        return 'Tạm dừng'
+      case 'CLOSED':
+        return 'Đã đóng cửa'
+      default:
+        return 'Không xác định'
+    }
+  }
+
+  static normalizeStoreStatus(status?: StoreStatus | string | null, fallback?: boolean): StoreStatus {
+    if (typeof status === 'string') {
+      const upper = status.toUpperCase()
+      if (upper === 'ACTIVE' || upper === 'PAUSED' || upper === 'CLOSED') {
+        return upper as StoreStatus
+      }
+    }
+    if (fallback !== undefined) {
+      return fallback ? 'ACTIVE' : 'PAUSED'
+    }
+    return 'ACTIVE'
+  }
+
+  static resolveStoreStatus(store: Partial<StoreLocation>): StoreStatus {
+    return this.normalizeStoreStatus(store.status, store.isActive)
   }
 
   // Generate Google Maps URL

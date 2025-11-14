@@ -28,7 +28,7 @@ export interface UserDTO {
   email: string
   phoneNumber?: string
   address?: string
-  role: 'CUSTOMER' | 'ADMIN'
+  role: 'CUSTOMER' | 'ADMIN' | 'STAFF'
   authProvider: 'LOCAL' | 'GOOGLE' | 'FACEBOOK'
   token?: string
   refreshToken?: string

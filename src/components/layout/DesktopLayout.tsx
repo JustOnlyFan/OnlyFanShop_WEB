@@ -6,6 +6,7 @@ import { DesktopBackground } from './DesktopBackground'
 import { MacBookScreen } from '@/components/ui/MacBookScreen'
 import { Header } from './Header'
 import { useAuthStore } from '@/store/authStore'
+import { AuthService } from '@/services/authService'
 
 interface DesktopLayoutProps {
   children: ReactNode
@@ -15,7 +16,9 @@ export function DesktopLayout({ children }: DesktopLayoutProps) {
   const pathname = usePathname()
   const router = useRouter()
   const isAdminPath = pathname?.startsWith('/admin')
-  const { user, isAuthenticated, hasHydrated } = useAuthStore()
+  const isStaffPath = pathname?.startsWith('/staff')
+  const isAdminOrStaffPath = isAdminPath || isStaffPath
+  const { user, isAuthenticated, hasHydrated, logout } = useAuthStore()
 
   // Auto-redirect admin/staff users from homepage to their dashboard
   useEffect(() => {
@@ -26,6 +29,16 @@ export function DesktopLayout({ children }: DesktopLayoutProps) {
       router.push('/staff')
     }
   }, [hasHydrated, isAuthenticated, user, pathname, router])
+
+  const handleLogout = async () => {
+    try {
+      await AuthService.logout()
+      logout()
+      router.push('/')
+    } catch (error) {
+      console.error('Logout error:', error)
+    }
+  }
 
   return (
     <div 
@@ -44,7 +57,7 @@ export function DesktopLayout({ children }: DesktopLayoutProps) {
       {/* MacBook Screen with Dynamic Content - Always render for all routes */}
       <div className="absolute top-0 left-0 right-0 bottom-0">
         <MacBookScreen>
-          <div className={`w-full h-full ${['/profile', '/auth/login', '/auth/register'].includes(pathname || '') ? 'overflow-hidden' : 'overflow-y-auto'}`}>
+          <div className={`relative w-full h-full ${['/profile', '/auth/login', '/auth/register'].includes(pathname || '') ? 'overflow-hidden' : 'overflow-y-auto'}`}>
             {children}
           </div>
         </MacBookScreen>

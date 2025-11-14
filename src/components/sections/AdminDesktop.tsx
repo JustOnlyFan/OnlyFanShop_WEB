@@ -19,7 +19,8 @@ import {
   Megaphone,
   ShieldCheck,
   Palette,
-  Warehouse
+  Warehouse,
+  UserCog
 } from 'lucide-react'
 
 interface DesktopAppIcon {
@@ -31,7 +32,9 @@ interface DesktopAppIcon {
 
 const apps: DesktopAppIcon[] = [
   { title: 'User Management', href: '/admin/users', Icon: Users, accentClass: 'from-blue-500/20 to-blue-500/5 hover:from-blue-500/30' },
+  { title: 'Staff Management', href: '/admin/staff', Icon: UserCog, accentClass: 'from-violet-500/20 to-violet-500/5 hover:from-violet-500/30' },
   { title: 'Warehouse Management', href: '/admin/warehouses', Icon: Warehouse, accentClass: 'from-orange-500/20 to-orange-500/5 hover:from-orange-500/30' },
+  { title: 'Product Management', href: '/admin/products', Icon: Package, accentClass: 'from-green-500/20 to-green-500/5 hover:from-green-500/30' },
   { title: 'Brand Management', href: '/admin/brands', Icon: Tags, accentClass: 'from-purple-500/20 to-purple-500/5 hover:from-purple-500/30' },
   { title: 'Category Management', href: '/admin/categories', Icon: Grid3X3, accentClass: 'from-amber-500/20 to-amber-500/5 hover:from-amber-500/30' },
   { title: 'Color Management', href: '/admin/colors', Icon: Palette, accentClass: 'from-pink-500/20 to-pink-500/5 hover:from-pink-500/30' },
@@ -114,6 +117,7 @@ export function AdminDesktop({ username = 'admin' }: { username?: string }) {
           </div>
         </div>
       </div>
+
     </div>
   )
 }

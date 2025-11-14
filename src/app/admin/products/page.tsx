@@ -6,12 +6,13 @@ import { useAuthStore } from '@/store/authStore'
 import { LoadingSpinner } from '@/components/ui/LoadingSpinner'
 import ProductAdminService from '@/services/productAdminService'
 import { ProductService } from '@/services/productService'
+import { WarehouseService } from '@/services/warehouseService'
+import { OrderService } from '@/services/orderService'
 import { ProductDTO, Brand, Category } from '@/types'
 import { motion } from 'framer-motion'
 import { 
   Plus, 
   Edit2, 
-  Eye,
   Power, 
   PowerOff, 
   Search,
@@ -26,6 +27,7 @@ import {
 import toast from 'react-hot-toast'
 import Image from 'next/image'
 import { ProductManagementModal } from '@/components/admin/ProductManagementModal'
+import { ProductViewModal } from '@/components/admin/ProductViewModal'
 
 export default function AdminProductsPage() {
   const [loading, setLoading] = useState(true)
@@ -36,7 +38,10 @@ export default function AdminProductsPage() {
   const [selectedBrand, setSelectedBrand] = useState<number | null>(null)
   const [selectedCategory, setSelectedCategory] = useState<number | null>(null)
   const [showModal, setShowModal] = useState(false)
+  const [showViewModal, setShowViewModal] = useState(false)
   const [editingProduct, setEditingProduct] = useState<ProductDTO | null>(null)
+  const [viewingProduct, setViewingProduct] = useState<ProductDTO | null>(null)
+  const [productStats, setProductStats] = useState<Record<number, { total: number; sold: number }>>({})
   
   const router = useRouter()
   const { user, isAuthenticated, hasHydrated } = useAuthStore()
@@ -53,17 +58,14 @@ export default function AdminProductsPage() {
   const loadInitialData = async () => {
     try {
       setLoading(true)
-      await Promise.all([
-        loadProducts(),
-        loadBrands(),
-        loadCategories()
-      ])
+      await Promise.all([loadBrands(), loadCategories()])
+      await loadProducts(true)
     } finally {
       setLoading(false)
     }
   }
 
-  const loadProducts = async () => {
+  const loadProducts = async (withStats = false) => {
     try {
       const data = await ProductAdminService.getProductList({
         page: 1,
@@ -74,9 +76,89 @@ export default function AdminProductsPage() {
         brandId: selectedBrand,
         categoryId: selectedCategory
       })
-      setProducts(data.products || [])
+      const list = data.products || []
+      setProducts(list)
+      if (withStats) {
+        await loadProductStats(list)
+      }
+      return list
     } catch (error: any) {
       toast.error(error.message || 'Không thể tải danh sách sản phẩm')
+    }
+  }
+
+  const loadProductStats = async (productList: ProductDTO[]) => {
+    if (!productList.length) {
+      setProductStats({})
+      return
+    }
+
+    try {
+      const statsMap: Record<number, { total: number; sold: number }> = {}
+      const productIds = productList
+        .map((p) => Number(p.productID || p.id))
+        .filter((id): id is number => Boolean(id))
+
+      productIds.forEach((id) => {
+        if (!statsMap[id]) {
+          statsMap[id] = { total: 0, sold: 0 }
+        }
+      })
+
+      // Inventory across warehouses
+      try {
+        const warehousesRes = await WarehouseService.getAllWarehouses()
+        const warehouses = (warehousesRes.data || []).map((warehouse: any, idx: number) => ({
+          ...warehouse,
+          id: warehouse.id ?? warehouse.locationID ?? warehouse.warehouseID ?? idx
+        }))
+        await Promise.all(
+          warehouses.map(async (warehouse) => {
+            const warehouseId = warehouse.id
+            if (!warehouseId) return
+            try {
+              const invRes = await WarehouseService.getWarehouseInventory(warehouseId)
+              const inventory = invRes.data || []
+              inventory.forEach((item: any) => {
+                const pid = Number(item.productId)
+                if (!pid || !productIds.includes(pid)) return
+                if (!statsMap[pid]) statsMap[pid] = { total: 0, sold: 0 }
+                statsMap[pid].total += item.quantityInStock || 0
+              })
+            } catch (err) {
+              // Ignore individual warehouse errors
+            }
+          })
+        )
+      } catch (error) {
+        console.error('Failed to load warehouse inventory:', error)
+      }
+
+      // Sold quantity from orders
+      try {
+        const ordersRes = await OrderService.getAllOrders({})
+        const ordersData: any = ordersRes.data || []
+        const orders = Array.isArray(ordersData)
+          ? ordersData
+          : ordersData?.orders || []
+
+        orders.forEach((order: any) => {
+          if (order.orderStatus !== 'DELIVERED') return
+          const items = order.items || []
+          items.forEach((item: any) => {
+            const pid = Number(item.productId)
+            if (!pid || !productIds.includes(pid)) return
+            if (!statsMap[pid]) statsMap[pid] = { total: 0, sold: 0 }
+            statsMap[pid].sold += item.quantity || 0
+          })
+        })
+      } catch (error) {
+        console.error('Failed to load sold quantity:', error)
+      }
+
+      setProductStats(statsMap)
+    } catch (error) {
+      console.error('Failed to compute product stats:', error)
     }
   }
 
@@ -101,7 +183,7 @@ export default function AdminProductsPage() {
   useEffect(() => {
     if (!hasHydrated) return
     const handler = setTimeout(() => {
-      loadProducts()
+      loadProducts(true)
     }, 300)
     return () => clearTimeout(handler)
   }, [searchTerm, selectedBrand, selectedCategory, hasHydrated])
@@ -117,7 +199,8 @@ export default function AdminProductsPage() {
   }
 
   const handleViewProduct = (product: ProductDTO) => {
-    router.push(`/products/${product.productID || product.id}`)
+    setViewingProduct(product)
+    setShowViewModal(true)
   }
 
   const handleToggleActive = async (product: ProductDTO) => {
@@ -127,7 +210,7 @@ export default function AdminProductsPage() {
     try {
       await ProductAdminService.toggleActive(productID, !product.active)
       toast.success(`Sản phẩm đã được ${!product.active ? 'kích hoạt' : 'vô hiệu hóa'}`)
-      loadProducts()
+      loadProducts(true)
     } catch (error: any) {
       toast.error(error.message || 'Không thể thay đổi trạng thái')
     }
@@ -136,7 +219,7 @@ export default function AdminProductsPage() {
   const handleModalClose = () => {
     setShowModal(false)
     setEditingProduct(null)
-    loadProducts()
+    loadProducts(true)
   }
 
   const handleSaved = (created: ProductDTO) => {
@@ -362,77 +445,132 @@ export default function AdminProductsPage() {
               <p className="text-sm mt-2">Thử thay đổi bộ lọc hoặc thêm sản phẩm mới</p>
             </div>
           ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 p-6">
-              {products.map((product, index) => (
-                <motion.div
-                  key={product.productID || product.id || index}
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: index * 0.03 }}
-                  className="border border-gray-200 rounded-lg overflow-hidden hover:shadow-md transition-shadow"
-                >
-                  <div className="relative aspect-square bg-gray-100">
-                    <Image
-                      src={product.imageURL || '/placeholder-product.png'}
-                      alt={product.productName}
-                      fill
-                      className="object-cover"
-                    />
-                    {!product.active && (
-                      <div className="absolute inset-0 bg-black bg-opacity-50 flex items-center justify-center">
-                        <span className="text-white font-semibold">Đã vô hiệu hóa</span>
+            <div className="space-y-4 p-6">
+              {/* Header row */}
+              <div
+                className="hidden md:grid gap-4 px-6 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide border border-gray-200 rounded-2xl bg-gray-50"
+                style={{ gridTemplateColumns: '360px repeat(4, minmax(0, 1fr)) 180px' }}
+              >
+                <span className="text-left">Sản phẩm</span>
+                <span className="text-center">Danh mục</span>
+                <span className="text-center">Giá</span>
+                <span className="text-center">Tồn kho</span>
+                <span className="text-center">Đã bán</span>
+                <span className="text-center">Thao tác</span>
+              </div>
+
+              {products.map((product, index) => {
+                const productId = Number(product.productID || product.id)
+                const stats = productId ? productStats[productId] : undefined
+                const totalQuantity = stats?.total ?? 0
+                const soldQuantity = stats?.sold ?? 0
+
+                return (
+                  <motion.div
+                    key={product.productID || product.id || index}
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: index * 0.03 }}
+                    className="border border-gray-200 rounded-2xl bg-white hover:shadow-lg transition-shadow"
+                  >
+                    <div
+                      className="p-4 grid grid-cols-1 gap-4 items-center md:grid-cols-[360px_repeat(4,minmax(0,1fr))_180px]"
+                    >
+                      {/* Product info */}
+                      <div className="flex items-center gap-4 min-w-0">
+                        <div className="relative w-20 h-20 bg-gray-50 rounded-xl border border-gray-100">
+                          <Image
+                            src={product.imageURL || '/placeholder-product.png'}
+                            alt={product.productName}
+                            fill
+                            className="object-contain p-2"
+                          />
+                          {!product.active && (
+                            <div className="absolute inset-0 bg-black/50 rounded-xl flex items-center justify-center">
+                              <span className="text-xs text-white font-semibold">Đã tắt</span>
+                            </div>
+                          )}
+                        </div>
+                        <div className="min-w-0">
+                          <h3 className="text-lg font-semibold text-gray-900 line-clamp-1">{product.productName}</h3>
+                          <p className="md:hidden text-sm text-gray-500">{product.brand?.name || 'Chưa có hãng'}</p>
+                          <p className="md:hidden text-sm text-gray-400">{product.category?.name || 'Chưa có danh mục'}</p>
+                          <p className="md:hidden text-base font-bold text-green-600 mt-1">
+                            {product.price.toLocaleString('vi-VN')} ₫
+                          </p>
+                        </div>
                       </div>
-                    )}
-                  </div>
-                  <div className="p-4">
-                    <h3 className="font-semibold text-gray-900 truncate">{product.productName}</h3>
-                    <p className="text-sm text-gray-600 mt-1 line-clamp-2">{product.briefDescription}</p>
-                    <div className="flex items-center justify-between mt-3">
-                      <div className="flex items-center gap-2">
-                        <span className="text-lg font-bold text-green-600">
-                          {product.price.toLocaleString('vi-VN')} ₫
+
+                      {/* Category */}
+                      <div className="hidden md:flex flex-col items-center justify-center text-sm text-gray-600 text-center">
+                        <span className="font-medium text-gray-900">
+                          {product.category?.name || '—'}
+                        </span>
+                        <span className="text-xs text-gray-500">
+                          {product.brand?.name || 'Chưa có hãng'}
                         </span>
                       </div>
+
+                      {/* Price */}
+                      <div className="hidden md:flex items-center justify-center text-base font-semibold text-green-600">
+                        {product.price.toLocaleString('vi-VN')} ₫
+                      </div>
+
+                      {/* Inventory */}
+                      <div className="hidden md:flex flex-col items-center justify-center text-sm text-gray-600">
+                        <span className="font-semibold text-gray-900">{totalQuantity.toLocaleString('vi-VN')}</span>
+                        <span className="text-xs text-gray-500">Tổng kho</span>
+                      </div>
+
+                      {/* Sold */}
+                      <div className="hidden md:flex flex-col items-center justify-center text-sm text-gray-600">
+                        <span className="font-semibold text-gray-900">{soldQuantity.toLocaleString('vi-VN')}</span>
+                        <span className="text-xs text-gray-500">Đã bán</span>
+                      </div>
+
+                      {/* Actions */}
+                      <div className="flex items-center gap-2 justify-start md:justify-center">
+                        <button
+                          onClick={() => handleToggleActive(product)}
+                          className={`p-2 rounded-full border ${
+                            product.active
+                              ? 'text-green-600 border-green-200 hover:bg-green-50'
+                              : 'text-gray-400 border-gray-200 hover:bg-gray-50'
+                          }`}
+                          title={product.active ? 'Vô hiệu hóa' : 'Kích hoạt'}
+                        >
+                          {product.active ? <Power className="w-4 h-4" /> : <PowerOff className="w-4 h-4" />}
+                        </button>
+                        <button
+                          onClick={() => handleViewProduct(product)}
+                          className="inline-flex items-center justify-center px-4 py-2 text-sm font-medium text-blue-700 bg-blue-50 hover:bg-blue-100 rounded-lg transition-colors"
+                        >
+                          Xem
+                        </button>
+                        <button
+                          onClick={() => handleEditProduct(product)}
+                          className="inline-flex items-center gap-1 px-4 py-2 text-sm font-medium text-green-700 bg-green-50 hover:bg-green-100 rounded-lg transition-colors"
+                        >
+                          <Edit2 className="w-4 h-4" />
+                          Sửa
+                        </button>
+                      </div>
                     </div>
-                    <div className="mt-3 pt-3 border-t border-gray-200 flex items-center justify-between">
-                      <span className="text-xs text-gray-500">
-                        {product.brand?.name} - {product.category?.name}
-                      </span>
-                      <button
-                        onClick={() => handleToggleActive(product)}
-                        className={`p-1 rounded transition-colors ${
-                          product.active
-                            ? 'text-green-600 hover:bg-green-50'
-                            : 'text-gray-400 hover:bg-gray-50'
-                        }`}
-                        title={product.active ? 'Vô hiệu hóa' : 'Kích hoạt'}
-                      >
-                        {product.active ? (
-                          <Power className="w-4 h-4" />
-                        ) : (
-                          <PowerOff className="w-4 h-4" />
-                        )}
-                      </button>
+
+                    {/* Mobile extra info */}
+                    <div className="px-4 pb-4 md:hidden space-y-1 text-sm text-gray-500 border-t border-gray-100 pt-3">
+                      <div className="flex justify-between">
+                        <span>Tồn kho:</span>
+                        <span className="font-semibold text-gray-900">{totalQuantity.toLocaleString('vi-VN')}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span>Đã bán:</span>
+                        <span className="font-semibold text-gray-900">{soldQuantity.toLocaleString('vi-VN')}</span>
+                      </div>
                     </div>
-                    <div className="mt-3 flex gap-2">
-                      <button
-                        onClick={() => handleViewProduct(product)}
-                        className="flex-1 px-3 py-2 text-sm bg-blue-100 text-blue-700 rounded-lg hover:bg-blue-200 transition-colors"
-                      >
-                        <Eye className="w-4 h-4 inline mr-1" />
-                        Xem
-                      </button>
-                      <button
-                        onClick={() => handleEditProduct(product)}
-                        className="flex-1 px-3 py-2 text-sm bg-green-100 text-green-700 rounded-lg hover:bg-green-200 transition-colors"
-                      >
-                        <Edit2 className="w-4 h-4 inline mr-1" />
-                        Sửa
-                      </button>
-                    </div>
-                  </div>
-                </motion.div>
-              ))}
+                  </motion.div>
+                )
+              })}
             </div>
           )}
         </div>
@@ -446,6 +584,17 @@ export default function AdminProductsPage() {
           categories={categories}
           onClose={handleModalClose}
           onSaved={handleSaved}
+        />
+      )}
+
+      {/* View Modal */}
+      {showViewModal && viewingProduct && (
+        <ProductViewModal
+          product={viewingProduct}
+          onClose={() => {
+            setShowViewModal(false)
+            setViewingProduct(null)
+          }}
         />
       )}
     </div>

@@ -9,12 +9,10 @@ import { StoreLocationService } from '@/services/storeLocationService'
 import { AddressService } from '@/services/addressService'
 import { VietnamProvince, VietnamWard } from '@/types'
 import { motion } from 'framer-motion'
-import { Plus, Edit2, Trash2, Search, Package, Building2, Warehouse as WarehouseIcon, ArrowLeft, MapPin, ArrowRight, History } from 'lucide-react'
+import { Plus, Edit2, Trash2, Search, Building2, Warehouse as WarehouseIcon, ArrowLeft, MapPin, ArrowRight, History, Package } from 'lucide-react'
 import toast from 'react-hot-toast'
 import Link from 'next/link'
-import { ProductManagementModal } from '@/components/admin/ProductManagementModal'
-import { ProductService } from '@/services/productService'
-import { Brand, Category } from '@/types'
+import { AuthService } from '@/services/authService'
 
 export default function AdminWarehousesPage() {
   const router = useRouter()
@@ -29,9 +27,6 @@ export default function AdminWarehousesPage() {
   const [typeFilter, setTypeFilter] = useState<'all' | 'main' | 'regional' | 'branch'>('all')
   const [showModal, setShowModal] = useState(false)
   const [editingWarehouse, setEditingWarehouse] = useState<Warehouse | null>(null)
-  const [showProductModal, setShowProductModal] = useState(false)
-  const [brands, setBrands] = useState<Brand[]>([])
-  const [categories, setCategories] = useState<Category[]>([])
   const [formData, setFormData] = useState<CreateWarehouseRequest>({
     name: '',
     code: '',
@@ -46,34 +41,37 @@ export default function AdminWarehousesPage() {
 
   useEffect(() => {
     if (!hasHydrated) return
-    if (!isAuthenticated || user?.role !== 'ADMIN') {
+    
+    // First check if user has valid token
+    const token = AuthService.getToken()
+    if (!token) {
+      // No token - redirect to login
+      useAuthStore.getState().logout()
+      router.push('/auth/login?message=' + encodeURIComponent('Vui lòng đăng nhập lại'))
+      return
+    }
+    
+    // Then check if authenticated and is admin
+    if (!isAuthenticated) {
+      router.push('/auth/login?message=' + encodeURIComponent('Vui lòng đăng nhập lại'))
+      return
+    }
+    
+    if (user?.role !== 'ADMIN') {
+      // Not admin - redirect to home
       router.push('/')
       return
     }
+    
     loadData()
   }, [hasHydrated, isAuthenticated, user, router])
 
   const loadData = async () => {
     try {
       setLoading(true)
-      await Promise.all([loadWarehouses(), loadStoreLocations(), loadProvinces(), loadBrandsAndCategories()])
+      await Promise.all([loadWarehouses(), loadStoreLocations(), loadProvinces()])
     } finally {
       setLoading(false)
-    }
-  }
-
-  const loadBrandsAndCategories = async () => {
-    try {
-      const [brandsResponse, categoriesResponse] = await Promise.all([
-        ProductService.getBrands().catch(() => ({ data: [] })),
-        ProductService.getCategories().catch(() => ({ data: [] }))
-      ])
-      setBrands(Array.isArray(brandsResponse?.data) ? brandsResponse.data : [])
-      setCategories(Array.isArray(categoriesResponse?.data) ? categoriesResponse.data : [])
-    } catch (error: any) {
-      console.error('Failed to load brands/categories:', error)
-      setBrands([])
-      setCategories([])
     }
   }
 
@@ -120,6 +118,15 @@ export default function AdminWarehousesPage() {
       setWarehouses(response.data || [])
     } catch (error: any) {
       console.error('Error loading warehouses:', error)
+      
+      // Handle 401 Unauthorized - token invalid or expired
+      if (error.response?.status === 401 || error.message?.includes('401')) {
+        // Clear auth and redirect to login
+        useAuthStore.getState().logout()
+        router.push('/auth/login?message=' + encodeURIComponent('Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại.'))
+        return
+      }
+      
       // Don't show error toast if backend is not running (connection refused)
       if (error.message?.includes('Network Error') || error.message?.includes('ERR_CONNECTION_REFUSED')) {
         toast.error('Không thể kết nối đến server. Vui lòng kiểm tra backend đang chạy.')
@@ -245,13 +252,6 @@ export default function AdminWarehousesPage() {
               <p className="text-gray-600 mt-1">Quản lý hệ thống kho hàng phân cấp</p>
             </div>
             <div className="flex gap-2">
-              <button
-                onClick={() => setShowProductModal(true)}
-                className="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 flex items-center"
-              >
-                <Package className="w-5 h-5 mr-2" />
-                Thêm sản phẩm
-              </button>
               <Link
                 href="/admin/warehouses/transfer"
                 className="bg-purple-600 text-white px-4 py-2 rounded-lg hover:bg-purple-700 flex items-center"
@@ -623,19 +623,6 @@ export default function AdminWarehousesPage() {
           </div>
         )}
 
-        {/* Product Management Modal (add new product) */}
-        {showProductModal && (
-          <ProductManagementModal
-            product={null}
-            brands={brands}
-            categories={categories}
-            onClose={() => setShowProductModal(false)}
-            onSaved={() => {
-              setShowProductModal(false)
-              toast.success('Thêm sản phẩm thành công')
-            }}
-          />
-        )}
 
       </div>
     </div>

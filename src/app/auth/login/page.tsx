@@ -90,7 +90,16 @@ export default function LoginPage() {
         // Map UserDTO to User type
         // Backend returns roleName as string, not role object
         const roleName = response.data.roleName || response.data.role?.name || 'CUSTOMER';
-        const role = roleName.toUpperCase() === 'ADMIN' ? 'ADMIN' : 'CUSTOMER';
+        const normalizedRole = roleName.toUpperCase();
+        let role: 'ADMIN' | 'CUSTOMER' | 'STAFF' = 'CUSTOMER';
+        
+        if (normalizedRole === 'ADMIN') {
+          role = 'ADMIN';
+        } else if (normalizedRole === 'STAFF') {
+          role = 'STAFF';
+        } else {
+          role = 'CUSTOMER';
+        }
         
         const userData = {
           userID: response.data.userID,
@@ -103,7 +112,15 @@ export default function LoginPage() {
           token: response.data.token
         };
         setUser(userData);
-        router.push(userData.role === 'ADMIN' ? '/admin' : '/');
+        
+        // Redirect based on role
+        if (role === 'ADMIN') {
+          router.push('/admin');
+        } else if (role === 'STAFF') {
+          router.push('/staff');
+        } else {
+          router.push('/');
+        }
       } else {
         setError('Đăng nhập thất bại. Vui lòng kiểm tra lại thông tin.');
       }

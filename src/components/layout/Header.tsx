@@ -30,6 +30,8 @@ export function Header() {
     const { user, isAuthenticated, logout } = useAuthStore()
     
     const isAdminRoute = pathname?.startsWith('/admin')
+    const isStaffRoute = pathname?.startsWith('/staff')
+    const isAdminOrStaffRoute = isAdminRoute || isStaffRoute
     const { totalItems } = useCartStore()
     const { notifications } = useNotification()
 
@@ -87,10 +89,10 @@ export function Header() {
                 <div className="pointer-events-none absolute -bottom-12 -right-12 w-64 h-64 bg-indigo-500/20 blur-3xl rounded-full z-0" />
 
                 <div className="relative z-10 px-4 sm:px-6 lg:px-8">
-                    {isAdminRoute ? (
-                        // Admin Layout - Logo centered
+                    {isAdminOrStaffRoute ? (
+                        // Admin/Staff Layout - Logo centered
                         <div className="flex justify-center items-center h-16">
-                            <Link href="/admin" className="flex items-center">
+                            <Link href={isAdminRoute ? "/admin" : "/staff"} className="flex items-center">
                                 <div className="w-8 h-8 bg-white/20 backdrop-blur-sm rounded-lg flex items-center justify-center shadow-lg">
                                     <span className="text-white font-bold text-lg">F</span>
                                 </div>
@@ -269,7 +271,7 @@ export function Header() {
                     )}
 
                     {/* Mobile Navigation (Customer only) */}
-                    {!isAdminRoute && isMenuOpen && (
+                    {!isAdminOrStaffRoute && isMenuOpen && (
                         <motion.div
                             className="md:hidden border-t border-white/20 mt-2"
                             initial={{ opacity: 0, height: 0 }}
@@ -335,7 +337,7 @@ export function Header() {
             </header>
 
             {/* Modals (Customer only) */}
-            {!isAdminRoute && (
+            {!isAdminOrStaffRoute && (
                 <>
                     <SearchModal isOpen={isSearchOpen} onClose={() => setIsSearchOpen(false)} />
                     <NotificationModal isOpen={isNotificationOpen} onClose={() => setIsNotificationOpen(false)} />

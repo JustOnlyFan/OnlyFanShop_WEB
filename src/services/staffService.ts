@@ -1,5 +1,6 @@
 import axios from 'axios'
 import { tokenStorage } from '@/utils/tokenStorage'
+import type { StoreStatus } from './storeLocationService'
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080'
 
@@ -9,15 +10,19 @@ export interface Staff {
   email: string
   phoneNumber?: string
   address?: string
-  role: 'STAFF'
+  role: 'STAFF' | string
   storeLocationId?: number
   storeLocation?: {
     locationID: number
     name: string
     address: string
+    ward?: string
+    city?: string
+    phone?: string
+    status?: StoreStatus
   }
   status: 'active' | 'inactive' | 'banned'
-  createdAt: string
+  createdAt?: string
   lastLoginAt?: string
 }
 
@@ -40,11 +45,14 @@ export interface UpdateStaffRequest {
 }
 
 export interface StaffResponse {
-  staff: Staff[]
+  content?: Staff[]  // Spring Boot Page structure
+  staff?: Staff[]    // Fallback for custom response
   totalPages: number
   totalElements: number
-  currentPage: number
-  pageSize: number
+  number?: number    // Current page (0-indexed)
+  currentPage?: number
+  size?: number      // Page size
+  pageSize?: number
 }
 
 export interface ApiResponse<T> {
@@ -156,6 +164,20 @@ export class StaffService {
       return response.data
     } catch (error: any) {
       throw new Error(error.response?.data?.message || 'Failed to get staff by store location')
+    }
+  }
+
+  // Reset staff password to default (Admin only)
+  static async resetStaffPassword(staffId: number): Promise<ApiResponse<void>> {
+    try {
+      const response = await axios.post(
+        `${API_URL}/api/admin/staff/${staffId}/reset-password`,
+        {},
+        { headers: this.getAuthHeaders() }
+      )
+      return response.data
+    } catch (error: any) {
+      throw new Error(error.response?.data?.message || 'Failed to reset staff password')
     }
   }
 

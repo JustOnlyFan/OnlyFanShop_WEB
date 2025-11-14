@@ -379,19 +379,25 @@ export function ProductManagementModal({ product, brands, categories, warehouseI
         await ProductAdminService.updateProduct(productID, submitData)
         toast.success('Cập nhật sản phẩm thành công!')
       } else {
-        const created = await ProductAdminService.addProduct(submitData)
+        // If multiple warehouses selected, store the first one separately
+        const [primaryWarehouseId, ...extraWarehouseIds] = selectedWarehouseIds || []
+
+        const primarySubmitData = {
+          ...submitData,
+          ...(primaryWarehouseId ? { warehouseId: primaryWarehouseId } : {})
+        }
+
+        const created = await ProductAdminService.addProduct(primarySubmitData)
         if (created) {
           const productId = created.id || created.productID
           
           // If multiple warehouses selected, add product to each warehouse
-          if (selectedWarehouseIds && selectedWarehouseIds.length > 1 && productId && formData.quantity && formData.quantity > 0) {
+          if (extraWarehouseIds.length > 0 && productId && formData.quantity && formData.quantity > 0) {
             try {
-              // Add product to remaining warehouses (first one already added by backend)
-              const remainingWarehouses = selectedWarehouseIds.slice(1)
               let successCount = 0
               let errorCount = 0
               
-              for (const warehouseId of remainingWarehouses) {
+              for (const warehouseId of extraWarehouseIds) {
                 try {
                   await WarehouseService.addProductToWarehouse({
                     warehouseId,
