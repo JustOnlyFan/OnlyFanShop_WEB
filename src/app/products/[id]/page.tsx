@@ -7,6 +7,10 @@ import { ProductService } from '@/services/productService';
 import { LoadingSpinner } from '@/components/ui/LoadingSpinner';
 import { Button } from '@/components/ui/Button';
 import { useCartStore } from '@/store/cartStore';
+import { ChatService } from '@/services/chatService';
+import { useAuthStore } from '@/store/authStore';
+import { useRouter } from 'next/navigation';
+import toast from 'react-hot-toast';
 import { 
   ShoppingCart, 
   Heart, 
@@ -23,7 +27,8 @@ import {
   Users,
   ArrowLeft,
   ChevronRight,
-  ChevronLeft
+  ChevronLeft,
+  MessageCircle
 } from 'lucide-react';
 import Link from 'next/link';
 import Image from 'next/image';
@@ -41,6 +46,8 @@ export default function ProductDetailPage() {
   const params = useParams();
   const productId = params.id as string;
   const { addItem } = useCartStore();
+  const { user, isAuthenticated } = useAuthStore();
+  const router = useRouter();
 
   useEffect(() => {
     if (productId) {
@@ -80,6 +87,30 @@ export default function ProductDetailPage() {
 
   const handleToggleLike = () => {
     setIsLiked(!isLiked);
+  };
+
+  const handleMessageClick = async () => {
+    if (!isAuthenticated) {
+      router.push('/auth/login');
+      return;
+    }
+
+    try {
+      setIsAddingToCart(true);
+      const response = await ChatService.createChatRoomFromProduct({
+        productId: parseInt(productId),
+        initialMessage: `Xin chào! Tôi quan tâm đến sản phẩm ${product?.productName}`
+      });
+      
+      if (response.data) {
+        router.push(`/chat/${response.data}`);
+      }
+    } catch (error: any) {
+      console.error('Error creating chat room:', error);
+      toast.error('Không thể tạo cuộc trò chuyện. Vui lòng thử lại.');
+    } finally {
+      setIsAddingToCart(false);
+    }
   };
 
   const formatPrice = (price: number) => {
@@ -258,6 +289,16 @@ export default function ProductDetailPage() {
                       Thêm vào giỏ hàng
                     </>
                   )}
+                </Button>
+                
+                <Button
+                  onClick={handleMessageClick}
+                  disabled={isAddingToCart}
+                  variant="outline"
+                  className="p-4 text-green-600 border-green-600 hover:bg-green-50"
+                  title="Nhắn tin với nhân viên về sản phẩm này"
+                >
+                  <MessageCircle className="w-5 h-5" />
                 </Button>
                 
                 <Button

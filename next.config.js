@@ -32,10 +32,6 @@ const nextConfig = {
   httpAgentOptions: {
     keepAlive: true,
   },
-  onDemandEntries: {
-    maxInactiveAge: 25 * 1000,
-    pagesBufferLength: 2,
-  },
   env: {
     // In development, use same-origin URLs and let rewrites proxy to backend to avoid CORS
     NEXT_PUBLIC_API_URL: isDev ? '' : (process.env.NEXT_PUBLIC_API_URL || ''),

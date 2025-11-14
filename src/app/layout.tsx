@@ -7,6 +7,7 @@ import { Footer } from '@/components/layout/Footer'
 import { ErrorBoundary } from '@/components/ErrorBoundary'
 import { Toaster } from 'react-hot-toast'
 import { ChatButton } from '@/components/chat/ChatButton'
+import { RouteGuard } from '@/components/auth/RouteGuard'
 
 const inter = Inter({ 
   subsets: ['latin'],
@@ -48,11 +49,13 @@ export default function RootLayout({
       <body className="font-sans antialiased">
         <Providers>
           <ErrorBoundary>
-            <DesktopLayout>
-              {children}
-            </DesktopLayout>
-            <Footer />
-            <ChatButton />
+            <RouteGuard>
+              <DesktopLayout>
+                {children}
+              </DesktopLayout>
+              <Footer />
+              <ChatButton />
+            </RouteGuard>
           </ErrorBoundary>
           <Toaster 
             position="top-right"

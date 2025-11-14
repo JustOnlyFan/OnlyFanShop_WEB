@@ -6,7 +6,9 @@ import { useAuthStore } from '@/store/authStore'
 import { LoadingSpinner } from '@/components/ui/LoadingSpinner'
 import { StaffService, Staff } from '@/services/staffService'
 import { motion } from 'framer-motion'
-import { Store, User, Mail, Phone, MapPin, Package, ShoppingCart, TrendingUp } from 'lucide-react'
+import { Store, User, Mail, Phone, MapPin, Package, ShoppingCart, TrendingUp, MessageCircle, ArrowRight } from 'lucide-react'
+import Link from 'next/link'
+import { ChatService } from '@/services/chatService'
 
 export default function StaffDashboardPage() {
   const router = useRouter()
@@ -50,6 +52,7 @@ export default function StaffDashboardPage() {
     }
   }
 
+
   if (!hasHydrated || loading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -59,8 +62,8 @@ export default function StaffDashboardPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 p-6">
-      <div className="max-w-7xl mx-auto">
+    <div className="min-h-screen bg-gray-50">
+      <div className="max-w-7xl mx-auto p-6">
         {/* Header */}
         <div className="mb-8">
           <h1 className="text-3xl font-bold text-gray-900">Bảng điều khiển nhân viên</h1>
@@ -172,28 +175,50 @@ export default function StaffDashboardPage() {
           className="bg-white rounded-xl shadow-sm p-6"
         >
           <h2 className="text-xl font-semibold text-gray-900 mb-4">Thao tác nhanh</h2>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <button className="p-4 border border-gray-200 rounded-lg hover:border-blue-500 hover:bg-blue-50 transition-colors text-left">
-              <Package className="w-6 h-6 text-blue-600 mb-2" />
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+            <Link 
+              href="/staff/orders"
+              className="p-4 border border-gray-200 rounded-lg hover:border-blue-500 hover:bg-blue-50 transition-colors text-left group"
+            >
+              <Package className="w-6 h-6 text-blue-600 mb-2 group-hover:scale-110 transition-transform" />
               <p className="font-medium text-gray-900">Quản lý đơn hàng</p>
               <p className="text-sm text-gray-500 mt-1">Xem và xử lý đơn hàng</p>
-            </button>
-            <button className="p-4 border border-gray-200 rounded-lg hover:border-green-500 hover:bg-green-50 transition-colors text-left">
-              <Store className="w-6 h-6 text-green-600 mb-2" />
+              <ArrowRight className="w-4 h-4 text-gray-400 mt-2 group-hover:text-blue-600 group-hover:translate-x-1 transition-all" />
+            </Link>
+            <Link 
+              href="/staff/store"
+              className="p-4 border border-gray-200 rounded-lg hover:border-green-500 hover:bg-green-50 transition-colors text-left group"
+            >
+              <Store className="w-6 h-6 text-green-600 mb-2 group-hover:scale-110 transition-transform" />
               <p className="font-medium text-gray-900">Quản lý cửa hàng</p>
               <p className="text-sm text-gray-500 mt-1">Thông tin cửa hàng</p>
-            </button>
-            <button className="p-4 border border-gray-200 rounded-lg hover:border-purple-500 hover:bg-purple-50 transition-colors text-left">
-              <TrendingUp className="w-6 h-6 text-purple-600 mb-2" />
-              <p className="font-medium text-gray-900">Báo cáo</p>
+              <ArrowRight className="w-4 h-4 text-gray-400 mt-2 group-hover:text-green-600 group-hover:translate-x-1 transition-all" />
+            </Link>
+            <Link 
+              href="/staff/revenue"
+              className="p-4 border border-gray-200 rounded-lg hover:border-purple-500 hover:bg-purple-50 transition-colors text-left group"
+            >
+              <TrendingUp className="w-6 h-6 text-purple-600 mb-2 group-hover:scale-110 transition-transform" />
+              <p className="font-medium text-gray-900">Báo cáo doanh thu</p>
               <p className="text-sm text-gray-500 mt-1">Xem báo cáo doanh thu</p>
-            </button>
+              <ArrowRight className="w-4 h-4 text-gray-400 mt-2 group-hover:text-purple-600 group-hover:translate-x-1 transition-all" />
+            </Link>
+            <Link 
+              href="/staff/chat"
+              className="p-4 border border-gray-200 rounded-lg hover:border-cyan-500 hover:bg-cyan-50 transition-colors text-left group"
+            >
+              <MessageCircle className="w-6 h-6 text-cyan-600 mb-2 group-hover:scale-110 transition-transform" />
+              <p className="font-medium text-gray-900">Tin nhắn</p>
+              <p className="text-sm text-gray-500 mt-1">Trả lời tin nhắn khách hàng</p>
+              <ArrowRight className="w-4 h-4 text-gray-400 mt-2 group-hover:text-cyan-600 group-hover:translate-x-1 transition-all" />
+            </Link>
           </div>
         </motion.div>
       </div>
     </div>
   )
 }
+
 
 
 

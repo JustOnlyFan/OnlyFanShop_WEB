@@ -72,7 +72,11 @@ export default function AdminUsersPage() {
           'username',
           'ASC'
         )
-        setAllUsers(allUsersResp.data?.content || [])
+        const allUsersData = allUsersResp.data?.content || []
+        const nonStaffUsers = allUsersData.filter(
+          u => (u.roleName || u.role?.name || '').toLowerCase() !== 'staff'
+        )
+        setAllUsers(nonStaffUsers)
       } catch (e: any) {
         console.warn('Failed to load all users for statistics:', e.message)
         // Continue with paginated load even if statistics load fails
@@ -90,6 +94,9 @@ export default function AdminUsersPage() {
       const data = resp.data
       
       let filteredUsers = data?.content || []
+      filteredUsers = filteredUsers.filter(
+        u => (u.roleName || u.role?.name || '').toLowerCase() !== 'staff'
+      )
       
       // Client-side filter by status
       if (statusFilter) {
@@ -183,7 +190,10 @@ export default function AdminUsersPage() {
 
   const getRoleLabel = (roleName?: string) => {
     if (!roleName) return 'Người dùng'
-    return roleName === 'admin' ? 'Quản trị viên' : 'Khách hàng'
+    const roleLower = roleName.toLowerCase()
+    if (roleLower === 'admin') return 'Quản trị viên'
+    if (roleLower === 'staff') return 'Nhân viên'
+    return 'Khách hàng'
   }
 
   if (!hasHydrated || (loading && users.length === 0)) {

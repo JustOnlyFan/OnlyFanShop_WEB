@@ -5,21 +5,26 @@ import { useRouter, useParams } from 'next/navigation'
 import { useAuthStore } from '@/store/authStore'
 import { LoadingSpinner } from '@/components/ui/LoadingSpinner'
 import { ChatService, Message } from '@/services/chatService'
+import { websocketService, WebSocketMessage } from '@/services/websocketService'
 import { motion } from 'framer-motion'
 import { 
   ArrowLeft,
   Send,
   MessageCircle,
-  User
+  User,
+  Package
 } from 'lucide-react'
 import toast from 'react-hot-toast'
 import { format } from 'date-fns'
+import Image from 'next/image'
 
 export default function CustomerChatRoomPage() {
   const [loading, setLoading] = useState(true)
   const [messages, setMessages] = useState<Message[]>([])
   const [messageText, setMessageText] = useState('')
   const [sending, setSending] = useState(false)
+  const [productInfo, setProductInfo] = useState<{ id: string; name: string; image: string } | null>(null)
+  const [wsConnected, setWsConnected] = useState(false)
   
   const router = useRouter()
   const params = useParams()
@@ -53,27 +58,92 @@ export default function CustomerChatRoomPage() {
 
   useEffect(() => {
     if (roomId && isAuthenticated) {
+      // Load initial messages from Firebase
       loadMessages()
-      // Poll for new messages every 3 seconds
-      const interval = setInterval(() => {
-        loadMessages()
-      }, 3000)
-      return () => clearInterval(interval)
+      
+      // Connect WebSocket for real-time messages
+      websocketService.connect()
+        .then(() => {
+          setWsConnected(true)
+          
+          // Subscribe to room for real-time messages
+          websocketService.subscribeToRoom(roomId, (wsMessage: WebSocketMessage) => {
+            // Add new message from WebSocket
+            const newMessage: Message = {
+              roomId: wsMessage.roomId,
+              senderId: wsMessage.senderId,
+              senderName: wsMessage.senderName || 'User',
+              message: wsMessage.message,
+              timestamp: wsMessage.timestamp?.toString(),
+              epochMillis: wsMessage.timestamp,
+              isRead: wsMessage.isRead || false
+            }
+            
+            setMessages(prev => {
+              // Avoid duplicates
+              const exists = prev.some(m => 
+                m.messageId === newMessage.messageId || 
+                (m.senderId === newMessage.senderId && 
+                 m.message === newMessage.message && 
+                 Math.abs((m.epochMillis || 0) - (newMessage.epochMillis || 0)) < 1000)
+              )
+              if (exists) return prev
+              return [...prev, newMessage]
+            })
+          })
+        })
+        .catch((error) => {
+          console.error('WebSocket connection failed:', error)
+          // Fallback to polling if WebSocket fails
+          const interval = setInterval(() => {
+            loadMessages()
+          }, 3000)
+          return () => clearInterval(interval)
+        })
+      
+      return () => {
+        websocketService.unsubscribeFromRoom(roomId)
+      }
     }
   }, [roomId, isAuthenticated, loadMessages])
+
+  // Load product info if available
+  useEffect(() => {
+    if (roomId && roomId.includes('_product_')) {
+      const parts = roomId.split('_product_')
+      if (parts.length > 1) {
+        const productId = parts[1]
+        // You can fetch product details here if needed
+        setProductInfo({
+          id: productId,
+          name: 'Sản phẩm',
+          image: '/images/placeholder.svg'
+        })
+      }
+    }
+  }, [roomId])
 
   const handleSendMessage = async () => {
     if (!messageText.trim() || sending) return
 
     try {
       setSending(true)
-      await ChatService.sendMessage({
-        roomId,
-        message: messageText.trim()
-      })
-      setMessageText('')
-      // Reload messages
-      await loadMessages()
+      
+      // Try WebSocket first (faster, real-time)
+      if (wsConnected && websocketService.isConnectedToServer()) {
+        websocketService.sendMessage(roomId, messageText.trim())
+        // Message will appear via WebSocket subscription
+        setMessageText('')
+      } else {
+        // Fallback to REST API (saves to Firebase)
+        await ChatService.sendMessage({
+          roomId,
+          message: messageText.trim()
+        })
+        setMessageText('')
+        // Reload messages to get the new one
+        await loadMessages()
+      }
     } catch (error: any) {
       console.error('Error sending message:', error)
       toast.error('Không thể gửi tin nhắn')
@@ -132,12 +202,39 @@ export default function CustomerChatRoomPage() {
           <MessageCircle className="w-6 h-6 text-white" />
           <div className="text-right">
             <h2 className="text-white font-semibold text-lg">
-              Chat với hỗ trợ
+              Chat với nhân viên
             </h2>
             <p className="text-white/80 text-sm">OnlyFanShop Support</p>
           </div>
         </div>
+        {wsConnected && (
+          <div className="flex items-center text-white/80 text-xs">
+            <div className="w-2 h-2 bg-green-400 rounded-full mr-2 animate-pulse"></div>
+            Đã kết nối
+          </div>
+        )}
       </div>
+
+      {/* Product Info Banner */}
+      {productInfo && (
+        <div className="bg-blue-50 border-b border-blue-200 px-6 py-3 flex items-center gap-3">
+          <Package className="w-5 h-5 text-blue-600" />
+          <div className="flex-1">
+            <p className="text-sm font-medium text-blue-900">Đang trao đổi về sản phẩm</p>
+            <p className="text-xs text-blue-700">{productInfo.name}</p>
+          </div>
+          {productInfo.image && (
+            <div className="w-10 h-10 relative rounded overflow-hidden">
+              <Image
+                src={productInfo.image}
+                alt={productInfo.name}
+                fill
+                className="object-cover"
+              />
+            </div>
+          )}
+        </div>
+      )}
 
       {/* Messages Container */}
       <div className="flex-1 overflow-y-auto px-6 py-4 space-y-4 bg-gradient-to-b from-gray-50 to-white min-h-0">
@@ -229,6 +326,7 @@ export default function CustomerChatRoomPage() {
     </div>
   )
 }
+
 
 
 

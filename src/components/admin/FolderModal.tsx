@@ -94,3 +94,8 @@ export function FolderModal({ isOpen, onClose, folderName, apps }: FolderModalPr
 
 
 
+
+
+
+
+

@@ -4,9 +4,10 @@ import { useEffect, useMemo, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { useAuthStore } from '@/store/authStore'
 import { LoadingSpinner } from '@/components/ui/LoadingSpinner'
-import { StoreLocationService, StoreLocation } from '@/services/storeLocationService'
+import { StoreLocationService, StoreLocation, StoreStatus } from '@/services/storeLocationService'
+import { StaffService } from '@/services/staffService'
 import { motion } from 'framer-motion'
-import { Plus, Edit2, Trash2, Search, Power, PowerOff, MapPin, Clock, Phone, Store, TrendingUp, Building2, ArrowLeft } from 'lucide-react'
+import { Plus, Edit2, Trash2, Search, Power, PowerOff, MapPin, Clock, Phone, Store, TrendingUp, Building2, ArrowLeft, User } from 'lucide-react'
 import toast from 'react-hot-toast'
 import StoreManagementModal from '@/components/admin/StoreManagementModal'
 
@@ -24,6 +25,7 @@ export default function AdminStoresPage() {
   const [cityFilter, setCityFilter] = useState('')
   const [showModal, setShowModal] = useState(false)
   const [editingStore, setEditingStore] = useState<any | null>(null)
+  const [storeStaffMap, setStoreStaffMap] = useState<Record<number, any[]>>({})
 
   useEffect(() => {
     if (!hasHydrated) return
@@ -46,8 +48,17 @@ export default function AdminStoresPage() {
       const effectivePage = opts?.resetPage ? 0 : page
       const resp = await StoreLocationService.getStoreLocations(undefined, undefined, cityFilter || undefined)
       const data = resp.data
-      let items: StoreLocation[] = Array.isArray(data) ? data : (data.stores || [])
-      items = items.map((it, i) => ({ ...it, id: (it as any).id ?? (it as any).locationID ?? i }))
+      const rawItems: any[] = Array.isArray(data) ? data : (data?.stores || [])
+      let items: StoreLocation[] = rawItems.map((it, i) => {
+        const normalizedStatus = StoreLocationService.resolveStoreStatus(it)
+        const resolvedId = it.id ?? it.locationID ?? i
+        return {
+          ...it,
+          id: resolvedId,
+          status: normalizedStatus,
+          isActive: normalizedStatus === 'ACTIVE'
+        } as StoreLocation
+      })
       if (searchTerm.trim()) {
         const q = searchTerm.toLowerCase().trim()
         items = items.filter(s =>
@@ -61,6 +72,24 @@ export default function AdminStoresPage() {
       setTotalPages(total)
       const paginated = items.slice(effectivePage * size, (effectivePage + 1) * size)
       setStores(paginated)
+      
+      // Load staff for all stores
+      const staffMap: Record<number, any[]> = {}
+      await Promise.all(
+        items.map(async (store) => {
+          const storeId = store.id ?? (store as any).locationID
+          if (storeId) {
+            try {
+              const staffResp = await StaffService.getStaffByStoreLocation(storeId)
+              staffMap[storeId] = staffResp.data || []
+            } catch {
+              staffMap[storeId] = []
+            }
+          }
+        })
+      )
+      setStoreStaffMap(staffMap)
+      
       if (opts?.resetPage) setPage(0)
     } catch (e: any) {
       toast.error(e.message || 'Không thể tải danh sách cửa hàng')
@@ -90,6 +119,7 @@ export default function AdminStoresPage() {
       description: s.description,
       images: s.images || [],
       services: s.services || [],
+      status: StoreLocationService.resolveStoreStatus(s),
       isActive: s.isActive
     })
     setShowModal(true)
@@ -111,15 +141,23 @@ export default function AdminStoresPage() {
     }
   }
 
-  const handleToggleActive = async (s: StoreLocation) => {
+  const handleChangeStatus = async (s: StoreLocation, newStatus: StoreStatus) => {
+    const currentStatus = StoreLocationService.resolveStoreStatus(s)
+    if (currentStatus === newStatus) return
+
+    if (newStatus === 'CLOSED' && !confirm(`Xác nhận đóng cửa "${s.name}"? Nhân viên sẽ bị khóa tài khoản.`)) {
+      return
+    }
+
     try {
       const storeId = s.id ?? (s as any).locationID
       if (typeof storeId !== 'number') {
         toast.error('Không tìm thấy ID cửa hàng hợp lệ')
         return
       }
-      await StoreLocationService.updateStoreLocation(storeId, { isActive: !s.isActive })
-      toast.success(!s.isActive ? 'Đã kích hoạt' : 'Đã tạm dừng')
+      await StoreLocationService.updateStoreLocation(storeId, { status: newStatus })
+      const label = StoreLocationService.getStoreStatusLabel(newStatus)
+      toast.success(`Đã cập nhật trạng thái cửa hàng sang "${label}"`)
       loadStores()
     } catch (e: any) {
       toast.error(e.message || 'Không thể đổi trạng thái')
@@ -129,8 +167,10 @@ export default function AdminStoresPage() {
   // Calculate statistics
   const statistics = useMemo(() => {
     const total = allStores.length
-    const active = allStores.filter(s => s.isActive).length
-    const inactive = total - active
+    const statusOf = (store: StoreLocation) => StoreLocationService.resolveStoreStatus(store)
+    const active = allStores.filter(s => statusOf(s) === 'ACTIVE').length
+    const paused = allStores.filter(s => statusOf(s) === 'PAUSED').length
+    const closed = allStores.filter(s => statusOf(s) === 'CLOSED').length
     const cities = new Set(allStores.map(s => s.city).filter(Boolean))
     const storesByCity = allStores.reduce((acc, store) => {
       const city = store.city || 'Không xác định'
@@ -144,7 +184,8 @@ export default function AdminStoresPage() {
     return {
       total,
       active,
-      inactive,
+      paused,
+      closed,
       citiesCount: cities.size,
       topCities
     }
@@ -229,7 +270,7 @@ export default function AdminStoresPage() {
       {header}
 
       {/* Statistics Cards */}
-      <div className="mt-6 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="mt-6 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
@@ -267,14 +308,32 @@ export default function AdminStoresPage() {
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.3 }}
+          className="bg-gradient-to-br from-yellow-500 to-yellow-600 rounded-xl p-6 text-white shadow-lg"
+        >
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-yellow-100 text-sm font-medium mb-1">Tạm dừng hoạt động</p>
+              <p className="text-3xl font-bold">{statistics.paused}</p>
+              <p className="text-yellow-100 text-xs mt-1">
+                {statistics.total > 0 ? Math.round((statistics.paused / statistics.total) * 100) : 0}% tổng số
+              </p>
+            </div>
+            <PowerOff className="w-12 h-12 text-yellow-200" />
+          </div>
+        </motion.div>
+
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.35 }}
           className="bg-gradient-to-br from-red-500 to-red-600 rounded-xl p-6 text-white shadow-lg"
         >
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-red-100 text-sm font-medium mb-1">Tạm dừng</p>
-              <p className="text-3xl font-bold">{statistics.inactive}</p>
+              <p className="text-red-100 text-sm font-medium mb-1">Đã đóng cửa</p>
+              <p	className="text-3xl font-bold">{statistics.closed}</p>
               <p className="text-red-100 text-xs mt-1">
-                {statistics.total > 0 ? Math.round((statistics.inactive / statistics.total) * 100) : 0}% tổng số
+                {statistics.total > 0 ? Math.round((statistics.closed / statistics.total) * 100) : 0}% tổng số
               </p>
             </div>
             <PowerOff className="w-12 h-12 text-red-200" />
@@ -331,46 +390,93 @@ export default function AdminStoresPage() {
           Danh sách cửa hàng {searchTerm || cityFilter ? `(${stores.length} kết quả)` : `(${allStores.length} cửa hàng)`}
         </h3>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-        {stores.map((s, idx) => (
-          <motion.div key={s.id ?? `${s.name}-${s.latitude}-${s.longitude}-${idx}`} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} className="border rounded-xl p-4 bg-white shadow-sm">
-            <div className="flex items-start justify-between gap-2">
-              <div>
-                <div className="font-semibold text-gray-900 text-base">{s.name}</div>
-                <div className="text-sm text-gray-600 mt-1">{StoreLocationService.formatStoreAddress(s)}</div>
-                {(s.phone || s.phoneNumber) && (
-                  <div className="text-sm text-gray-600 mt-1 flex items-center gap-1">
-                    <Phone className="w-3 h-3" />
-                    <span className="font-bold">SĐT: {(s as any).phone || s.phoneNumber}</span>
+        {stores.map((s, idx) => {
+          const status = StoreLocationService.resolveStoreStatus(s)
+          const statusLabel = StoreLocationService.getStoreStatusLabel(status)
+          return (
+            <motion.div
+              key={s.id ?? `${s.name}-${s.latitude}-${s.longitude}-${idx}`}
+              initial={{ opacity: 0, y: 8 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="border rounded-xl p-4 bg-white shadow-sm"
+            >
+              <div className="flex items-start justify-between gap-2">
+                <div>
+                  <div className="font-semibold text-gray-900 text-base">{s.name}</div>
+                  <div className="text-sm text-gray-600 mt-1">{StoreLocationService.formatStoreAddress(s)}</div>
+                  {(s.phone || s.phoneNumber) && (
+                    <div className="text-sm text-gray-600 mt-1 flex items-center gap-1">
+                      <Phone className="w-3 h-3" />
+                      <span className="font-bold">SĐT: {(s as any).phone || s.phoneNumber}</span>
+                    </div>
+                  )}
+                  {s.openingHours && (
+                    <div className="text-sm text-gray-600 mt-1 flex items-center gap-1">
+                      <Clock className="w-3 h-3" />
+                      <span className="font-bold">{s.openingHours}</span>
+                    </div>
+                  )}
+                  <div className={`mt-2 inline-block text-xs px-2 py-1 rounded-full font-medium ${StoreLocationService.getStoreStatusColor(status)}`}>
+                    {statusLabel}
                   </div>
-                )}
-                {s.openingHours && (
-                  <div className="text-sm text-gray-600 mt-1 flex items-center gap-1">
-                    <Clock className="w-3 h-3" />
-                    <span className="font-bold">{s.openingHours}</span>
+                  {/* Staff Info */}
+                  {(() => {
+                    const storeId = s.id ?? (s as any).locationID
+                    const staffList = storeId ? storeStaffMap[storeId] || [] : []
+                    if (staffList.length > 0) {
+                      const staff = staffList[0]
+                      return (
+                        <div className="mt-3 pt-3 border-t border-gray-200">
+                          <div className="flex items-center gap-2 text-sm">
+                            <User className="w-4 h-4 text-blue-600" />
+                            <span className="text-gray-600 font-medium">Nhân viên:</span>
+                            <span className="text-gray-900">{staff.username}</span>
+                            {staff.status && (
+                              <span className={`text-xs px-2 py-0.5 rounded-full ${
+                                staff.status === 'active' ? 'bg-green-100 text-green-800' :
+                                staff.status === 'inactive' ? 'bg-yellow-100 text-yellow-800' :
+                                'bg-red-100 text-red-800'
+                              }`}>
+                                {staff.status === 'active' ? 'Hoạt động' : staff.status === 'inactive' ? 'Tạm dừng' : 'Bị khóa'}
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                      )
+                    }
+                    return (
+                      <div className="mt-3 pt-3 border-t border-gray-200">
+                        <div className="flex items-center gap-2 text-sm text-gray-400">
+                          <User className="w-4 h-4" />
+                          <span>Chưa có nhân viên</span>
+                        </div>
+                      </div>
+                    )
+                  })()}
+                </div>
+                <div className="flex flex-col gap-2 items-end">
+                  <select
+                    value={status}
+                    onChange={(e) => handleChangeStatus(s, e.target.value as StoreStatus)}
+                    className="px-3 py-2 text-sm border rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 bg-white"
+                  >
+                    <option value="ACTIVE">Hoạt động</option>
+                    <option value="PAUSED">Tạm dừng</option>
+                    <option value="CLOSED">Đã đóng cửa</option>
+                  </select>
+                  <div className="flex gap-2">
+                    <button onClick={() => handleEdit(s)} title="Sửa" className="p-2 rounded-lg border hover:bg-gray-50 text-blue-600">
+                      <Edit2 className="w-4 h-4" />
+                    </button>
+                    <button onClick={() => handleDelete(s)} title="Xoá" className="p-2 rounded-lg border hover:bg-gray-50 text-red-600">
+                      <Trash2 className="w-4 h-4" />
+                    </button>
                   </div>
-                )}
-                <div className={`mt-2 inline-block text-xs px-2 py-1 rounded-full font-medium ${StoreLocationService.getStoreStatusColor(s.isActive)}`}>
-                  {StoreLocationService.getStoreStatusLabel(s.isActive)}
                 </div>
               </div>
-              <div className="flex gap-2">
-                <button
-                  onClick={() => handleToggleActive(s)}
-                  title={s.isActive ? 'Tạm dừng' : 'Kích hoạt'}
-                  className={`p-2 rounded-lg border hover:bg-gray-50 ${s.isActive ? 'text-red-600' : 'text-green-600'}`}
-                >
-                  {s.isActive ? <PowerOff className="w-4 h-4" /> : <Power className="w-4 h-4" />}
-                </button>
-                <button onClick={() => handleEdit(s)} title="Sửa" className="p-2 rounded-lg border hover:bg-gray-50 text-blue-600">
-                  <Edit2 className="w-4 h-4" />
-                </button>
-                <button onClick={() => handleDelete(s)} title="Xoá" className="p-2 rounded-lg border hover:bg-gray-50 text-red-600">
-                  <Trash2 className="w-4 h-4" />
-                </button>
-              </div>
-            </div>
-          </motion.div>
-        ))}
+            </motion.div>
+          )
+        })}
         </div>
       </div>
 

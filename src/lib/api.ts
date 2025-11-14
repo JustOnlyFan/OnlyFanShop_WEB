@@ -124,12 +124,18 @@ apiClient.interceptors.response.use(
         isRefreshing = false
       }
     }
+    
+    // If 401 after retry or no refresh token, handle immediately
+    if (error.response?.status === 401) {
+      await handleUnauthorizedRedirect(error)
+    }
  
     return Promise.reject(error)
   }
 )
 
 const handleUnauthorizedRedirect = async (error: any) => {
+  // Clear all auth data
   tokenStorage.clearAll()
 
   if (typeof window !== 'undefined') {
@@ -143,10 +149,12 @@ const handleUnauthorizedRedirect = async (error: any) => {
     console.error('Error clearing auth store:', storeError)
   }
 
+  // Redirect to login page if not already there
   if (typeof window !== 'undefined') {
     const currentPath = window.location.pathname
-    if (!currentPath.includes('/auth/login') && !currentPath.includes('/login')) {
-      const message = error?.response?.data?.message || 'Session expired. Please login again.'
+    if (!currentPath.includes('/auth/login') && !currentPath.includes('/login') && !currentPath.includes('/auth/staff-login')) {
+      const message = error?.response?.data?.message || error?.message || 'Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại.'
+      // Use window.location.href for full page reload to clear any cached state
       window.location.href = '/auth/login?message=' + encodeURIComponent(message)
     }
   }

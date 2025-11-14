@@ -4,12 +4,12 @@ import { useEffect, useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { X, Loader2, MapPin, Crosshair, Upload as UploadIcon, Trash2 } from 'lucide-react'
 import toast from 'react-hot-toast'
-import { StoreLocationService, CreateStoreLocationRequest, UpdateStoreLocationRequest } from '@/services/storeLocationService'
+import { StoreLocationService, CreateStoreLocationRequest, UpdateStoreLocationRequest, StoreStatus } from '@/services/storeLocationService'
 import { WarehouseService, Warehouse } from '@/services/warehouseService'
 import AddressPickerModal from './AddressPickerModal'
 
 interface StoreManagementModalProps {
-  store: (Partial<CreateStoreLocationRequest> & { id?: number; isActive?: boolean }) | null
+  store: (Partial<CreateStoreLocationRequest> & { id?: number; isActive?: boolean; status?: StoreStatus }) | null
   onClose: () => void
   onSaved?: () => void
 }
@@ -31,7 +31,8 @@ export default function StoreManagementModal({ store, onClose, onSaved }: StoreM
     openingHours: '',
     description: '',
     images: [],
-    services: []
+    services: [],
+    status: 'ACTIVE'
   })
   const [uploadingImage, setUploadingImage] = useState(false)
   const [addressModalOpen, setAddressModalOpen] = useState(false)
@@ -54,7 +55,8 @@ export default function StoreManagementModal({ store, onClose, onSaved }: StoreM
         openingHours: (store.openingHours as string) || '',
         description: (store.description as string) || '',
         images: (store.images as string[]) || [],
-        services: (store.services as string[]) || []
+        services: (store.services as string[]) || [],
+        status: (store.status as StoreStatus) || 'ACTIVE'
       }))
     }
     // Load regional warehouses for selection
@@ -82,14 +84,16 @@ export default function StoreManagementModal({ store, onClose, onSaved }: StoreM
     try {
       if (isEditMode && store && typeof (store as any).id === 'number') {
         const payload: UpdateStoreLocationRequest = {
-          ...formData
+          ...formData,
+          status: formData.status || 'ACTIVE'
         }
         await StoreLocationService.updateStoreLocation((store as any).id, payload)
         toast.success('Cập nhật cửa hàng thành công!')
       } else {
         const payload: CreateStoreLocationRequest = {
           ...formData,
-          parentRegionalWarehouseId: typeof selectedRegionalId === 'number' ? selectedRegionalId : undefined
+          parentRegionalWarehouseId: typeof selectedRegionalId === 'number' ? selectedRegionalId : undefined,
+          status: formData.status || 'ACTIVE'
         }
         await StoreLocationService.createStoreLocation(payload)
         toast.success('Thêm cửa hàng thành công!')
@@ -268,6 +272,21 @@ export default function StoreManagementModal({ store, onClose, onSaved }: StoreM
                   className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500"
                   required
                 />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Trạng thái hoạt động *</label>
+                <select
+                  value={formData.status || 'ACTIVE'}
+                  onChange={(e) => setFormData(prev => ({ ...prev, status: e.target.value as StoreStatus }))}
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 bg-white"
+                >
+                  <option value="ACTIVE">Hoạt động</option>
+                  <option value="PAUSED">Tạm dừng sửa chữa</option>
+                  <option value="CLOSED">Đã đóng cửa</option>
+                </select>
+                <p className="mt-1 text-xs text-gray-500">
+                  Trạng thái này sẽ tự động đồng bộ trạng thái tài khoản nhân viên của cửa hàng.
+                </p>
               </div>
               <div className="md:col-span-2">
                 <div className="flex items-center justify-between">

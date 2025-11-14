@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { useAuthStore } from '@/store/authStore';
 import { LoadingSpinner } from '@/components/ui/LoadingSpinner';
 import AdminDesktop from '@/components/sections/AdminDesktop';
+import { AuthService } from '@/services/authService';
 
 interface DashboardStats {
   totalUsers: number;
@@ -32,8 +33,19 @@ export default function AdminDashboard() {
 
   useEffect(() => {
     if (!hasHydrated) return;
+    
+    // First check if user has valid token
+    const token = AuthService.getToken()
+    if (!token) {
+      // No token - redirect to login
+      useAuthStore.getState().logout()
+      router.push('/auth/login?message=' + encodeURIComponent('Vui lòng đăng nhập lại'))
+      return
+    }
+    
+    // Then check if authenticated
     if (!isAuthenticated) {
-      router.push('/auth/login');
+      router.push('/auth/login?message=' + encodeURIComponent('Vui lòng đăng nhập lại'))
       return;
     }
     

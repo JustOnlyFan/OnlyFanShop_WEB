@@ -1,6 +1,6 @@
 import { apiClient } from '@/lib/api'
-import axios from 'axios'
 import { tokenStorage } from '@/utils/tokenStorage'
+import type { StoreStatus } from './storeLocationService'
 
 const API_URL = typeof process.env.NEXT_PUBLIC_API_URL !== 'undefined'
   ? process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080'
@@ -19,6 +19,16 @@ export interface UserDTO {
     name: string
   }
   roleName?: string
+  storeLocationId?: number
+  storeLocation?: {
+    locationID: number
+    name: string
+    address: string
+    ward?: string
+    city?: string
+    phone?: string
+    status?: StoreStatus
+  }
 }
 
 export interface UserListResponse {
@@ -79,6 +89,50 @@ export class UserAdminService {
         throw new Error('Endpoint not found. Please check API URL configuration.')
       }
       throw new Error(error.response?.data?.message || error.message || 'Failed to get users')
+    }
+  }
+
+  static async getStaffManagementAccounts(
+    keyword?: string,
+    storeLocationId?: number,
+    page: number = 0,
+    size: number = 20,
+    sortField: string = 'username',
+    sortDirection: string = 'ASC'
+  ): Promise<ApiResponse<UserListResponse>> {
+    try {
+      const token = tokenStorage.getAccessToken()
+      if (!token) {
+        throw new Error('No authentication token found. Please login again.')
+      }
+
+      const params = new URLSearchParams()
+      if (keyword) params.append('keyword', keyword)
+      if (typeof storeLocationId === 'number') {
+        params.append('storeLocationId', storeLocationId.toString())
+      }
+      params.append('page', page.toString())
+      params.append('size', size.toString())
+      params.append('sortField', sortField)
+      params.append('sortDirection', sortDirection)
+
+      const response = await apiClient.get<ApiResponse<UserListResponse>>(
+        `/users/staff-management/accounts?${params.toString()}`
+      )
+      return response.data as ApiResponse<UserListResponse>
+    } catch (error: any) {
+      console.error('Error getting staff accounts:', error.response?.status, error.response?.data)
+      if (error.response?.status === 401) {
+        const message = error.response?.data?.message || 'Session expired. Please login again.'
+        throw new Error(message)
+      }
+      if (error.response?.status === 403) {
+        throw new Error('Access denied. Admin access required.')
+      }
+      if (error.response?.status === 404) {
+        throw new Error('Endpoint not found. Please check API URL configuration.')
+      }
+      throw new Error(error.response?.data?.message || error.message || 'Failed to get staff accounts')
     }
   }
 

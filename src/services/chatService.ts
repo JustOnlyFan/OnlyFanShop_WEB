@@ -318,4 +318,19 @@ export class ChatService {
   static generateRoomId(customerId: string): string {
     return `chatRoom_${customerId}`
   }
+
+  // Create chat room from product
+  static async createChatRoomFromProduct(request: { productId: number; initialMessage?: string }): Promise<ApiResponse<string>> {
+    try {
+      const response = await axios.post(`${API_URL}/api/chat/rooms/from-product`, {
+        productId: request.productId,
+        initialMessage: request.initialMessage
+      }, {
+        headers: this.getAuthHeaders()
+      })
+      return response.data
+    } catch (error: any) {
+      throw new Error(error.response?.data?.message || 'Failed to create chat room from product')
+    }
+  }
 }
