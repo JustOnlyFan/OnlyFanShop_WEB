@@ -12,12 +12,16 @@ import { RouteGuard } from '@/components/auth/RouteGuard'
 const inter = Inter({ 
   subsets: ['latin'],
   variable: '--font-inter',
+  display: 'swap', // Giảm FOUT
+  preload: true,
 })
 
 const poppins = Poppins({ 
   subsets: ['latin'],
   weight: ['300', '400', '500', '600', '700', '800'],
   variable: '--font-poppins',
+  display: 'swap', // Giảm FOUT
+  preload: true,
 })
 
 export const metadata: Metadata = {
@@ -46,42 +50,45 @@ export default function RootLayout({
 }) {
   return (
     <html lang="vi" className={`${inter.variable} ${poppins.variable}`}>
-      <body className="font-sans antialiased">
-        <Providers>
-          <ErrorBoundary>
-            <RouteGuard>
-              <DesktopLayout>
-                {children}
-              </DesktopLayout>
-              <Footer />
-              <ChatButton />
-            </RouteGuard>
-          </ErrorBoundary>
-          <Toaster 
-            position="top-right"
-            toastOptions={{
-              duration: 4000,
-              style: {
-                background: '#363636',
-                color: '#fff',
-              },
-              success: {
-                duration: 3000,
-                iconTheme: {
-                  primary: '#22c55e',
-                  secondary: '#fff',
+
+      <body className="font-sans antialiased overflow-x-hidden">
+        <div className="overflow-x-hidden w-full">
+          <Providers>
+            <ErrorBoundary>
+              <RouteGuard>
+                <DesktopLayout>
+                  {children}
+                </DesktopLayout>
+                <Footer />
+                <ChatButton />
+              </RouteGuard>
+            </ErrorBoundary>
+            <Toaster 
+              position="top-right"
+              toastOptions={{
+                duration: 4000,
+                style: {
+                  background: '#363636',
+                  color: '#fff',
                 },
-              },
-              error: {
-                duration: 5000,
-                iconTheme: {
-                  primary: '#ef4444',
-                  secondary: '#fff',
+                success: {
+                  duration: 3000,
+                  iconTheme: {
+                    primary: '#22c55e',
+                    secondary: '#fff',
+                  },
                 },
-              },
-            }}
-          />
-        </Providers>
+                error: {
+                  duration: 5000,
+                  iconTheme: {
+                    primary: '#ef4444',
+                    secondary: '#fff',
+                  },
+                },
+              }}
+            />
+          </Providers>
+        </div>
       </body>
     </html>
   )

@@ -1,631 +1,175 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { useAuthStore } from '@/store/authStore'
 import { LoadingSpinner } from '@/components/ui/LoadingSpinner'
-import { WarehouseService, Warehouse, CreateWarehouseRequest } from '@/services/warehouseService'
-import { StoreLocationService } from '@/services/storeLocationService'
-import { AddressService } from '@/services/addressService'
-import { VietnamProvince, VietnamWard } from '@/types'
+import { StoreLocationService, StoreLocation } from '@/services/storeLocationService'
 import { motion } from 'framer-motion'
-import { Plus, Edit2, Trash2, Search, Building2, Warehouse as WarehouseIcon, ArrowLeft, MapPin, ArrowRight, History, Package } from 'lucide-react'
+import { Store as StoreIcon, Search, Settings, CheckCircle2, XCircle, Package } from 'lucide-react'
+import { StoreProductModal } from '@/components/admin/StoreProductModal'
 import toast from 'react-hot-toast'
-import Link from 'next/link'
-import { AuthService } from '@/services/authService'
+import { AdminCard, AdminCardHeader, AdminCardBody, AdminInput, AdminBadge, AdminStats } from '@/components/admin/ui'
+
+type StoreWithId = StoreLocation & { id?: number; locationID?: number }
 
 export default function AdminWarehousesPage() {
   const router = useRouter()
   const { user, isAuthenticated, hasHydrated } = useAuthStore()
-
   const [loading, setLoading] = useState(true)
-  const [warehouses, setWarehouses] = useState<Warehouse[]>([])
-  const [storeLocations, setStoreLocations] = useState<any[]>([])
-  const [provinces, setProvinces] = useState<VietnamProvince[]>([])
-  const [wards, setWards] = useState<VietnamWard[]>([])
+  const [stores, setStores] = useState<StoreWithId[]>([])
   const [searchTerm, setSearchTerm] = useState('')
-  const [typeFilter, setTypeFilter] = useState<'all' | 'main' | 'regional' | 'branch'>('all')
-  const [showModal, setShowModal] = useState(false)
-  const [editingWarehouse, setEditingWarehouse] = useState<Warehouse | null>(null)
-  const [formData, setFormData] = useState<CreateWarehouseRequest>({
-    name: '',
-    code: '',
-    type: 'main',
-    addressLine1: '',
-    ward: '',
-    district: '',
-    city: '',
-    country: 'Vietnam',
-    phone: ''
-  })
+  const [selectedCity, setSelectedCity] = useState('')
+  const [selectedStore, setSelectedStore] = useState<StoreWithId | null>(null)
+  const [storeProductStats, setStoreProductStats] = useState<Record<number, { available: number; total: number }>>({})
 
   useEffect(() => {
     if (!hasHydrated) return
-    
-    // First check if user has valid token
-    const token = AuthService.getToken()
-    if (!token) {
-      // No token - redirect to login
-      useAuthStore.getState().logout()
-      router.push('/auth/login?message=' + encodeURIComponent('Vui lòng đăng nhập lại'))
-      return
-    }
-    
-    // Then check if authenticated and is admin
-    if (!isAuthenticated) {
-      router.push('/auth/login?message=' + encodeURIComponent('Vui lòng đăng nhập lại'))
-      return
-    }
-    
-    if (user?.role !== 'ADMIN') {
-      // Not admin - redirect to home
+    if (!isAuthenticated || user?.role !== 'ADMIN') {
       router.push('/')
       return
     }
-    
-    loadData()
+    loadStores()
   }, [hasHydrated, isAuthenticated, user, router])
 
-  const loadData = async () => {
+  const loadStores = async () => {
     try {
       setLoading(true)
-      await Promise.all([loadWarehouses(), loadStoreLocations(), loadProvinces()])
+      const response = await StoreLocationService.getStoreLocations()
+      const raw = response.data
+      const list: StoreWithId[] = Array.isArray(raw) ? raw : raw?.stores || []
+      const normalized = list.map((store, index) => ({
+        ...store,
+        id: store.id ?? store.locationID ?? index
+      }))
+      setStores(normalized)
+    } catch (error: any) {
+      toast.error(error.message || 'Không thể tải danh sách cửa hàng')
+      setStores([])
     } finally {
       setLoading(false)
     }
   }
 
-  const loadProvinces = async () => {
-    try {
-      const data = await AddressService.getProvinces()
-      setProvinces(data)
-    } catch (error: any) {
-      console.error('Failed to load provinces:', error)
-      toast.error('Không thể tải danh sách tỉnh/thành phố')
-    }
-  }
-
-  const loadWardsForProvince = async (provinceName: string) => {
-    try {
-      if (!provinceName) {
-        setWards([])
-        return
-      }
-      const province = provinces.find(p => p.name === provinceName)
-      if (!province) {
-        // Try to find by code if name doesn't match
-        const provinceByCode = provinces.find(p => p.code.toString() === provinceName)
-        if (!provinceByCode) {
-          setWards([])
-          return
-        }
-        const provinceData = await AddressService.getProvinceWithWards(provinceByCode.code)
-        setWards(provinceData.wards || [])
-        return
-      }
-      const provinceData = await AddressService.getProvinceWithWards(province.code)
-      setWards(provinceData.wards || [])
-    } catch (error: any) {
-      console.error('Failed to load wards:', error)
-      toast.error('Không thể tải danh sách phường/xã')
-      setWards([])
-    }
-  }
-
-  const loadWarehouses = async () => {
-    try {
-      const response = await WarehouseService.getAllWarehouses()
-      setWarehouses(response.data || [])
-    } catch (error: any) {
-      console.error('Error loading warehouses:', error)
-      
-      // Handle 401 Unauthorized - token invalid or expired
-      if (error.response?.status === 401 || error.message?.includes('401')) {
-        // Clear auth and redirect to login
-        useAuthStore.getState().logout()
-        router.push('/auth/login?message=' + encodeURIComponent('Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại.'))
-        return
-      }
-      
-      // Don't show error toast if backend is not running (connection refused)
-      if (error.message?.includes('Network Error') || error.message?.includes('ERR_CONNECTION_REFUSED')) {
-        toast.error('Không thể kết nối đến server. Vui lòng kiểm tra backend đang chạy.')
-      } else {
-        toast.error(error.message || 'Không thể tải danh sách kho')
-      }
-      setWarehouses([]) // Set empty array on error
-    }
-  }
-
-  const loadStoreLocations = async () => {
-    try {
-      const response = await StoreLocationService.getStoreLocations()
-      setStoreLocations(Array.isArray(response.data) ? response.data : [])
-    } catch (error: any) {
-      console.error('Failed to load store locations:', error)
-      // Don't show error toast, just log it - store locations are optional for warehouse creation
-      setStoreLocations([])
-    }
-  }
-
-  const filteredWarehouses = warehouses.filter(wh => {
-    const matchesSearch = wh.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      wh.code.toLowerCase().includes(searchTerm.toLowerCase())
-    const matchesType = typeFilter === 'all' || wh.type === typeFilter
-    return matchesSearch && matchesType
-  })
-
-  const handleAdd = () => {
-    setEditingWarehouse(null)
-    setFormData({
-      name: '',
-      code: '',
-      type: 'main',
-      addressLine1: '',
-      ward: '',
-      district: '', // No longer used, but keep for backward compatibility
-      city: '',
-      country: 'Vietnam',
-      phone: ''
+  const filteredStores = useMemo(() => {
+    return stores.filter((store) => {
+      const matchesSearch = store.name?.toLowerCase().includes(searchTerm.toLowerCase()) || store.address?.toLowerCase().includes(searchTerm.toLowerCase()) || store.city?.toLowerCase().includes(searchTerm.toLowerCase())
+      const matchesCity = selectedCity ? store.city === selectedCity : true
+      return matchesSearch && matchesCity
     })
-    setShowModal(true)
-  }
+  }, [stores, searchTerm, selectedCity])
 
-  const handleEdit = (warehouse: Warehouse) => {
-    setEditingWarehouse(warehouse)
-    setFormData({
-      name: warehouse.name,
-      code: warehouse.code,
-      type: warehouse.type,
-      parentWarehouseId: warehouse.parentWarehouseId,
-      storeLocationId: warehouse.storeLocationId,
-      addressLine1: warehouse.addressLine1 || '',
-      addressLine2: warehouse.addressLine2 || '',
-      ward: warehouse.ward || '',
-      district: '', // No longer used
-      city: warehouse.city || '',
-      country: warehouse.country || 'Vietnam',
-      phone: warehouse.phone || ''
-    })
-    // Load wards if city is selected
-    if (warehouse.city) {
-      loadWardsForProvince(warehouse.city)
-    }
-    setShowModal(true)
-  }
+  const statistics = useMemo(() => {
+    const total = stores.length
+    const active = stores.filter((s) => StoreLocationService.resolveStoreStatus(s) === 'ACTIVE').length
+    const paused = stores.filter((s) => StoreLocationService.resolveStoreStatus(s) === 'PAUSED').length
+    const closed = stores.filter((s) => StoreLocationService.resolveStoreStatus(s) === 'CLOSED').length
+    return { total, active, paused, closed }
+  }, [stores])
 
-  const handleDelete = async (warehouse: Warehouse) => {
-    if (!confirm(`Xóa kho "${warehouse.name}"?`)) return
-    try {
-      await WarehouseService.deleteWarehouse(warehouse.id)
-      toast.success('Đã xóa kho')
-      loadWarehouses()
-    } catch (error: any) {
-      toast.error(error.message || 'Không thể xóa kho')
-    }
+  const handleStatsChange = (storeId: number, stats: { available: number; total: number }) => {
+    setStoreProductStats((prev) => ({ ...prev, [storeId]: stats }))
   }
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
-    try {
-      if (editingWarehouse) {
-        await WarehouseService.updateWarehouse(editingWarehouse.id, formData)
-        toast.success('Cập nhật kho thành công')
-      } else {
-        await WarehouseService.createWarehouse(formData)
-        toast.success('Tạo kho thành công')
-      }
-      setShowModal(false)
-      loadWarehouses()
-    } catch (error: any) {
-      toast.error(error.message || 'Không thể lưu kho')
-    }
-  }
-
-  const mainWarehouses = warehouses.filter(w => w.type === 'main')
-  const regionalWarehouses = warehouses.filter(w => w.type === 'regional')
-  const branchWarehouses = warehouses.filter(w => w.type === 'branch')
 
   if (!hasHydrated || loading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <LoadingSpinner />
-      </div>
-    )
+    return <div className="min-h-screen flex items-center justify-center"><LoadingSpinner /></div>
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 p-6">
-      <div className="max-w-7xl mx-auto">
-        {/* Header */}
-        <div className="mb-6">
-          <Link href="/admin" className="inline-flex items-center text-gray-600 hover:text-gray-900 mb-4">
-            <ArrowLeft className="w-4 h-4 mr-2" />
-            Quay lại
-          </Link>
-          <div className="flex items-center justify-between">
-            <div>
-              <h1 className="text-3xl font-bold text-gray-900 flex items-center">
-                <WarehouseIcon className="w-8 h-8 mr-3 text-indigo-600" />
-                Quản lý kho hàng
-              </h1>
-              <p className="text-gray-600 mt-1">Quản lý hệ thống kho hàng phân cấp</p>
-            </div>
-            <div className="flex gap-2">
-              <Link
-                href="/admin/warehouses/transfer"
-                className="bg-purple-600 text-white px-4 py-2 rounded-lg hover:bg-purple-700 flex items-center"
-              >
-                <ArrowRight className="w-5 h-5 mr-2" />
-                Chuyển kho
-              </Link>
-              <button
-                onClick={handleAdd}
-                className="bg-indigo-600 text-white px-4 py-2 rounded-lg hover:bg-indigo-700 flex items-center"
-              >
-                <Plus className="w-5 h-5 mr-2" />
-                Thêm kho
-              </button>
-            </div>
-          </div>
-        </div>
+    <div className="space-y-6">
+      {/* Statistics */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+        <AdminStats title="Tổng cửa hàng" value={statistics.total} icon={<StoreIcon className="w-5 h-5" />} color="blue" />
+        <AdminStats title="Đang hoạt động" value={statistics.active} icon={<CheckCircle2 className="w-5 h-5" />} color="green" />
+        <AdminStats title="Tạm dừng" value={statistics.paused} icon={<Package className="w-5 h-5" />} color="orange" />
+        <AdminStats title="Đã đóng" value={statistics.closed} icon={<XCircle className="w-5 h-5" />} color="red" />
+      </div>
 
-        {/* Statistics */}
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="bg-white rounded-lg shadow p-4"
-          >
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-gray-600 text-sm">Tổng số kho</p>
-                <p className="text-2xl font-bold text-gray-900">{warehouses.length}</p>
-              </div>
-              <Package className="w-8 h-8 text-blue-500" />
-            </div>
-          </motion.div>
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.1 }}
-            className="bg-white rounded-lg shadow p-4"
-          >
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-gray-600 text-sm">Kho Tổng</p>
-                <p className="text-2xl font-bold text-blue-600">{mainWarehouses.length}</p>
-              </div>
-              <Building2 className="w-8 h-8 text-blue-500" />
-            </div>
-          </motion.div>
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.2 }}
-            className="bg-white rounded-lg shadow p-4"
-          >
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-gray-600 text-sm">Kho Khu Vực</p>
-                <p className="text-2xl font-bold text-green-600">{regionalWarehouses.length}</p>
-              </div>
-              <MapPin className="w-8 h-8 text-green-500" />
-            </div>
-          </motion.div>
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.3 }}
-            className="bg-white rounded-lg shadow p-4"
-          >
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-gray-600 text-sm">Kho Chi Nhánh</p>
-                <p className="text-2xl font-bold text-purple-600">{branchWarehouses.length}</p>
-              </div>
-              <WarehouseIcon className="w-8 h-8 text-purple-500" />
-            </div>
-          </motion.div>
-        </div>
-
-        {/* Filters */}
-        <div className="bg-white rounded-lg shadow p-4 mb-6">
+      {/* Filters */}
+      <AdminCard>
+        <AdminCardBody>
           <div className="flex flex-col md:flex-row gap-4">
             <div className="flex-1">
-              <div className="relative">
-                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
-                <input
-                  type="text"
-                  placeholder="Tìm kiếm kho..."
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
-                />
-              </div>
+              <AdminInput value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} placeholder="Tìm kiếm theo tên, địa chỉ..." icon={<Search className="w-5 h-5" />} />
             </div>
-            <div className="flex gap-2">
-              <select
-                value={typeFilter}
-                onChange={(e) => setTypeFilter(e.target.value as any)}
-                className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
-              >
-                <option value="all">Tất cả loại</option>
-                <option value="main">Kho Tổng</option>
-                <option value="regional">Kho Khu Vực</option>
-                <option value="branch">Kho Chi Nhánh</option>
+            <div className="md:w-60">
+              <select value={selectedCity} onChange={(e) => setSelectedCity(e.target.value)} className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 bg-white">
+                <option value="">Tất cả tỉnh/thành</option>
+                {[...new Set(stores.map((store) => store.city).filter(Boolean))].map((city) => (
+                  <option key={city as string} value={city as string}>{city}</option>
+                ))}
               </select>
             </div>
           </div>
-        </div>
+        </AdminCardBody>
+      </AdminCard>
 
-        {/* Warehouse List */}
-        <div className="bg-white rounded-lg shadow overflow-hidden">
-          <div className="overflow-x-auto">
-            <table className="w-full">
-              <thead className="bg-gray-50">
-                <tr>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Mã kho</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Tên kho</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Loại</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Kho cha</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Địa chỉ</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Trạng thái</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Thao tác</th>
-                </tr>
-              </thead>
-              <tbody className="bg-white divide-y divide-gray-200">
-                {filteredWarehouses.map((warehouse) => (
-                  <motion.tr
-                    key={warehouse.id}
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: 1 }}
-                    className="hover:bg-gray-50"
-                  >
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="text-sm font-medium text-gray-900">{warehouse.code}</div>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <Link
-                        href={`/admin/warehouses/${warehouse.id}/inventory`}
-                        className="text-sm font-medium text-gray-900 hover:text-indigo-600 cursor-pointer"
-                      >
-                        {warehouse.name}
-                      </Link>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <span className={`px-2 py-1 text-xs font-semibold rounded-full ${WarehouseService.getWarehouseTypeColor(warehouse.type)}`}>
-                        {WarehouseService.getWarehouseTypeLabel(warehouse.type)}
-                      </span>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="text-sm text-gray-500">{warehouse.parentWarehouseName || '-'}</div>
-                    </td>
-                    <td className="px-6 py-4">
-                      <div className="text-sm text-gray-500">
-                        {warehouse.addressLine1 && (
-                          <div>{warehouse.addressLine1}</div>
-                        )}
-                        {warehouse.city && (
-                          <div className="text-xs text-gray-400">{warehouse.city}</div>
-                        )}
-                      </div>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <span className={`px-2 py-1 text-xs font-semibold rounded-full ${warehouse.isActive ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>
-                        {warehouse.isActive ? 'Hoạt động' : 'Tạm dừng'}
-                      </span>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                      <div className="flex items-center gap-2">
-                        <Link
-                          href={`/admin/warehouses/${warehouse.id}/inventory`}
-                          className="text-indigo-600 hover:text-indigo-900"
-                          title="Xem tồn kho"
-                        >
-                          <Package className="w-4 h-4" />
-                        </Link>
-                        <Link
-                          href={`/admin/warehouses/${warehouse.id}/movements`}
-                          className="text-purple-600 hover:text-purple-900"
-                          title="Xem lịch sử"
-                        >
-                          <History className="w-4 h-4" />
-                        </Link>
-                        <button
-                          onClick={() => handleEdit(warehouse)}
-                          className="text-blue-600 hover:text-blue-900"
-                          title="Chỉnh sửa"
-                        >
-                          <Edit2 className="w-4 h-4" />
-                        </button>
-                        <button
-                          onClick={() => handleDelete(warehouse)}
-                          className="text-red-600 hover:text-red-900"
-                          title="Xóa"
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </button>
-                      </div>
-                    </td>
-                  </motion.tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </div>
+      {/* Store list */}
+      <AdminCard>
+        <AdminCardHeader title="Danh sách cửa hàng" subtitle={`${filteredStores.length} cửa hàng`} />
+        <AdminCardBody className="p-0">
+          {filteredStores.length === 0 ? (
+            <div className="p-12 text-center">
+              <Package className="w-16 h-16 mx-auto mb-4 text-gray-300" />
+              <p className="text-gray-500">Không tìm thấy cửa hàng phù hợp</p>
+            </div>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="w-full">
+                <thead className="bg-gray-50 border-b border-gray-100">
+                  <tr>
+                    <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase">Cửa hàng</th>
+                    <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase">Địa chỉ</th>
+                    <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase">Trạng thái</th>
+                    <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase">Sản phẩm</th>
+                    <th className="px-4 py-3 text-center text-xs font-semibold text-gray-600 uppercase">Thao tác</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-gray-100">
+                  {filteredStores.map((store, index) => {
+                    const storeId = store.id ?? (store as any).locationID
+                    const status = StoreLocationService.resolveStoreStatus(store)
+                    const stats = storeId ? storeProductStats[storeId] : undefined
 
-        {/* Modal */}
-        {showModal && (
-          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-            <motion.div
-              initial={{ opacity: 0, scale: 0.95 }}
-              animate={{ opacity: 1, scale: 1 }}
-              className="bg-white rounded-lg shadow-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto"
-            >
-              <div className="p-6">
-                <h2 className="text-2xl font-bold mb-4">
-                  {editingWarehouse ? 'Chỉnh sửa kho' : 'Thêm kho mới'}
-                </h2>
-                <form onSubmit={handleSubmit} className="space-y-4">
-                  <div className="grid grid-cols-2 gap-4">
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">Tên kho *</label>
-                      <input
-                        type="text"
-                        required
-                        value={formData.name}
-                        onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">Mã kho *</label>
-                      <input
-                        type="text"
-                        required
-                        value={formData.code}
-                        onChange={(e) => setFormData({ ...formData, code: e.target.value })}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500"
-                      />
-                    </div>
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Loại kho *</label>
-                    <select
-                      required
-                      value={formData.type}
-                      onChange={(e) => setFormData({ ...formData, type: e.target.value as any, parentWarehouseId: undefined, storeLocationId: undefined })}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500"
-                    >
-                      <option value="main">Kho Tổng</option>
-                      <option value="regional">Kho Khu Vực</option>
-                      <option value="branch">Kho Chi Nhánh</option>
-                    </select>
-                  </div>
-                  {formData.type === 'regional' && (
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">Kho Tổng (Kho cha)</label>
-                      <select
-                        value={formData.parentWarehouseId || ''}
-                        onChange={(e) => setFormData({ ...formData, parentWarehouseId: e.target.value ? parseInt(e.target.value) : undefined })}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500"
-                      >
-                        <option value="">Chọn kho tổng</option>
-                        {mainWarehouses.map(wh => (
-                          <option key={wh.id} value={wh.id}>{wh.name}</option>
-                        ))}
-                      </select>
-                    </div>
-                  )}
-                  {formData.type === 'branch' && (
-                    <>
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">Kho Khu Vực (Kho cha)</label>
-                        <select
-                          value={formData.parentWarehouseId || ''}
-                          onChange={(e) => setFormData({ ...formData, parentWarehouseId: e.target.value ? parseInt(e.target.value) : undefined })}
-                          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500"
-                        >
-                          <option value="">Chọn kho khu vực</option>
-                          {regionalWarehouses.map(wh => (
-                            <option key={wh.id} value={wh.id}>{wh.name}</option>
-                          ))}
-                        </select>
-                      </div>
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">Cửa hàng</label>
-                        <select
-                          value={formData.storeLocationId || ''}
-                          onChange={(e) => setFormData({ ...formData, storeLocationId: e.target.value ? parseInt(e.target.value) : undefined })}
-                          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500"
-                        >
-                          <option value="">Chọn cửa hàng</option>
-                          {storeLocations.map(sl => (
-                            <option key={sl.locationID || sl.id} value={sl.locationID || sl.id}>{sl.name}</option>
-                          ))}
-                        </select>
-                      </div>
-                    </>
-                  )}
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Địa chỉ</label>
-                    <input
-                      type="text"
-                      value={formData.addressLine1}
-                      onChange={(e) => setFormData({ ...formData, addressLine1: e.target.value })}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500"
-                    />
-                  </div>
-                  <div className="grid grid-cols-2 gap-4">
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">Tỉnh/Thành phố *</label>
-                      <select
-                        value={formData.city}
-                        onChange={(e) => {
-                          setFormData({ ...formData, city: e.target.value, ward: '' })
-                          if (e.target.value) {
-                            loadWardsForProvince(e.target.value)
-                          } else {
-                            setWards([])
-                          }
-                        }}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500"
-                      >
-                        <option value="">Chọn Tỉnh/Thành phố</option>
-                        {provinces.map((p) => (
-                          <option key={p.code} value={p.name}>{p.name}</option>
-                        ))}
-                      </select>
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">Phường/Xã *</label>
-                      <select
-                        value={formData.ward}
-                        onChange={(e) => setFormData({ ...formData, ward: e.target.value })}
-                        disabled={!formData.city || wards.length === 0}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 disabled:bg-gray-100"
-                      >
-                        <option value="">Chọn Phường/Xã</option>
-                        {wards.map((w) => (
-                          <option key={w.code} value={w.name}>{w.name}</option>
-                        ))}
-                      </select>
-                    </div>
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Số điện thoại</label>
-                    <input
-                      type="text"
-                      value={formData.phone}
-                      onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500"
-                    />
-                  </div>
-                  <div className="flex justify-end gap-2 pt-4">
-                    <button
-                      type="button"
-                      onClick={() => setShowModal(false)}
-                      className="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50"
-                    >
-                      Hủy
-                    </button>
-                    <button
-                      type="submit"
-                      className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700"
-                    >
-                      {editingWarehouse ? 'Cập nhật' : 'Tạo mới'}
-                    </button>
-                  </div>
-                </form>
-              </div>
-            </motion.div>
-          </div>
-        )}
+                    return (
+                      <motion.tr key={storeId} initial={{ opacity: 0, x: -10 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: index * 0.03 }} className="hover:bg-indigo-50/50 transition-colors">
+                        <td className="px-4 py-4">
+                          <div className="font-semibold text-gray-900">{store.name}</div>
+                          {store.phoneNumber && <div className="text-sm text-gray-500">{store.phoneNumber}</div>}
+                        </td>
+                        <td className="px-4 py-4 text-sm text-gray-600">{StoreLocationService.formatStoreAddress(store)}</td>
+                        <td className="px-4 py-4">
+                          <AdminBadge variant={status === 'ACTIVE' ? 'success' : status === 'PAUSED' ? 'warning' : 'danger'} size="sm" dot>
+                            {StoreLocationService.getStoreStatusLabel(status)}
+                          </AdminBadge>
+                        </td>
+                        <td className="px-4 py-4 text-sm">
+                          {stats ? (
+                            <div className="flex items-center gap-2">
+                              <span className="font-semibold text-indigo-700">{stats.available}</span>
+                              <span className="text-gray-400">/ {stats.total}</span>
+                            </div>
+                          ) : <span className="text-gray-400">Chưa tải</span>}
+                        </td>
+                        <td className="px-4 py-4 text-center">
+                          <button onClick={() => setSelectedStore(store)} className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 rounded-lg transition-colors">
+                            <Settings className="w-4 h-4" />
+                            Quản lý
+                          </button>
+                        </td>
+                      </motion.tr>
+                    )
+                  })}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </AdminCardBody>
+      </AdminCard>
 
-
-      </div>
+      {selectedStore && (
+        <StoreProductModal store={selectedStore} onClose={() => setSelectedStore(null)} onStatsChange={handleStatsChange} />
+      )}
     </div>
   )
 }
-

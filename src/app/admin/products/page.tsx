@@ -16,18 +16,26 @@ import {
   Power, 
   PowerOff, 
   Search,
-  ArrowLeft,
   Filter,
-  Upload,
   Package,
   TrendingUp,
   AlertCircle,
-  BarChart3
+  BarChart3,
+  Eye
 } from 'lucide-react'
 import toast from 'react-hot-toast'
 import Image from 'next/image'
 import { ProductManagementModal } from '@/components/admin/ProductManagementModal'
 import { ProductViewModal } from '@/components/admin/ProductViewModal'
+import { 
+  AdminButton, 
+  AdminCard, 
+  AdminCardHeader, 
+  AdminCardBody,
+  AdminInput,
+  AdminBadge,
+  AdminStats
+} from '@/components/admin/ui'
 
 export default function AdminProductsPage() {
   const [loading, setLoading] = useState(true)
@@ -105,7 +113,6 @@ export default function AdminProductsPage() {
         }
       })
 
-      // Inventory across warehouses
       try {
         const warehousesRes = await WarehouseService.getAllWarehouses()
         const warehouses = (warehousesRes.data || []).map((warehouse: any, idx: number) => ({
@@ -125,22 +132,17 @@ export default function AdminProductsPage() {
                 if (!statsMap[pid]) statsMap[pid] = { total: 0, sold: 0 }
                 statsMap[pid].total += item.quantityInStock || 0
               })
-            } catch (err) {
-              // Ignore individual warehouse errors
-            }
+            } catch (err) {}
           })
         )
       } catch (error) {
         console.error('Failed to load warehouse inventory:', error)
       }
 
-      // Sold quantity from orders
       try {
         const ordersRes = await OrderService.getAllOrders({})
         const ordersData: any = ordersRes.data || []
-        const orders = Array.isArray(ordersData)
-          ? ordersData
-          : ordersData?.orders || []
+        const orders = Array.isArray(ordersData) ? ordersData : ordersData?.orders || []
 
         orders.forEach((order: any) => {
           if (order.orderStatus !== 'DELIVERED') return
@@ -223,11 +225,9 @@ export default function AdminProductsPage() {
   }
 
   const handleSaved = (created: ProductDTO) => {
-    // Optimistically add the new product to the top for immediate feedback
     setProducts(prev => [created, ...prev])
   }
 
-  // Calculate statistics
   const statistics = useMemo(() => {
     const total = products.length
     const active = products.filter(p => p.active).length
@@ -235,13 +235,7 @@ export default function AdminProductsPage() {
     const outOfStock = products.filter(p => !p.active || (p as any).quantity === 0).length
     const totalQuantity = products.reduce((sum, p) => sum + ((p as any).quantity || 0), 0)
     
-    return {
-      total,
-      active,
-      inactive,
-      outOfStock,
-      totalQuantity
-    }
+    return { total, active, inactive, outOfStock, totalQuantity }
   }, [products])
 
   if (!hasHydrated || loading) {
@@ -253,212 +247,123 @@ export default function AdminProductsPage() {
   }
 
   return (
-    <div className="min-h-screen px-4 md:px-8 py-6 bg-gradient-to-br from-gray-50 to-gray-100">
-      <div className="max-w-7xl mx-auto">
-        {/* Header */}
-        <div className="mb-6">
-          <button
-            onClick={() => router.back()}
-            className="mb-4 inline-flex items-center gap-2 text-gray-600 hover:text-gray-900 transition-colors"
-          >
-            <ArrowLeft className="w-5 h-5" />
-            Quay lại
-          </button>
-          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-            <div className="flex items-center gap-3">
-              <div className="p-2 bg-green-100 rounded-lg">
-                <Package className="w-6 h-6 text-green-600" />
-              </div>
-              <div>
-                <h1 className="text-2xl font-bold text-gray-900">Quản lý Sản phẩm</h1>
-                <p className="text-sm text-gray-500 mt-0.5">Quản lý tất cả các sản phẩm trong cửa hàng</p>
-              </div>
-            </div>
-            <button
-              onClick={handleAddProduct}
-              className="inline-flex items-center justify-center gap-2 px-6 py-3 bg-gradient-to-r from-green-600 to-green-700 text-white rounded-xl hover:from-green-700 hover:to-green-800 transition-all duration-200 shadow-md hover:shadow-lg font-medium whitespace-nowrap"
-            >
-              <Plus className="w-5 h-5" />
-              <span>Thêm sản phẩm</span>
-            </button>
-          </div>
-        </div>
+    <div className="space-y-6">
+      {/* Action Button */}
+      <div className="flex justify-end">
+        <AdminButton
+          variant="success"
+          icon={<Plus className="w-5 h-5" />}
+          onClick={handleAddProduct}
+        >
+          Thêm sản phẩm
+        </AdminButton>
+      </div>
 
-        {/* Statistics Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4 mb-6">
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.1 }}
-            className="bg-gradient-to-br from-blue-500 to-blue-600 rounded-xl p-6 text-white shadow-lg"
-          >
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-blue-100 text-sm font-medium mb-1">Tổng sản phẩm</p>
-                <p className="text-3xl font-bold">{statistics.total}</p>
-              </div>
-              <Package className="w-12 h-12 text-blue-200" />
-            </div>
-          </motion.div>
+      {/* Statistics */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
+        <AdminStats
+          title="Tổng sản phẩm"
+          value={statistics.total}
+          icon={<Package className="w-6 h-6" />}
+          color="blue"
+        />
+        <AdminStats
+          title="Đang hoạt động"
+          value={statistics.active}
+          icon={<TrendingUp className="w-6 h-6" />}
+          color="green"
+          change={statistics.total > 0 ? `${Math.round((statistics.active / statistics.total) * 100)}%` : undefined}
+          trend={statistics.total > 0 ? 'up' : undefined}
+        />
+        <AdminStats
+          title="Tạm dừng"
+          value={statistics.inactive}
+          icon={<PowerOff className="w-6 h-6" />}
+          color="red"
+        />
+        <AdminStats
+          title="Hết hàng"
+          value={statistics.outOfStock}
+          icon={<AlertCircle className="w-6 h-6" />}
+          color="orange"
+        />
+        <AdminStats
+          title="Tổng số lượng"
+          value={statistics.totalQuantity.toLocaleString('vi-VN')}
+          icon={<BarChart3 className="w-6 h-6" />}
+          color="purple"
+        />
+      </div>
 
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.2 }}
-            className="bg-gradient-to-br from-green-500 to-green-600 rounded-xl p-6 text-white shadow-lg"
-          >
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-green-100 text-sm font-medium mb-1">Đang hoạt động</p>
-                <p className="text-3xl font-bold">{statistics.active}</p>
-                <p className="text-green-100 text-xs mt-1">
-                  {statistics.total > 0 ? Math.round((statistics.active / statistics.total) * 100) : 0}% tổng số
-                </p>
-              </div>
-              <TrendingUp className="w-12 h-12 text-green-200" />
-            </div>
-          </motion.div>
-
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.3 }}
-            className="bg-gradient-to-br from-red-500 to-red-600 rounded-xl p-6 text-white shadow-lg"
-          >
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-red-100 text-sm font-medium mb-1">Tạm dừng</p>
-                <p className="text-3xl font-bold">{statistics.inactive}</p>
-                <p className="text-red-100 text-xs mt-1">
-                  {statistics.total > 0 ? Math.round((statistics.inactive / statistics.total) * 100) : 0}% tổng số
-                </p>
-              </div>
-              <PowerOff className="w-12 h-12 text-red-200" />
-            </div>
-          </motion.div>
-
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.4 }}
-            className="bg-gradient-to-br from-orange-500 to-orange-600 rounded-xl p-6 text-white shadow-lg"
-          >
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-orange-100 text-sm font-medium mb-1">Hết hàng</p>
-                <p className="text-3xl font-bold">{statistics.outOfStock}</p>
-              </div>
-              <AlertCircle className="w-12 h-12 text-orange-200" />
-            </div>
-          </motion.div>
-
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.5 }}
-            className="bg-gradient-to-br from-purple-500 to-purple-600 rounded-xl p-6 text-white shadow-lg"
-          >
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-purple-100 text-sm font-medium mb-1">Tổng số lượng</p>
-                <p className="text-3xl font-bold">{statistics.totalQuantity.toLocaleString('vi-VN')}</p>
-              </div>
-              <BarChart3 className="w-12 h-12 text-purple-200" />
-            </div>
-          </motion.div>
-        </div>
-
-        {/* Filters */}
-        <div className="mb-6 p-6 bg-white rounded-xl shadow-lg border border-gray-200">
+      {/* Filters */}
+      <AdminCard>
+        <AdminCardBody>
           <div className="flex items-center gap-2 mb-4">
             <Filter className="w-5 h-5 text-gray-600" />
             <h3 className="font-semibold text-gray-900">Bộ lọc</h3>
           </div>
-          <div className="flex flex-col sm:flex-row gap-3">
-            {/* Search */}
-            <div className="relative flex-1">
-              <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5 pointer-events-none" />
-              <input
-                type="text"
+          <div className="flex flex-col sm:flex-row gap-4">
+            <div className="flex-1">
+              <AdminInput
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
                 placeholder="Tìm kiếm sản phẩm..."
-                className="w-full pl-11 pr-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500 transition-all duration-200 bg-white shadow-sm hover:shadow-md text-gray-700 placeholder:text-gray-400"
+                icon={<Search className="w-5 h-5" />}
               />
             </div>
-
-            {/* Brand Filter */}
-            <div className="relative sm:w-64">
+            <div className="sm:w-56">
               <select
                 value={selectedBrand || ''}
                 onChange={(e) => setSelectedBrand(e.target.value ? Number(e.target.value) : null)}
-                className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500 transition-all duration-200 bg-white shadow-sm hover:shadow-md text-gray-700 appearance-none cursor-pointer"
+                className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 bg-white"
               >
                 <option value="">Tất cả thương hiệu</option>
                 {brands.map((brand) => (
-                  <option key={brand.brandID} value={brand.brandID}>
-                    {brand.name}
-                  </option>
+                  <option key={brand.brandID} value={brand.brandID}>{brand.name}</option>
                 ))}
               </select>
-              <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none">
-                <svg className="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                </svg>
-              </div>
             </div>
-
-            {/* Category Filter */}
-            <div className="relative sm:w-64">
+            <div className="sm:w-56">
               <select
                 value={selectedCategory || ''}
                 onChange={(e) => setSelectedCategory(e.target.value ? Number(e.target.value) : null)}
-                className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500 transition-all duration-200 bg-white shadow-sm hover:shadow-md text-gray-700 appearance-none cursor-pointer"
+                className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 bg-white"
               >
                 <option value="">Tất cả danh mục</option>
                 {categories.map((category) => (
-                  <option key={category.id} value={category.id}>
-                    {category.name}
-                  </option>
+                  <option key={category.id} value={category.id}>{category.name}</option>
                 ))}
               </select>
-              <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none">
-                <svg className="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                </svg>
-              </div>
             </div>
           </div>
-        </div>
+        </AdminCardBody>
+      </AdminCard>
 
-        {/* Products Grid */}
-        <div className="bg-white rounded-xl shadow-lg border border-gray-200 overflow-hidden">
-          <div className="p-6 border-b border-gray-200">
-            <h3 className="text-lg font-semibold text-gray-900">
-              Danh sách sản phẩm {searchTerm || selectedBrand || selectedCategory ? `(${products.length} kết quả)` : `(${products.length} sản phẩm)`}
-            </h3>
-          </div>
+      {/* Products List */}
+      <AdminCard>
+        <AdminCardHeader 
+          title="Danh sách sản phẩm" 
+          subtitle={`${products.length} sản phẩm`}
+        />
+        <AdminCardBody className="p-0">
           {products.length === 0 ? (
-            <div className="p-12 text-center text-gray-500">
-              <Package className="w-16 h-16 mx-auto mb-4 text-gray-400" />
-              <p className="text-lg font-medium">Không tìm thấy sản phẩm nào</p>
-              <p className="text-sm mt-2">Thử thay đổi bộ lọc hoặc thêm sản phẩm mới</p>
+            <div className="p-12 text-center">
+              <Package className="w-16 h-16 mx-auto mb-4 text-gray-300" />
+              <p className="text-lg font-medium text-gray-500">Không tìm thấy sản phẩm nào</p>
+              <p className="text-sm text-gray-400 mt-2">Thử thay đổi bộ lọc hoặc thêm sản phẩm mới</p>
             </div>
           ) : (
-            <div className="space-y-4 p-6">
-              {/* Header row */}
-              <div
-                className="hidden md:grid gap-4 px-6 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide border border-gray-200 rounded-2xl bg-gray-50"
-                style={{ gridTemplateColumns: '360px repeat(4, minmax(0, 1fr)) 180px' }}
-              >
-                <span className="text-left">Sản phẩm</span>
+            <div className="divide-y divide-gray-100">
+              {/* Table Header */}
+              <div className="hidden lg:grid grid-cols-[1fr_120px_120px_100px_100px_140px] gap-4 px-6 py-3 bg-gray-50 text-xs font-semibold text-gray-600 uppercase tracking-wider">
+                <span>Sản phẩm</span>
                 <span className="text-center">Danh mục</span>
                 <span className="text-center">Giá</span>
                 <span className="text-center">Tồn kho</span>
                 <span className="text-center">Đã bán</span>
                 <span className="text-center">Thao tác</span>
               </div>
-
+              
               {products.map((product, index) => {
                 const productId = Number(product.productID || product.id)
                 const stats = productId ? productStats[productId] : undefined
@@ -468,74 +373,64 @@ export default function AdminProductsPage() {
                 return (
                   <motion.div
                     key={product.productID || product.id || index}
-                    initial={{ opacity: 0, y: 20 }}
-                    animate={{ opacity: 1, y: 0 }}
+                    initial={{ opacity: 0, x: -10 }}
+                    animate={{ opacity: 1, x: 0 }}
                     transition={{ delay: index * 0.03 }}
-                    className="border border-gray-200 rounded-2xl bg-white hover:shadow-lg transition-shadow"
+                    className="p-4 lg:p-0 hover:bg-blue-50/50 transition-colors"
                   >
-                    <div
-                      className="p-4 grid grid-cols-1 gap-4 items-center md:grid-cols-[360px_repeat(4,minmax(0,1fr))_180px]"
-                    >
-                      {/* Product info */}
-                      <div className="flex items-center gap-4 min-w-0">
-                        <div className="relative w-20 h-20 bg-gray-50 rounded-xl border border-gray-100">
+                    <div className="lg:grid lg:grid-cols-[1fr_120px_120px_100px_100px_140px] lg:gap-4 lg:px-6 lg:py-4 items-center">
+                      {/* Product Info */}
+                      <div className="flex items-center gap-4">
+                        <div className="relative w-16 h-16 bg-gray-50 rounded-xl border border-gray-100 flex-shrink-0 overflow-hidden">
                           <Image
                             src={product.imageURL || '/placeholder-product.png'}
                             alt={product.productName}
                             fill
-                            className="object-contain p-2"
+                            className="object-contain p-1"
                           />
                           {!product.active && (
-                            <div className="absolute inset-0 bg-black/50 rounded-xl flex items-center justify-center">
-                              <span className="text-xs text-white font-semibold">Đã tắt</span>
+                            <div className="absolute inset-0 bg-black/50 flex items-center justify-center">
+                              <span className="text-[10px] text-white font-semibold">Tắt</span>
                             </div>
                           )}
                         </div>
-                        <div className="min-w-0">
-                          <h3 className="text-lg font-semibold text-gray-900 line-clamp-1">{product.productName}</h3>
-                          <p className="md:hidden text-sm text-gray-500">{product.brand?.name || 'Chưa có hãng'}</p>
-                          <p className="md:hidden text-sm text-gray-400">{product.category?.name || 'Chưa có danh mục'}</p>
-                          <p className="md:hidden text-base font-bold text-green-600 mt-1">
-                            {product.price.toLocaleString('vi-VN')} ₫
-                          </p>
+                        <div className="min-w-0 flex-1">
+                          <h3 className="font-semibold text-gray-900 line-clamp-1">{product.productName}</h3>
+                          <p className="text-sm text-gray-500">{product.brand?.name || 'Chưa có hãng'}</p>
+                          <div className="lg:hidden mt-1">
+                            <span className="text-green-600 font-semibold">{product.price.toLocaleString('vi-VN')} ₫</span>
+                          </div>
                         </div>
                       </div>
 
                       {/* Category */}
-                      <div className="hidden md:flex flex-col items-center justify-center text-sm text-gray-600 text-center">
-                        <span className="font-medium text-gray-900">
-                          {product.category?.name || '—'}
-                        </span>
-                        <span className="text-xs text-gray-500">
-                          {product.brand?.name || 'Chưa có hãng'}
-                        </span>
+                      <div className="hidden lg:flex flex-col items-center justify-center text-sm">
+                        <AdminBadge variant="info" size="sm">{product.category?.name || '—'}</AdminBadge>
                       </div>
 
                       {/* Price */}
-                      <div className="hidden md:flex items-center justify-center text-base font-semibold text-green-600">
+                      <div className="hidden lg:flex items-center justify-center font-semibold text-green-600">
                         {product.price.toLocaleString('vi-VN')} ₫
                       </div>
 
                       {/* Inventory */}
-                      <div className="hidden md:flex flex-col items-center justify-center text-sm text-gray-600">
+                      <div className="hidden lg:flex flex-col items-center justify-center text-sm">
                         <span className="font-semibold text-gray-900">{totalQuantity.toLocaleString('vi-VN')}</span>
-                        <span className="text-xs text-gray-500">Tổng kho</span>
                       </div>
 
                       {/* Sold */}
-                      <div className="hidden md:flex flex-col items-center justify-center text-sm text-gray-600">
+                      <div className="hidden lg:flex flex-col items-center justify-center text-sm">
                         <span className="font-semibold text-gray-900">{soldQuantity.toLocaleString('vi-VN')}</span>
-                        <span className="text-xs text-gray-500">Đã bán</span>
                       </div>
 
                       {/* Actions */}
-                      <div className="flex items-center gap-2 justify-start md:justify-center">
+                      <div className="flex items-center gap-2 mt-3 lg:mt-0 lg:justify-center">
                         <button
                           onClick={() => handleToggleActive(product)}
-                          className={`p-2 rounded-full border ${
+                          className={`p-2 rounded-lg transition-colors ${
                             product.active
-                              ? 'text-green-600 border-green-200 hover:bg-green-50'
-                              : 'text-gray-400 border-gray-200 hover:bg-gray-50'
+                              ? 'text-green-600 bg-green-50 hover:bg-green-100'
+                              : 'text-gray-400 bg-gray-50 hover:bg-gray-100'
                           }`}
                           title={product.active ? 'Vô hiệu hóa' : 'Kích hoạt'}
                         >
@@ -543,29 +438,34 @@ export default function AdminProductsPage() {
                         </button>
                         <button
                           onClick={() => handleViewProduct(product)}
-                          className="inline-flex items-center justify-center px-4 py-2 text-sm font-medium text-blue-700 bg-blue-50 hover:bg-blue-100 rounded-lg transition-colors"
+                          className="p-2 rounded-lg text-blue-600 bg-blue-50 hover:bg-blue-100 transition-colors"
+                          title="Xem chi tiết"
                         >
-                          Xem
+                          <Eye className="w-4 h-4" />
                         </button>
                         <button
                           onClick={() => handleEditProduct(product)}
-                          className="inline-flex items-center gap-1 px-4 py-2 text-sm font-medium text-green-700 bg-green-50 hover:bg-green-100 rounded-lg transition-colors"
+                          className="p-2 rounded-lg text-amber-600 bg-amber-50 hover:bg-amber-100 transition-colors"
+                          title="Chỉnh sửa"
                         >
                           <Edit2 className="w-4 h-4" />
-                          Sửa
                         </button>
                       </div>
-                    </div>
 
-                    {/* Mobile extra info */}
-                    <div className="px-4 pb-4 md:hidden space-y-1 text-sm text-gray-500 border-t border-gray-100 pt-3">
-                      <div className="flex justify-between">
-                        <span>Tồn kho:</span>
-                        <span className="font-semibold text-gray-900">{totalQuantity.toLocaleString('vi-VN')}</span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span>Đã bán:</span>
-                        <span className="font-semibold text-gray-900">{soldQuantity.toLocaleString('vi-VN')}</span>
+                      {/* Mobile Stats */}
+                      <div className="lg:hidden mt-3 pt-3 border-t border-gray-100 grid grid-cols-3 gap-4 text-sm">
+                        <div>
+                          <span className="text-gray-500">Danh mục:</span>
+                          <p className="font-medium">{product.category?.name || '—'}</p>
+                        </div>
+                        <div>
+                          <span className="text-gray-500">Tồn kho:</span>
+                          <p className="font-medium">{totalQuantity.toLocaleString('vi-VN')}</p>
+                        </div>
+                        <div>
+                          <span className="text-gray-500">Đã bán:</span>
+                          <p className="font-medium">{soldQuantity.toLocaleString('vi-VN')}</p>
+                        </div>
                       </div>
                     </div>
                   </motion.div>
@@ -573,10 +473,10 @@ export default function AdminProductsPage() {
               })}
             </div>
           )}
-        </div>
-      </div>
+        </AdminCardBody>
+      </AdminCard>
 
-      {/* Add/Edit Modal */}
+      {/* Modals */}
       {showModal && (
         <ProductManagementModal
           product={editingProduct}
@@ -587,7 +487,6 @@ export default function AdminProductsPage() {
         />
       )}
 
-      {/* View Modal */}
       {showViewModal && viewingProduct && (
         <ProductViewModal
           product={viewingProduct}

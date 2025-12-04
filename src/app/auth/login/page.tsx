@@ -89,7 +89,17 @@ export default function LoginPage() {
       if (response.data) {
         // Map UserDTO to User type
         // Backend returns roleName as string, not role object
-        const roleName = response.data.roleName || response.data.role?.name || 'CUSTOMER';
+        // Handle role - can be string or object with name property
+        let roleName = 'CUSTOMER';
+        if (response.data.roleName) {
+          roleName = response.data.roleName;
+        } else if (response.data.role) {
+          if (typeof response.data.role === 'string') {
+            roleName = response.data.role;
+          } else if (typeof response.data.role === 'object' && 'name' in response.data.role) {
+            roleName = (response.data.role as any).name;
+          }
+        }
         const normalizedRole = roleName.toUpperCase();
         let role: 'ADMIN' | 'CUSTOMER' | 'STAFF' = 'CUSTOMER';
         
@@ -136,10 +146,40 @@ export default function LoginPage() {
   const handleGoogleLogin = async () => {
     try {
       setLoading(true);
-      // Implement Google OAuth
-      console.log('Google login clicked');
-    } catch (error) {
+      
+      // Load Google Identity Services
+      const { loadGoogleScript, initializeGoogleSignIn, GoogleUser } = await import('@/lib/googleAuth');
+      const clientId = process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID || '';
+      
+      if (!clientId) {
+        throw new Error('Google Client ID not configured');
+      }
+
+      await loadGoogleScript(clientId);
+      
+      initializeGoogleSignIn(
+        clientId,
+        async (user: GoogleUser) => {
+          try {
+            // Call backend API with Google user info
+            await googleLogin(user.email, user.name);
+            router.push('/');
+          } catch (error: any) {
+            setError(error.message || 'Google login failed');
+          }
+        },
+        (error) => {
+          setError(error.message || 'Google login failed');
+        }
+      );
+
+      // Trigger Google Sign-In
+      if (window.google) {
+        window.google.accounts.id.prompt();
+      }
+    } catch (error: any) {
       console.error('Google login error:', error);
+      setError(error.message || 'Failed to initialize Google login');
     } finally {
       setLoading(false);
     }

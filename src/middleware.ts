@@ -1,0 +1,64 @@
+import { NextResponse } from 'next/server'
+import type { NextRequest } from 'next/server'
+
+export function middleware(request: NextRequest) {
+  const hostname = request.headers.get('host') || ''
+  const url = request.nextUrl.clone()
+
+  // Lấy subdomain
+  const subdomain = hostname.split('.')[0]
+
+  // Nếu là admin subdomain
+  if (subdomain === 'admin') {
+    // Nếu đang ở trang chủ, redirect về /admin
+    if (url.pathname === '/') {
+      url.pathname = '/admin'
+      return NextResponse.rewrite(url)
+    }
+    // Nếu không phải admin route, redirect về /admin
+    if (!url.pathname.startsWith('/admin') && !url.pathname.startsWith('/auth') && !url.pathname.startsWith('/_next')) {
+      url.pathname = '/admin'
+      return NextResponse.redirect(url)
+    }
+  }
+
+  // Nếu là staff subdomain
+  if (subdomain === 'staff') {
+    // Nếu đang ở trang chủ, redirect về /staff
+    if (url.pathname === '/') {
+      url.pathname = '/staff'
+      return NextResponse.rewrite(url)
+    }
+    // Nếu không phải staff route, redirect về /staff
+    if (!url.pathname.startsWith('/staff') && !url.pathname.startsWith('/auth') && !url.pathname.startsWith('/_next')) {
+      url.pathname = '/staff'
+      return NextResponse.redirect(url)
+    }
+  }
+
+  // Nếu là main domain (onlyfan.local hoặc localhost)
+  if (subdomain === 'onlyfan' || subdomain === 'localhost' || hostname.startsWith('localhost:')) {
+    // Không cho phép truy cập /admin hoặc /staff từ main domain
+    if (url.pathname.startsWith('/admin')) {
+      return NextResponse.redirect(new URL('http://admin.onlyfan.local:3000' + url.pathname))
+    }
+    if (url.pathname.startsWith('/staff')) {
+      return NextResponse.redirect(new URL('http://staff.onlyfan.local:3000' + url.pathname))
+    }
+  }
+
+  return NextResponse.next()
+}
+
+export const config = {
+  matcher: [
+    /*
+     * Match all request paths except for the ones starting with:
+     * - api (API routes)
+     * - _next/static (static files)
+     * - _next/image (image optimization files)
+     * - favicon.ico (favicon file)
+     */
+    '/((?!api|_next/static|_next/image|favicon.ico).*)',
+  ],
+}

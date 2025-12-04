@@ -65,7 +65,8 @@ class CategoryAdminService {
         requestData.name = category.categoryName
       }
       if (category.description !== undefined) {
-        requestData.description = category.description
+        // Description removed from CategoryManagement interface
+        // requestData.description = category.description
       }
       if (category.parentId !== undefined) {
         requestData.parentId = category.parentId

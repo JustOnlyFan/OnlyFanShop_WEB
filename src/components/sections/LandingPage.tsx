@@ -22,6 +22,7 @@ import {
   CheckCircle
 } from 'lucide-react'
 import Link from 'next/link'
+import Image from 'next/image'
 
 export function LandingPage() {
   const [loading, setLoading] = useState(true)
@@ -120,41 +121,37 @@ export function LandingPage() {
           </div>
 
           {featuredProducts.length > 0 ? (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6 gap-4">
               {featuredProducts.slice(0, 6).map((product, index) => (
-                <div key={product.id || index} className="bg-white rounded-2xl shadow-lg overflow-hidden hover:shadow-xl transition-shadow">
-                  <div className="h-48 bg-gradient-to-br from-blue-100 to-blue-200 flex items-center justify-center">
+                <div key={product.id || index} className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden hover:shadow-md transition-shadow">
+                  <div className="relative h-32 bg-gradient-to-br from-blue-100 to-blue-200 flex items-center justify-center">
                     {product.imageURL ? (
-                      <img 
-                        src={product.imageURL} 
+                      <Image 
+                        src={product.imageURL || '/images/placeholder.svg'} 
                         alt={product.productName}
-                        className="w-full h-full object-cover"
+                        fill
+                        className="object-contain p-2"
+                        sizes="(max-width: 768px) 50vw, (max-width: 1200px) 25vw, 16vw"
+                        loading="lazy"
                       />
                     ) : (
-                      <div className="text-6xl">🌀</div>
+                      <div className="text-4xl">🌀</div>
                     )}
                   </div>
-                  <div className="p-6">
-                    <div className="flex items-center mb-2">
+                  <div className="p-3">
+                    <div className="flex items-center mb-1.5">
                       <div className="flex text-yellow-400">
                         {[...Array(5)].map((_, i) => (
-                          <Star key={i} className="w-4 h-4 fill-current" />
+                          <Star key={i} className="w-3 h-3 fill-current" />
                         ))}
                       </div>
-                      <span className="text-sm text-gray-500 ml-2">({Math.floor(Math.random() * 100) + 20} đánh giá)</span>
+                      <span className="text-xs text-gray-500 ml-1.5">({Math.floor(Math.random() * 100) + 20})</span>
                     </div>
-                    <h3 className="text-xl font-semibold text-gray-900 mb-2">{product.productName}</h3>
-                    <p className="text-gray-600 mb-4">{product.briefDescription || 'Sản phẩm chất lượng cao từ thương hiệu ' + (product.brand?.name || 'uy tín')}</p>
+                    <h3 className="text-sm font-semibold text-gray-900 mb-2 line-clamp-2">{product.productName}</h3>
                     <div className="flex items-center justify-between">
-                      <span className="text-2xl font-bold text-blue-600">
+                      <span className="text-base font-bold text-blue-600">
                         {product.price ? product.price.toLocaleString('vi-VN') + 'đ' : 'Liên hệ'}
                       </span>
-                      <Link href={`/products/${product.id}`}>
-                        <Button className="bg-blue-600 hover:bg-blue-700 text-white">
-                          <ShoppingBag className="w-4 h-4 mr-2" />
-                          Xem chi tiết
-                        </Button>
-                      </Link>
                     </div>
                   </div>
                 </div>
