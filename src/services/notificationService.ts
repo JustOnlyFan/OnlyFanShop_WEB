@@ -1,4 +1,16 @@
-import { NotificationProps } from '@/components/ui/Notification';
+// NotificationProps type definition
+export interface NotificationProps {
+  id: string;
+  type: 'success' | 'error' | 'info' | 'warning' | 'invite';
+  title: string;
+  message?: string;
+  duration?: number;
+  onClose?: () => void;
+  userName?: string;
+  timeAgo?: string;
+  showCloseButton?: boolean;
+  icon?: React.ReactNode;
+}
 
 export interface NotificationOptions {
   type?: NotificationProps['type'];

@@ -13,7 +13,7 @@ import Link from 'next/link'
 
 export default function StaffLoginPage() {
   const router = useRouter()
-  const { login, isAuthenticated, hasHydrated, user } = useAuthStore()
+  const { setUser, isAuthenticated, hasHydrated, user } = useAuthStore()
   
   const [username, setUsername] = useState('')
   const [password, setPassword] = useState('')
@@ -57,8 +57,28 @@ export default function StaffLoginPage() {
           return
         }
         
-        // Login user
-        await login(userData.token, userData.refreshToken, userData)
+        // Set tokens and user directly
+        AuthService.setToken(userData.token || '')
+        // Map user data to User type
+        const roleName = userData.roleName || (typeof userData.role === 'string' ? userData.role : (typeof userData.role === 'object' && 'name' in userData.role ? (userData.role as any).name : null)) || 'STAFF'
+        const normalizedRole = roleName.toUpperCase()
+        let role: 'ADMIN' | 'CUSTOMER' | 'STAFF' = 'STAFF'
+        if (normalizedRole === 'ADMIN') {
+          role = 'ADMIN'
+        } else if (normalizedRole === 'STAFF') {
+          role = 'STAFF'
+        }
+        const user = {
+          userID: userData.userID,
+          username: userData.username,
+          email: userData.email,
+          phoneNumber: userData.phoneNumber,
+          address: userData.address,
+          role,
+          authProvider: userData.authProvider || 'LOCAL'
+        }
+        // Use setUser from store which will also call AuthService.setUser internally
+        setUser(user as any)
         
         toast.success('Đăng nhập thành công!')
         router.push('/staff')

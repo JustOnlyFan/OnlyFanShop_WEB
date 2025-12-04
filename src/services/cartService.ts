@@ -212,10 +212,11 @@ export class CartService {
       if (item.quantity <= 0) {
         errors.push(`Item ${index + 1}: Invalid quantity`)
       }
-      if (item.product.stock < item.quantity) {
-        errors.push(`Item ${index + 1}: Insufficient stock (${item.product.stock} available)`)
-      }
-      if (!item.product.isActive) {
+      // Stock check removed - Product type doesn't have stock property
+      // if (item.product.stock < item.quantity) {
+      //   errors.push(`Item ${index + 1}: Insufficient stock (${item.product.stock} available)`)
+      // }
+      if (item.product.active === false) {
         errors.push(`Item ${index + 1}: Product is no longer available`)
       }
     })

@@ -1,8 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { notificationService, NotificationOptions } from '@/services/notificationService';
-import { NotificationProps } from '@/components/ui/Notification';
+import { notificationService, NotificationOptions, NotificationProps } from '@/services/notificationService';
 
 export function useNotification() {
   const [notifications, setNotifications] = useState<NotificationProps[]>([]);

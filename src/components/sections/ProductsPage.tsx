@@ -59,9 +59,6 @@ export function ProductsPage() {
     retry: 2,
     retryDelay: 1000,
     staleTime: 5 * 60 * 1000, // 5 minutes
-    onError: (error) => {
-      console.error('Products fetch error:', error)
-    }
   })
 
   // Fetch categories and brands
@@ -71,9 +68,6 @@ export function ProductsPage() {
     retry: 2,
     retryDelay: 1000,
     staleTime: 10 * 60 * 1000, // 10 minutes
-    onError: (error) => {
-      console.error('Categories fetch error:', error)
-    }
   })
 
   const { data: brandsData } = useQuery({
@@ -82,9 +76,6 @@ export function ProductsPage() {
     retry: 2,
     retryDelay: 1000,
     staleTime: 10 * 60 * 1000, // 10 minutes
-    onError: (error) => {
-      console.error('Brands fetch error:', error)
-    }
   })
 
   const products = productsData?.data?.products || []

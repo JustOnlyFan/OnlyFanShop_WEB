@@ -5,7 +5,6 @@ import { motion, AnimatePresence } from 'framer-motion'
 import { X, Loader2, MapPin, Crosshair, Upload as UploadIcon, Trash2 } from 'lucide-react'
 import toast from 'react-hot-toast'
 import { StoreLocationService, CreateStoreLocationRequest, UpdateStoreLocationRequest, StoreStatus } from '@/services/storeLocationService'
-import { WarehouseService, Warehouse } from '@/services/warehouseService'
 import AddressPickerModal from './AddressPickerModal'
 
 interface StoreManagementModalProps {
@@ -36,8 +35,6 @@ export default function StoreManagementModal({ store, onClose, onSaved }: StoreM
   })
   const [uploadingImage, setUploadingImage] = useState(false)
   const [addressModalOpen, setAddressModalOpen] = useState(false)
-  const [regionalWarehouses, setRegionalWarehouses] = useState<Warehouse[]>([])
-  const [selectedRegionalId, setSelectedRegionalId] = useState<number | ''>('')
 
   useEffect(() => {
     if (store) {
@@ -59,10 +56,6 @@ export default function StoreManagementModal({ store, onClose, onSaved }: StoreM
         status: (store.status as StoreStatus) || 'ACTIVE'
       }))
     }
-    // Load regional warehouses for selection
-    WarehouseService.getWarehousesByType('regional')
-      .then((res) => setRegionalWarehouses(res.data || []))
-      .catch(() => setRegionalWarehouses([]))
   }, [store])
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -71,12 +64,6 @@ export default function StoreManagementModal({ store, onClose, onSaved }: StoreM
     const validation = StoreLocationService.validateStoreLocationData(formData)
     if (!validation.isValid) {
       toast.error(validation.errors[0] || 'Vui lòng kiểm tra lại thông tin')
-      return
-    }
-
-    // Require regional warehouse when creating a new store
-    if (!isEditMode && selectedRegionalId === '') {
-      toast.error('Vui lòng chọn Kho Khu Vực (cha) để tạo kho Chi Nhánh')
       return
     }
 
@@ -92,7 +79,6 @@ export default function StoreManagementModal({ store, onClose, onSaved }: StoreM
       } else {
         const payload: CreateStoreLocationRequest = {
           ...formData,
-          parentRegionalWarehouseId: typeof selectedRegionalId === 'number' ? selectedRegionalId : undefined,
           status: formData.status || 'ACTIVE'
         }
         await StoreLocationService.createStoreLocation(payload)
@@ -394,25 +380,6 @@ export default function StoreManagementModal({ store, onClose, onSaved }: StoreM
                   className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500"
                   required
                 />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Kho Khu Vực (cha) khi tạo Kho Chi Nhánh</label>
-                <select
-                  value={selectedRegionalId}
-                  onChange={(e) => setSelectedRegionalId(e.target.value ? Number(e.target.value) : '')}
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 bg-white"
-                  required={!isEditMode}
-                >
-                  <option value="">-- Chọn kho Khu Vực --</option>
-                  {regionalWarehouses.map(w => (
-                    <option key={w.id} value={w.id}>
-                      {w.name} ({w.code})
-                    </option>
-                  ))}
-                </select>
-                <p className="mt-1 text-xs text-gray-500">
-                  Bắt buộc chọn để hệ thống tự tạo kho Chi Nhánh gắn với cửa hàng mới (lấy hàng từ kho Khu Vực đã chọn).
-                </p>
               </div>
               <div className="md:col-span-2">
                 <label className="block text-sm font-medium text-gray-700 mb-2">Mô tả</label>

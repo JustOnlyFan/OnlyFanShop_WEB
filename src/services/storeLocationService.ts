@@ -195,6 +195,33 @@ export class StoreLocationService {
     }
   }
 
+  // Get stores that have a specific product in stock
+  static async getStoresWithProduct(productId: number, city?: string, district?: string): Promise<ApiResponse<StoreLocation[]>> {
+    try {
+      const params = new URLSearchParams()
+      if (city) params.append('city', city)
+      if (district) params.append('district', district)
+
+      const queryString = params.toString()
+      const url = queryString 
+        ? `${API_URL}/store-locations/product/${productId}?${queryString}`
+        : `${API_URL}/store-locations/product/${productId}`
+      console.log('[StoreLocationService] Fetching stores with product:', url)
+      console.log('[StoreLocationService] Full URL:', url)
+      const response = await axios.get(url)
+      console.log('[StoreLocationService] Response status:', response.status)
+      console.log('[StoreLocationService] Response data:', response.data)
+      console.log('[StoreLocationService] Stores found:', response.data?.data?.length || 0)
+      return response.data
+    } catch (error: any) {
+      // If endpoint doesn't exist, return empty array
+      if (error.response?.status === 404) {
+        return { statusCode: 200, message: 'Success', data: [] }
+      }
+      throw new Error(error.response?.data?.message || 'Failed to get stores with product')
+    }
+  }
+
   // Get store statistics (Admin only)
   static async getStoreStatistics(): Promise<ApiResponse<any>> {
     try {

@@ -666,7 +666,7 @@ export function ProductManagementModal({ product, brands, categories, warehouseI
                           toast.success('Đã cập nhật danh sách màu sắc')
                         }
                       }, 1000)
-                      toast.info('Mở trang quản lý màu sắc. Danh sách sẽ tự động cập nhật khi đóng tab.')
+                      toast('Mở trang quản lý màu sắc. Danh sách sẽ tự động cập nhật khi đóng tab.', { icon: 'ℹ️' })
                     }}
                     className="text-xs text-green-600 hover:text-green-700 font-medium flex items-center gap-1"
                   >
@@ -787,7 +787,7 @@ export function ProductManagementModal({ product, brands, categories, warehouseI
                           toast.success('Đã cập nhật danh sách bảo hành')
                         }
                       }, 1000)
-                      toast.info('Mở trang quản lý bảo hành. Danh sách sẽ tự động cập nhật khi đóng tab.')
+                      toast('Mở trang quản lý bảo hành. Danh sách sẽ tự động cập nhật khi đóng tab.', { icon: 'ℹ️' })
                     }}
                     className="text-xs text-green-600 hover:text-green-700 font-medium flex items-center gap-1"
                   >

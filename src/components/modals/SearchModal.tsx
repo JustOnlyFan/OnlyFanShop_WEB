@@ -19,7 +19,7 @@ export function SearchModal({ isOpen, onClose }: SearchModalProps) {
 
   const { data: searchResults, isLoading } = useQuery({
     queryKey: ['search', debouncedQuery],
-    queryFn: () => ProductService.searchProducts(debouncedQuery, { size: 6 }),
+    queryFn: () => ProductService.getHomepage({ keyword: debouncedQuery, size: 6 }),
     enabled: debouncedQuery.length > 2,
     select: (data) => data.data?.products || []
   })

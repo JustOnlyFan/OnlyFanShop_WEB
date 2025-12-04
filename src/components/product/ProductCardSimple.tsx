@@ -3,10 +3,9 @@
 import { useState } from 'react'
 import { motion } from 'framer-motion'
 import { Product } from '@/types'
-import { Star, ShoppingCart, Heart, Eye } from 'lucide-react'
+import { Star, Heart, Eye } from 'lucide-react'
 import { ImageFallback } from '@/components/ui/ImageFallback'
 import Link from 'next/link'
-import { useCartStore } from '@/store/cartStore'
 
 interface ProductCardSimpleProps {
   product: Product
@@ -15,8 +14,6 @@ interface ProductCardSimpleProps {
 
 export function ProductCardSimple({ product, className = '' }: ProductCardSimpleProps) {
   const [isLiked, setIsLiked] = useState(false)
-  const [adding, setAdding] = useState(false)
-  const { addItem } = useCartStore()
 
   const handleLike = (e: React.MouseEvent) => {
     e.preventDefault()
@@ -24,21 +21,10 @@ export function ProductCardSimple({ product, className = '' }: ProductCardSimple
     setIsLiked(!isLiked)
   }
 
-  const handleAddToCart = async (e: React.MouseEvent) => {
-    e.preventDefault()
-    e.stopPropagation()
-    try {
-      setAdding(true)
-      await addItem(product as any, 1)
-    } finally {
-      setAdding(false)
-    }
-  }
-
   return (
     <motion.div
-      className={`relative group cursor-pointer bg-white rounded-xl shadow-lg border border-gray-200 hover:shadow-xl transition-all duration-300 h-full flex flex-col ${className}`}
-      whileHover={{ y: -4 }}
+      className={`relative group cursor-pointer bg-white rounded-lg shadow-sm border border-gray-200 hover:shadow-md transition-all duration-300 h-full flex flex-col ${className}`}
+      whileHover={{ y: -2 }}
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.3 }}
@@ -46,80 +32,77 @@ export function ProductCardSimple({ product, className = '' }: ProductCardSimple
       <Link href={`/products/${product.id}`} className="h-full flex flex-col">
         <div className="relative flex flex-col h-full">
           {/* Product Image */}
-          <div className="relative h-60 overflow-hidden rounded-t-xl bg-white">
+          <div className="relative h-40 overflow-hidden rounded-t-lg bg-white">
             <ImageFallback
-              src={product.imageURL || 'https://images.unsplash.com/photo-1581094794329-c8112a89af12?w=400&h=300&fit=crop&q=80&auto=format'}
+              src={product.imageURL || '/images/placeholder.svg'}
               alt={product.productName}
               fill
-              sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
-              className="object-contain p-3"
-              fallbackSrc="https://images.unsplash.com/photo-1581094794329-c8112a89af12?w=400&h=300&fit=crop&q=80&auto=format"
+              sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 25vw"
+              className="object-contain p-2"
+              fallbackSrc="/images/placeholder.svg"
             />
             
             {/* Overlay */}
-            <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-all duration-300" />
+            <div className="absolute inset-0 bg-black/0 group-hover:bg-black/10 transition-all duration-300" />
             
             {/* Action buttons */}
-            <div className="absolute top-3 right-3 flex flex-col space-y-2 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
+            <div className="absolute top-2 right-2 flex flex-col space-y-1.5 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
               <button
                 onClick={handleLike}
-                className="w-8 h-8 bg-white/90 backdrop-blur-sm rounded-full flex items-center justify-center shadow-lg hover:bg-white transition-colors"
+                className="w-7 h-7 bg-white/90 backdrop-blur-sm rounded-full flex items-center justify-center shadow-lg hover:bg-white transition-colors"
               >
                 <Heart 
-                  className={`w-4 h-4 ${isLiked ? 'text-red-500 fill-current' : 'text-gray-600'}`} 
+                  className={`w-3.5 h-3.5 ${isLiked ? 'text-red-500 fill-current' : 'text-gray-600'}`} 
                 />
               </button>
               
-              <button className="w-8 h-8 bg-white/90 backdrop-blur-sm rounded-full flex items-center justify-center shadow-lg hover:bg-white transition-colors">
-                <Eye className="w-4 h-4 text-gray-600" />
+              <button className="w-7 h-7 bg-white/90 backdrop-blur-sm rounded-full flex items-center justify-center shadow-lg hover:bg-white transition-colors">
+                <Eye className="w-3.5 h-3.5 text-gray-600" />
               </button>
             </div>
 
             {/* Badge */}
             {product.price < 1000000 && (
-              <div className="absolute top-3 left-3 bg-green-500 text-white text-xs px-2 py-1 rounded-full font-medium">
+              <div className="absolute top-2 left-2 bg-green-500 text-white text-[10px] px-1.5 py-0.5 rounded-full font-medium">
                 Tiết kiệm
               </div>
             )}
           </div>
 
           {/* Product Info */}
-          <div className="p-4 flex flex-col flex-grow">
+          <div className="p-3 flex flex-col flex-grow">
             <div className="mb-2 flex-grow">
-              <h3 className="font-semibold text-gray-900 text-lg mb-1 line-clamp-2">
+              <h3 className="font-semibold text-gray-900 text-sm mb-1 line-clamp-2">
                 {product.productName}
               </h3>
-              <p className="text-sm text-gray-600 line-clamp-2">
-                {product.briefDescription || 'Sản phẩm chất lượng cao'}
-              </p>
             </div>
 
             {/* Rating */}
-            <div className="flex items-center mb-3">
+            <div className="flex items-center mb-2">
               <div className="flex items-center">
                 {[...Array(5)].map((_, i) => (
                   <Star
                     key={i}
-                    className={`w-4 h-4 ${
+                    className={`w-3 h-3 ${
                       i < 4 ? 'text-yellow-400 fill-current' : 'text-gray-300'
                     }`}
                   />
                 ))}
               </div>
-              <span className="text-sm text-gray-500 ml-2">(4.0)</span>
+              <span className="text-xs text-gray-500 ml-1.5">(4.0)</span>
             </div>
 
             {/* Price */}
-            <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center justify-between mt-auto">
               <div>
-                <span className="text-2xl font-bold text-blue-600">
+                <span className="text-base font-bold text-blue-600">
                   {new Intl.NumberFormat('vi-VN', {
                     style: 'currency',
                     currency: 'VND'
                   }).format(product.price)}
                 </span>
                 {product.price > 1000000 && (
-                  <span className="text-sm text-gray-500 line-through ml-2">
+                  <span className="text-xs text-gray-500 line-through ml-2">
                     {new Intl.NumberFormat('vi-VN', {
                       style: 'currency',
                       currency: 'VND'
@@ -128,16 +111,6 @@ export function ProductCardSimple({ product, className = '' }: ProductCardSimple
                 )}
               </div>
             </div>
-
-            {/* Add to Cart Button */}
-            <button
-              onClick={handleAddToCart}
-              disabled={adding}
-              className={`w-full bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white font-medium py-3 px-4 rounded-lg transition-all duration-200 flex items-center justify-center space-x-2 group/btn mt-auto ${adding ? 'opacity-70 cursor-not-allowed' : ''}`}
-            >
-              <ShoppingCart className="w-4 h-4" />
-              <span>{adding ? 'Đang thêm...' : 'Thêm vào giỏ'}</span>
-            </button>
           </div>
         </div>
       </Link>
