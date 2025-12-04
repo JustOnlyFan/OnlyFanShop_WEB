@@ -166,88 +166,37 @@ export function Header() {
 
                                 {/* User Menu */}
                                 {isAuthenticated ? (
-                                    <div className="relative group">
-                                        <button className="flex items-center space-x-2 p-2 text-white/90 hover:text-white transition-colors duration-200 hover:bg-white/10 rounded-lg">
-                                            <UserIcon className="w-5 h-5" />
-                                            <span className="hidden sm:block text-sm font-medium drop-shadow-sm">
-                        {user?.username}
-                      </span>
+                                    <Link 
+                                        href="/profile"
+                                        className="flex items-center gap-3 px-4 py-2 bg-white/10 backdrop-blur-sm hover:bg-white/20 rounded-xl transition-all duration-200 border border-white/20"
+                                    >
+                                        <div className="w-8 h-8 bg-gradient-to-br from-blue-500 to-cyan-500 rounded-full flex items-center justify-center text-white font-bold shadow-lg">
+                                            {user?.username?.charAt(0).toUpperCase()}
+                                        </div>
+                                        <div className="hidden sm:block text-left">
+                                            <p className="text-sm font-semibold text-white">{user?.username}</p>
                                             {user?.role === 'ADMIN' && (
-                                                <span className="px-2 py-0.5 text-xs font-bold text-purple-900 bg-yellow-400 rounded-full drop-shadow-sm">
-                                                    ADMIN
-                                                </span>
+                                                <span className="text-xs text-yellow-300 font-medium">Admin</span>
                                             )}
                                             {user?.role === 'STAFF' && (
-                                                <span className="px-2 py-0.5 text-xs font-bold text-blue-900 bg-blue-300 rounded-full drop-shadow-sm">
-                                                    STAFF
-                                                </span>
+                                                <span className="text-xs text-blue-300 font-medium">Nhân viên</span>
                                             )}
-                                        </button>
-
-                                        {/* Dropdown Menu */}
-                                        <div className="absolute right-0 mt-3.5 w-48 bg-white rounded-lg shadow-xl border border-neutral-200 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-50">
-                                            <div className="py-1">
-                                                {user?.role === 'ADMIN' && (
-                                                    <>
-                                                        <Link
-                                                            href="/admin"
-                                                            className="block px-4 py-2 text-sm font-semibold text-purple-700 hover:bg-purple-50 transition-colors"
-                                                        >
-                                                            ⚙️ Trang Quản Trị
-                                                        </Link>
-                                                        <div className="border-t border-neutral-200 my-1"></div>
-                                                    </>
-                                                )}
-                                                {user?.role === 'STAFF' && (
-                                                    <>
-                                                        <Link
-                                                            href="/staff"
-                                                            className="block px-4 py-2 text-sm font-semibold text-blue-700 hover:bg-blue-50 transition-colors"
-                                                        >
-                                                            👤 Trang Nhân Viên
-                                                        </Link>
-                                                        <div className="border-t border-neutral-200 my-1"></div>
-                                                    </>
-                                                )}
-                                                <Link
-                                                    href="/profile"
-                                                    className="block px-4 py-2 text-sm text-neutral-700 hover:bg-neutral-50 transition-colors"
-                                                >
-                                                    Thông tin cá nhân
-                                                </Link>
-                                                <Link
-                                                    href="/orders"
-                                                    className="block px-4 py-2 text-sm text-neutral-700 hover:bg-neutral-50 transition-colors"
-                                                >
-                                                    Đơn hàng
-                                                </Link>
-                                                <Link
-                                                    href="/wishlist"
-                                                    className="block px-4 py-2 text-sm text-neutral-700 hover:bg-neutral-50 transition-colors"
-                                                >
-                                                    Yêu thích
-                                                </Link>
-                                                <div className="border-t border-neutral-200 my-1"></div>
-                                                <button
-                                                    onClick={handleLogout}
-                                                    className="block w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-red-50 transition-colors"
-                                                >
-                                                    Đăng xuất
-                                                </button>
-                                            </div>
+                                            {user?.role === 'CUSTOMER' && (
+                                                <span className="text-xs text-white/70 font-medium">Khách hàng</span>
+                                            )}
                                         </div>
-                                    </div>
+                                    </Link>
                                 ) : (
-                                    <div className="flex items-center space-x-2">
+                                    <div className="flex items-center gap-3">
                                         <Link
                                             href="/auth/login"
-                                            className="text-sm font-medium text-white/90 hover:text-white transition-colors duration-200 px-3 py-2 hover:bg-white/10 rounded-lg"
+                                            className="px-5 py-2.5 text-sm font-semibold text-white hover:bg-white/10 rounded-xl transition-all duration-200 border border-white/30 hover:border-white/50"
                                         >
                                             Đăng nhập
                                         </Link>
                                         <Link
                                             href="/auth/register"
-                                            className="px-4 py-2 bg-white text-indigo-700 rounded-lg text-sm font-medium hover:bg-white/90 transition-all duration-200 shadow-lg hover:shadow-xl"
+                                            className="px-5 py-2.5 bg-gradient-to-r from-white to-blue-50 text-blue-700 rounded-xl text-sm font-semibold hover:shadow-xl transition-all duration-200 shadow-lg hover:scale-105"
                                         >
                                             Đăng ký
                                         </Link>
