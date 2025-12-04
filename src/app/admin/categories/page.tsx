@@ -14,11 +14,19 @@ import {
   Power, 
   PowerOff, 
   Search,
-  ArrowLeft,
   Check,
-  X
+  X,
+  FolderTree
 } from 'lucide-react'
 import toast from 'react-hot-toast'
+import { 
+  AdminButton, 
+  AdminCard, 
+  AdminCardHeader, 
+  AdminCardBody,
+  AdminInput,
+  AdminBadge
+} from '@/components/admin/ui'
 
 export default function AdminCategoriesPage() {
   const [loading, setLoading] = useState(true)
@@ -69,8 +77,6 @@ export default function AdminCategoriesPage() {
       setShowAddForm(false)
       loadCategories()
     } catch (error: any) {
-      console.error('Add category error:', error)
-      // Hiển thị thông báo lỗi chi tiết từ backend
       const errorMessage = error.message || 'Không thể thêm danh mục'
       toast.error(errorMessage)
     }
@@ -96,8 +102,6 @@ export default function AdminCategoriesPage() {
       setEditValue('')
       loadCategories()
     } catch (error: any) {
-      console.error('Update category error:', error)
-      // Hiển thị thông báo lỗi chi tiết từ backend
       const errorMessage = error.message || 'Không thể cập nhật danh mục'
       toast.error(errorMessage)
     }
@@ -136,6 +140,9 @@ export default function AdminCategoriesPage() {
     cat.categoryName.toLowerCase().includes(searchTerm.toLowerCase())
   )
 
+  const activeCount = categories.filter(c => c.active).length
+  const inactiveCount = categories.length - activeCount
+
   if (!hasHydrated || loading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -145,168 +152,203 @@ export default function AdminCategoriesPage() {
   }
 
   return (
-    <div className="min-h-screen p-6 bg-gradient-to-br from-gray-50 to-gray-100">
-      <div className="max-w-5xl mx-auto">
-        {/* Header */}
-        <div className="mb-6">
-          <button
-            onClick={() => router.back()}
-            className="mb-4 inline-flex items-center gap-2 text-gray-600 hover:text-gray-900 transition-colors"
-          >
-            <ArrowLeft className="w-5 h-5" />
-            Quay lại
-          </button>
-          <div className="flex items-center justify-between">
+    <div className="space-y-6">
+      {/* Action Button */}
+      <div className="flex justify-end">
+        <AdminButton
+          variant="primary"
+          icon={<Plus className="w-5 h-5" />}
+          onClick={() => setShowAddForm(!showAddForm)}
+        >
+          Thêm danh mục
+        </AdminButton>
+      </div>
+
+      {/* Stats */}
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+        <AdminCard>
+          <AdminCardBody className="flex items-center gap-4">
+            <div className="p-3 bg-blue-100 rounded-xl">
+              <FolderTree className="w-6 h-6 text-blue-600" />
+            </div>
             <div>
-              <h1 className="text-3xl font-bold text-gray-900">Quản lý Danh mục</h1>
-              <p className="mt-1 text-gray-600">Quản lý tất cả các danh mục sản phẩm</p>
+              <p className="text-sm text-gray-500">Tổng danh mục</p>
+              <p className="text-2xl font-bold text-gray-900">{categories.length}</p>
             </div>
-            <button
-              onClick={() => setShowAddForm(!showAddForm)}
-              className="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
-            >
-              <Plus className="w-5 h-5" />
-              Thêm danh mục
-            </button>
-          </div>
-        </div>
-
-        {/* Add Form */}
-        {showAddForm && (
-          <motion.div
-            initial={{ opacity: 0, y: -20 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="mb-6 p-6 bg-white rounded-xl shadow-sm border border-gray-200"
-          >
-            <h3 className="text-lg font-semibold text-gray-900 mb-4">Thêm danh mục mới</h3>
-            <div className="flex gap-3">
-              <input
-                type="text"
-                value={newCategoryName}
-                onChange={(e) => setNewCategoryName(e.target.value)}
-                placeholder="Nhập tên danh mục..."
-                className="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-              />
-              <button
-                onClick={handleAddCategory}
-                className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
-              >
-                Thêm
-              </button>
-              <button
-                onClick={() => {
-                  setShowAddForm(false)
-                  setNewCategoryName('')
-                }}
-                className="px-6 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition-colors"
-              >
-                Hủy
-              </button>
+          </AdminCardBody>
+        </AdminCard>
+        <AdminCard>
+          <AdminCardBody className="flex items-center gap-4">
+            <div className="p-3 bg-green-100 rounded-xl">
+              <Power className="w-6 h-6 text-green-600" />
             </div>
-          </motion.div>
-        )}
+            <div>
+              <p className="text-sm text-gray-500">Đang hoạt động</p>
+              <p className="text-2xl font-bold text-green-600">{activeCount}</p>
+            </div>
+          </AdminCardBody>
+        </AdminCard>
+        <AdminCard>
+          <AdminCardBody className="flex items-center gap-4">
+            <div className="p-3 bg-red-100 rounded-xl">
+              <PowerOff className="w-6 h-6 text-red-600" />
+            </div>
+            <div>
+              <p className="text-sm text-gray-500">Tạm dừng</p>
+              <p className="text-2xl font-bold text-red-600">{inactiveCount}</p>
+            </div>
+          </AdminCardBody>
+        </AdminCard>
+      </div>
 
-        {/* Search */}
-        <div className="mb-6">
-          <div className="relative">
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
-            <input
-              type="text"
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              placeholder="Tìm kiếm danh mục..."
-              className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-            />
-          </div>
-        </div>
+      {/* Add Form */}
+      {showAddForm && (
+        <motion.div
+          initial={{ opacity: 0, y: -20 }}
+          animate={{ opacity: 1, y: 0 }}
+        >
+          <AdminCard>
+            <AdminCardHeader title="Thêm danh mục mới" />
+            <AdminCardBody>
+              <div className="flex flex-col sm:flex-row gap-3">
+                <div className="flex-1">
+                  <AdminInput
+                    value={newCategoryName}
+                    onChange={(e) => setNewCategoryName(e.target.value)}
+                    placeholder="Nhập tên danh mục..."
+                  />
+                </div>
+                <div className="flex gap-2">
+                  <AdminButton variant="primary" onClick={handleAddCategory}>
+                    Thêm
+                  </AdminButton>
+                  <AdminButton 
+                    variant="secondary" 
+                    onClick={() => {
+                      setShowAddForm(false)
+                      setNewCategoryName('')
+                    }}
+                  >
+                    Hủy
+                  </AdminButton>
+                </div>
+              </div>
+            </AdminCardBody>
+          </AdminCard>
+        </motion.div>
+      )}
 
-        {/* Categories List */}
-        <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
-          <div className="divide-y divide-gray-200">
-            {filteredCategories.map((category, index) => (
-              <motion.div
-                key={category.categoryID}
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: index * 0.05 }}
-                className="p-4 hover:bg-gray-50 transition-colors"
-              >
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-3">
-                    {editingId === category.categoryID ? (
-                      <div className="flex items-center gap-2">
-                        <input
-                          type="text"
-                          value={editValue}
-                          onChange={(e) => setEditValue(e.target.value)}
-                          className="px-3 py-1 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                        />
-                        <button
-                          onClick={() => handleSaveEdit(category.categoryID)}
-                          className="p-1 text-green-600 hover:bg-green-50 rounded"
-                        >
-                          <Check className="w-5 h-5" />
-                        </button>
-                        <button
-                          onClick={handleCancelEdit}
-                          className="p-1 text-red-600 hover:bg-red-50 rounded"
-                        >
-                          <X className="w-5 h-5" />
-                        </button>
-                      </div>
-                    ) : (
-                      <span className="font-medium text-gray-900">{category.categoryName}</span>
-                    )}
-                  </div>
+      {/* Search */}
+      <AdminCard>
+        <AdminCardBody>
+          <AdminInput
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            placeholder="Tìm kiếm danh mục..."
+            icon={<Search className="w-5 h-5" />}
+          />
+        </AdminCardBody>
+      </AdminCard>
 
-                  <div className="flex items-center gap-2">
-                    <button
-                      onClick={() => handleToggleActive(category.categoryID, category.active)}
-                      className={`p-2 rounded-lg transition-colors ${
-                        category.active
-                          ? 'text-green-600 hover:bg-green-50'
-                          : 'text-gray-400 hover:bg-gray-50'
-                      }`}
-                      title={category.active ? 'Vô hiệu hóa' : 'Kích hoạt'}
-                    >
-                      {category.active ? (
-                        <Power className="w-5 h-5" />
+      {/* Categories List */}
+      <AdminCard>
+        <AdminCardHeader 
+          title="Danh sách danh mục" 
+          subtitle={`${filteredCategories.length} danh mục`}
+        />
+        <AdminCardBody className="p-0">
+          {filteredCategories.length === 0 ? (
+            <div className="p-12 text-center">
+              <FolderTree className="w-16 h-16 mx-auto mb-4 text-gray-300" />
+              <p className="text-gray-500">Không tìm thấy danh mục nào</p>
+            </div>
+          ) : (
+            <div className="divide-y divide-gray-100">
+              {filteredCategories.map((category, index) => (
+                <motion.div
+                  key={category.categoryID}
+                  initial={{ opacity: 0, x: -10 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  transition={{ delay: index * 0.05 }}
+                  className="p-4 hover:bg-blue-50/50 transition-colors"
+                >
+                  <div className="flex items-center justify-between gap-4">
+                    <div className="flex items-center gap-3 flex-1 min-w-0">
+                      {editingId === category.categoryID ? (
+                        <div className="flex items-center gap-2 flex-1">
+                          <input
+                            type="text"
+                            value={editValue}
+                            onChange={(e) => setEditValue(e.target.value)}
+                            className="flex-1 px-4 py-2 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500"
+                            autoFocus
+                          />
+                          <button
+                            onClick={() => handleSaveEdit(category.categoryID)}
+                            className="p-2 text-green-600 bg-green-50 hover:bg-green-100 rounded-lg transition-colors"
+                          >
+                            <Check className="w-5 h-5" />
+                          </button>
+                          <button
+                            onClick={handleCancelEdit}
+                            className="p-2 text-red-600 bg-red-50 hover:bg-red-100 rounded-lg transition-colors"
+                          >
+                            <X className="w-5 h-5" />
+                          </button>
+                        </div>
                       ) : (
-                        <PowerOff className="w-5 h-5" />
+                        <>
+                          <div className="p-2 bg-blue-50 rounded-lg">
+                            <FolderTree className="w-5 h-5 text-blue-600" />
+                          </div>
+                          <span className="font-medium text-gray-900">{category.categoryName}</span>
+                          <AdminBadge 
+                            variant={category.active ? 'success' : 'danger'} 
+                            size="sm"
+                            dot
+                          >
+                            {category.active ? 'Hoạt động' : 'Tạm dừng'}
+                          </AdminBadge>
+                        </>
                       )}
-                    </button>
+                    </div>
 
                     {editingId !== category.categoryID && (
-                      <>
+                      <div className="flex items-center gap-1">
+                        <button
+                          onClick={() => handleToggleActive(category.categoryID, category.active)}
+                          className={`p-2 rounded-lg transition-colors ${
+                            category.active
+                              ? 'text-green-600 bg-green-50 hover:bg-green-100'
+                              : 'text-gray-400 bg-gray-50 hover:bg-gray-100'
+                          }`}
+                          title={category.active ? 'Vô hiệu hóa' : 'Kích hoạt'}
+                        >
+                          {category.active ? <Power className="w-5 h-5" /> : <PowerOff className="w-5 h-5" />}
+                        </button>
                         <button
                           onClick={() => handleEdit(category)}
-                          className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
+                          className="p-2 text-blue-600 bg-blue-50 hover:bg-blue-100 rounded-lg transition-colors"
                           title="Chỉnh sửa"
                         >
                           <Edit2 className="w-5 h-5" />
                         </button>
                         <button
                           onClick={() => handleDelete(category.categoryID)}
-                          className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                          className="p-2 text-red-600 bg-red-50 hover:bg-red-100 rounded-lg transition-colors"
                           title="Xóa"
                         >
                           <Trash2 className="w-5 h-5" />
                         </button>
-                      </>
+                      </div>
                     )}
                   </div>
-                </div>
-              </motion.div>
-            ))}
-          </div>
-
-          {filteredCategories.length === 0 && (
-            <div className="p-12 text-center text-gray-500">
-              <p>Không tìm thấy danh mục nào</p>
+                </motion.div>
+              ))}
             </div>
           )}
-        </div>
-      </div>
+        </AdminCardBody>
+      </AdminCard>
     </div>
   )
 }
