@@ -8,35 +8,20 @@ import { LoadingSpinner } from '@/components/ui/LoadingSpinner'
 
 interface RouteGuardProps {
   children: React.ReactNode
-  allowedRoles?: ('ADMIN' | 'CUSTOMER' | 'STAFF')[]
-  requireAuth?: boolean
 }
 
-// Define route patterns
-const ADMIN_ROUTES = ['/admin']
-const STAFF_ROUTES = ['/staff']
-// Customer routes that require authentication
-const CUSTOMER_PROTECTED_ROUTES = [
-  '/cart',
-  '/checkout',
-  '/orders',
-  '/profile',
-  '/chat',
-  '/wishlist',
-  '/payment-result'
-]
-// Public customer routes (can access without login)
-const CUSTOMER_PUBLIC_ROUTES = [
-  '/',
-  '/products',
-  '/brands',
-  '/contact',
-  '/search',
-  '/products/'
-]
-const PUBLIC_ROUTES = ['/auth/login', '/auth/register', '/auth/staff-login']
+// Helper to get subdomain
+function getSubdomain() {
+  if (typeof window === 'undefined') return null
+  const hostname = window.location.hostname
+  const parts = hostname.split('.')
+  if (parts.length >= 2 && parts[0] !== 'localhost' && parts[0] !== 'onlyfan') {
+    return parts[0]
+  }
+  return null
+}
 
-export function RouteGuard({ children, allowedRoles, requireAuth = true }: RouteGuardProps) {
+export function RouteGuard({ children }: RouteGuardProps) {
   const router = useRouter()
   const pathname = usePathname()
   const { user, isAuthenticated, hasHydrated } = useAuthStore()
@@ -44,125 +29,78 @@ export function RouteGuard({ children, allowedRoles, requireAuth = true }: Route
 
   useEffect(() => {
     if (!hasHydrated) {
-      setIsChecking(true)
       return
     }
 
-    const checkAccess = () => {
-      setIsChecking(false)
+    const checkAccess = async () => {
+      const subdomain = getSubdomain()
 
-      // Check if route is public
-      const isPublicRoute = PUBLIC_ROUTES.some(route => pathname?.startsWith(route))
-      if (isPublicRoute) {
-        // If already authenticated, redirect based on role
-        if (isAuthenticated && user) {
-          if (user.role === 'ADMIN') {
-            router.replace('/admin')
-            return
-          } else if (user.role === 'STAFF') {
-            router.replace('/staff')
-            return
-          } else if (user.role === 'CUSTOMER') {
-            router.replace('/')
-            return
-          }
-        }
-        return // Allow access to public routes
-      }
-
-      // Check if route requires authentication
-      const isCustomerProtectedRoute = CUSTOMER_PROTECTED_ROUTES.some(route => pathname?.startsWith(route))
-      const isAdminRoute = ADMIN_ROUTES.some(route => pathname?.startsWith(route))
-      const isStaffRoute = STAFF_ROUTES.some(route => pathname?.startsWith(route))
-      const isCustomerPublicRoute = CUSTOMER_PUBLIC_ROUTES.some(route => {
-        if (route === '/') {
-          return pathname === '/'
-        }
+      // Public routes - always allow
+      const publicRoutes = ['/auth/login', '/auth/register', '/auth/staff-login', '/', '/products', '/brands', '/contact', '/search']
+      const isPublicRoute = publicRoutes.some(route => {
+        if (route === '/') return pathname === '/'
         return pathname?.startsWith(route)
       })
 
-      // If route requires authentication, check token
-      if (isCustomerProtectedRoute || isAdminRoute || isStaffRoute) {
-        const token = AuthService.getToken()
-        if (!token) {
-          // No token - clear auth and redirect to login
-          useAuthStore.getState().logout()
-          router.replace('/auth/login?message=' + encodeURIComponent('Vui lòng đăng nhập để tiếp tục'))
-          return
-        }
-
-        // Check if authenticated
-        if (!isAuthenticated || !user) {
-          router.replace('/auth/login?message=' + encodeURIComponent('Vui lòng đăng nhập để tiếp tục'))
-          return
-        }
-
-        // Check role-based access for protected routes
-        const userRole = user.role
-
-        // Admin trying to access customer or staff routes
-        if (userRole === 'ADMIN') {
-          if (isCustomerProtectedRoute || isStaffRoute) {
-            router.replace('/admin')
-            return
-          }
-        }
-
-        // Customer trying to access admin or staff routes
-        if (userRole === 'CUSTOMER') {
-          if (isAdminRoute || isStaffRoute) {
-            router.replace('/')
-            return
-          }
-        }
-
-        // Staff trying to access admin or customer routes
-        if (userRole === 'STAFF') {
-          if (isAdminRoute || isCustomerProtectedRoute) {
-            router.replace('/staff')
-            return
-          }
-        }
-      } else {
-        // Public customer route - allow access even without login
-        // But if logged in, check role restrictions
-        if (isAuthenticated && user) {
-          const userRole = user.role
-          // Admin/Staff cannot access customer public routes
-          if (userRole === 'ADMIN' || userRole === 'STAFF') {
-            if (userRole === 'ADMIN') {
-              router.replace('/admin')
-            } else {
-              router.replace('/staff')
-            }
-            return
-          }
-        }
-        // Allow access to public customer routes
+      if (isPublicRoute) {
+        setIsChecking(false)
         return
       }
 
-      // Check if specific roles are allowed (for protected routes)
-      if (allowedRoles && allowedRoles.length > 0 && user) {
+      // Protected routes
+      const isAdminRoute = pathname?.startsWith('/admin')
+      const isStaffRoute = pathname?.startsWith('/staff')
+      const isProtectedCustomerRoute = ['/cart', '/checkout', '/orders', '/profile', '/chat', '/wishlist', '/payment-result'].some(route => pathname?.startsWith(route))
+
+      // Check if route needs authentication
+      if (isAdminRoute || isStaffRoute || isProtectedCustomerRoute) {
+        const token = AuthService.getToken()
+        
+        if (!token || !isAuthenticated || !user) {
+          setIsChecking(false)
+          // Redirect to appropriate login based on subdomain
+          if (subdomain === 'admin' || isAdminRoute) {
+            router.replace('/auth/login?message=' + encodeURIComponent('Vui lòng đăng nhập'))
+          } else if (subdomain === 'staff' || isStaffRoute) {
+            router.replace('/auth/staff-login?message=' + encodeURIComponent('Vui lòng đăng nhập'))
+          } else {
+            router.replace('/auth/login?message=' + encodeURIComponent('Vui lòng đăng nhập'))
+          }
+          return
+        }
+
+        // Check role access
         const userRole = user.role
-        if (!allowedRoles.includes(userRole)) {
-          // Redirect based on role
+
+        if (isAdminRoute && userRole !== 'ADMIN') {
+          setIsChecking(false)
+          router.replace('/')
+          return
+        }
+
+        if (isStaffRoute && userRole !== 'STAFF') {
+          setIsChecking(false)
+          router.replace('/')
+          return
+        }
+
+        if (isProtectedCustomerRoute && userRole !== 'CUSTOMER') {
+          setIsChecking(false)
           if (userRole === 'ADMIN') {
             router.replace('/admin')
           } else if (userRole === 'STAFF') {
             router.replace('/staff')
-          } else {
-            router.replace('/')
           }
           return
         }
       }
+
+      setIsChecking(false)
     }
 
     checkAccess()
-  }, [hasHydrated, isAuthenticated, user, pathname, router, allowedRoles])
+  }, [hasHydrated, isAuthenticated, user, pathname, router])
 
-  // Show loading while checking
   if (!hasHydrated || isChecking) {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -171,18 +109,5 @@ export function RouteGuard({ children, allowedRoles, requireAuth = true }: Route
     )
   }
 
-  // If not authenticated and route requires auth, show loading (will redirect)
-  if (requireAuth && !isAuthenticated) {
-    const isPublicRoute = PUBLIC_ROUTES.some(route => pathname?.startsWith(route))
-    if (!isPublicRoute) {
-      return (
-        <div className="min-h-screen flex items-center justify-center">
-          <LoadingSpinner size="lg" />
-        </div>
-      )
-    }
-  }
-
   return <>{children}</>
 }
-
