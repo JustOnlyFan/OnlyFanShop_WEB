@@ -10,13 +10,22 @@ export function middleware(request: NextRequest) {
 
   // Nếu là admin subdomain
   if (subdomain === 'admin') {
+    // Redirect /auth/login sang /auth/admin-login cho admin
+    if (url.pathname === '/auth/login') {
+      url.pathname = '/auth/admin-login'
+      return NextResponse.redirect(url)
+    }
     // Nếu đang ở trang chủ, redirect về /admin
     if (url.pathname === '/') {
       url.pathname = '/admin'
       return NextResponse.rewrite(url)
     }
     // Nếu không phải admin route, redirect về /admin
-    if (!url.pathname.startsWith('/admin') && !url.pathname.startsWith('/auth') && !url.pathname.startsWith('/_next')) {
+    if (
+      !url.pathname.startsWith('/admin') &&
+      !url.pathname.startsWith('/auth') &&
+      !url.pathname.startsWith('/_next')
+    ) {
       url.pathname = '/admin'
       return NextResponse.redirect(url)
     }
@@ -24,6 +33,11 @@ export function middleware(request: NextRequest) {
 
   // Nếu là staff subdomain
   if (subdomain === 'staff') {
+    // Redirect /auth/login sang /auth/staff-login cho staff
+    if (url.pathname === '/auth/login') {
+      url.pathname = '/auth/staff-login'
+      return NextResponse.redirect(url)
+    }
     // Nếu đang ở trang chủ, redirect về /staff
     if (url.pathname === '/') {
       url.pathname = '/staff'
@@ -55,10 +69,11 @@ export const config = {
     /*
      * Match all request paths except for the ones starting with:
      * - api (API routes)
+     * - login (Backend login API - proxied by rewrites)
      * - _next/static (static files)
      * - _next/image (image optimization files)
      * - favicon.ico (favicon file)
      */
-    '/((?!api|_next/static|_next/image|favicon.ico).*)',
+    '/((?!api|login|_next/static|_next/image|favicon.ico).*)',
   ],
 }

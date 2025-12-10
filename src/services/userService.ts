@@ -5,7 +5,6 @@ const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080'
 
 export interface UserProfile {
   id: number
-  username: string
   email: string
   fullName: string
   phoneNumber?: string
@@ -94,10 +93,9 @@ export class UserService {
       const userDTO = response.data.data
       const userProfile: UserProfile = {
         id: userDTO.userID,
-        username: userDTO.username || '',
         email: userDTO.email || '',
-        fullName: userDTO.username || '',
-        phoneNumber: userDTO.phoneNumber || '',
+        fullName: userDTO.fullName || userDTO.username || '',
+        phoneNumber: userDTO.phoneNumber || userDTO.phone || '',
         address: userDTO.address || '',
         role: userDTO.role || 'CUSTOMER',
         isActive: true,
@@ -129,10 +127,9 @@ export class UserService {
       const updatedUserDTO = response.data.data
       const userProfile: UserProfile = {
         id: updatedUserDTO.userID,
-        username: updatedUserDTO.username || '',
         email: updatedUserDTO.email || '',
-        fullName: updatedUserDTO.username || '',
-        phoneNumber: updatedUserDTO.phoneNumber || '',
+        fullName: updatedUserDTO.fullName || updatedUserDTO.username || '',
+        phoneNumber: updatedUserDTO.phoneNumber || updatedUserDTO.phone || '',
         address: updatedUserDTO.address || '',
         role: updatedUserDTO.role || 'CUSTOMER',
         isActive: true,
@@ -366,12 +363,12 @@ export class UserService {
 
   // Format user name
   static formatUserName(user: UserProfile): string {
-    return user.fullName || user.username || user.email
+    return user.fullName || user.email
   }
 
   // Get user initials
   static getUserInitials(user: UserProfile): string {
-    const name = user.fullName || user.username || user.email
+    const name = user.fullName || user.email
     return name
       .split(' ')
       .map(word => word.charAt(0).toUpperCase())

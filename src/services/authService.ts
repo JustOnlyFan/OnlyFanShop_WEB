@@ -8,26 +8,25 @@ const API_URL = typeof process.env.NEXT_PUBLIC_API_URL !== 'undefined'
   : 'http://localhost:8080'
 
 export interface LoginRequest {
-  username: string
+  email: string
   password: string
 }
 
 export interface RegisterRequest {
-  username: string
+  fullName: string
   email: string
   password: string
   confirmPassword: string
-  phoneNumber?: string
-  address?: string
 }
 
 export interface UserDTO {
-    roleName: any;
+  roleName: any
   userID: number
   username: string
+  fullName: string
   email: string
   phoneNumber?: string
-  address?: string
+  phone?: string
   role: 'CUSTOMER' | 'ADMIN' | 'STAFF'
   authProvider: 'LOCAL' | 'GOOGLE' | 'FACEBOOK'
   token?: string
@@ -134,6 +133,18 @@ export class AuthService {
       return response.data
     } catch (error: any) {
       throw new Error(error.response?.data?.message || 'Account check failed')
+    }
+  }
+
+  // Check email and role
+  static async checkEmailRole(email: string): Promise<{ exists: boolean, role: string | null }> {
+    try {
+      const response = await axios.get(`${API_URL}/login/check-email-role`, {
+        params: { email }
+      })
+      return response.data
+    } catch (error: any) {
+      throw new Error(error.response?.data?.message || 'Email check failed')
     }
   }
 

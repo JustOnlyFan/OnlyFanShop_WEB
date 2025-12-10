@@ -29,7 +29,7 @@ console.log(c('gray', '    Dành cho khách hàng - Xem sản phẩm, đặt hà
 console.log(bold('white', '  Admin Panel:'))
 console.log(c('cyan', '  → http://admin.onlyfan.local:3000'))
 console.log(c('gray', '    Dành cho quản trị viên - Quản lý toàn bộ hệ thống'))
-console.log(c('gray', '    Login: http://admin.onlyfan.local:3000/auth/login\n'))
+console.log(c('gray', '    Login: http://admin.onlyfan.local:3000/auth/admin-login\n'))
 
 console.log(bold('white', '  Staff Panel:'))
 console.log(c('cyan', '  → http://staff.onlyfan.local:3000'))

@@ -2,6 +2,7 @@
 export interface User {
   userID: number
   username: string
+  fullName?: string
   email: string
   phoneNumber?: string
   address?: string

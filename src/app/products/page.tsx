@@ -160,7 +160,7 @@ export default function ProductsPage() {
     <div className="min-h-screen bg-gray-50">
       <div className="container mx-auto px-4 py-8">
           {/* Filter Dropdowns */}
-          <div className="mb-6 flex items-center gap-2 overflow-x-auto pb-2">
+          <div className="mb-6 flex items-center gap-2 overflow-x-auto pb-2 relative z-20">
               <button className="flex items-center gap-2 px-3 py-2 bg-white border border-gray-300 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-50 whitespace-nowrap">
                   <Filter className="w-4 h-4" />
                   Bộ lọc

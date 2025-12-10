@@ -6,13 +6,9 @@ import { ProductService } from '@/services/productService';
 import { Brand, Category, Product } from '@/types';
 import { LoadingSpinner } from '@/components/ui/LoadingSpinner';
 import { HeroSection } from '@/components/home/HeroSection';
-import { FeaturesSection } from '@/components/home/FeaturesSection';
 import { ProductsSection } from '@/components/home/ProductsSection';
 import { CategoriesSection } from '@/components/home/CategoriesSection';
 import { BrandsSection } from '@/components/home/BrandsSection';
-import { TestimonialsSection } from '@/components/home/TestimonialsSection';
-import { NewsletterSection } from '@/components/home/NewsletterSection';
-import { StatsSection } from '@/components/home/StatsSection';
 import { AlertCircle } from 'lucide-react';
 
 export default function HomePage() {
@@ -27,9 +23,10 @@ export default function HomePage() {
       const response = await ProductService.getHomepage({ size: 12 });
       return response;
     },
-    retry: 2,
+    retry: 1,
     retryDelay: 1000,
     staleTime: 5 * 60 * 1000,
+    refetchOnWindowFocus: false,
   } as any);
 
   useEffect(() => {
@@ -64,7 +61,7 @@ export default function HomePage() {
     }
   }, [homepageData, homepageError]);
 
-  if (isLoading) {
+  if (isLoading && !homepageError) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-900 via-blue-900 to-slate-900">
         <div className="text-center">
@@ -92,13 +89,9 @@ export default function HomePage() {
       )}
 
       <HeroSection />
-      <FeaturesSection />
       <ProductsSection products={featuredProducts} />
       <CategoriesSection categories={categories} />
       <BrandsSection brands={brands} />
-      <StatsSection />
-      <TestimonialsSection />
-      <NewsletterSection />
     </div>
   );
 }

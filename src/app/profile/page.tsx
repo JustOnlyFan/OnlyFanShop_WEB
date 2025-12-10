@@ -19,7 +19,7 @@ export default function ProfilePage() {
   const { user, logout } = useAuthStore();
   
   const [formData, setFormData] = useState({
-    username: '',
+    fullName: '',
     email: '',
     phoneNumber: '',
     address: ''
@@ -37,13 +37,16 @@ export default function ProfilePage() {
     try {
       setLoading(true);
       const response = await UserService.getProfile();
+      console.log('Profile API response:', response);
       if (response.data) {
-        setFormData({
-          username: response.data.username || '',
+        const profileData = {
+          fullName: response.data.fullName || response.data.username || '',
           email: response.data.email || '',
-          phoneNumber: response.data.phoneNumber || '',
+          phoneNumber: response.data.phoneNumber || (response.data as any).phone || '',
           address: response.data.address || ''
-        });
+        };
+        console.log('Setting form data:', profileData);
+        setFormData(profileData);
       }
     } catch (error) {
       console.error('Error fetching user data:', error);
@@ -73,9 +76,9 @@ export default function ProfilePage() {
       if (response.data) {
         // Update formData with response data
         setFormData({
-          username: response.data.username || formData.username,
+          fullName: response.data.fullName || response.data.username || formData.fullName,
           email: response.data.email || formData.email,
-          phoneNumber: response.data.phoneNumber || '',
+          phoneNumber: response.data.phoneNumber || response.data.phone || '',
           address: response.data.address || ''
         });
         setSuccess('Cập nhật thông tin thành công!');
@@ -144,7 +147,7 @@ export default function ProfilePage() {
                     <User className="w-10 h-10 text-blue-600" />
                   </div>
                   <h2 className="text-xl font-semibold text-gray-900">
-                    {user.username}
+                    {formData.fullName || user.fullName || user.username || 'Khách hàng'}
                   </h2>
                   <p className="text-gray-600">{user.email}</p>
                 </div>
@@ -231,7 +234,7 @@ export default function ProfilePage() {
                   <div className="space-y-6">
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-2">
-                        Tên người dùng
+                        Họ và tên
                       </label>
                       <div className="relative">
                         <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
@@ -239,8 +242,8 @@ export default function ProfilePage() {
                         </div>
                         <input
                           type="text"
-                          name="username"
-                          value={formData.username}
+                          name="fullName"
+                          value={formData.fullName}
                           onChange={handleInputChange}
                           disabled={!editing}
                           className="w-full pl-10 pr-3 py-2 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500 disabled:bg-gray-50 disabled:text-gray-500"

@@ -1,16 +1,11 @@
-'use client'
-
-import { ReactNode } from 'react'
-
-interface AuthLayoutProps {
-  children: ReactNode
-}
-
-export default function AuthLayout({ children }: AuthLayoutProps) {
+export default function AuthLayout({
+  children,
+}: {
+  children: React.ReactNode
+}) {
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen">
       {children}
     </div>
   )
 }
-
