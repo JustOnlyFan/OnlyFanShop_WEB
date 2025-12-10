@@ -175,17 +175,29 @@ html {
 
 /* Fonts đã được load qua next/font/google trong layout.tsx - không cần @import */
 
+/* Hide native select dropdown arrow */
+select.appearance-none::-ms-expand {
+  display: none;
+}
+
+select.appearance-none {
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  appearance: none;
+  background-image: none;
+}
+
 @layer base {
   html {
     font-family: 'Inter', system-ui, sans-serif;
-    overflow: hidden;
+    overflow-x: hidden;
+    overflow-y: auto;
     max-width: 100vw;
-    height: 100vh;
   }
   
   body {
-    height: 100vh;
-    overflow: hidden;
+    overflow-x: hidden;
+    overflow-y: auto;
     max-width: 100vw;
     position: relative;
   }

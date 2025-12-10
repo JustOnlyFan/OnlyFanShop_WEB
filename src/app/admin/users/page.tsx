@@ -45,7 +45,7 @@ export default function AdminUsersPage() {
       const effectivePage = opts?.resetPage ? 0 : page
       
       try {
-        const allUsersResp = await UserAdminService.getAllUsers(undefined, undefined, 0, 1000, 'username', 'ASC')
+        const allUsersResp = await UserAdminService.getAllUsers(undefined, undefined, 0, 1000, 'fullname', 'ASC')
         const allUsersData = allUsersResp.data?.content || []
         const nonStaffUsers = allUsersData.filter(u => (u.roleName || u.role?.name || '').toLowerCase() !== 'staff')
         setAllUsers(nonStaffUsers)
@@ -53,7 +53,7 @@ export default function AdminUsersPage() {
         console.warn('Failed to load all users:', e.message)
       }
 
-      const resp = await UserAdminService.getAllUsers(searchTerm || undefined, roleFilter || undefined, effectivePage, size, 'username', 'ASC')
+      const resp = await UserAdminService.getAllUsers(searchTerm || undefined, roleFilter || undefined, effectivePage, size, 'fullname', 'ASC')
       const data = resp.data
       let filteredUsers = data?.content || []
       filteredUsers = filteredUsers.filter(u => (u.roleName || u.role?.name || '').toLowerCase() !== 'staff')

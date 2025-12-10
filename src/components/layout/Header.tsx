@@ -171,18 +171,15 @@ export function Header() {
                                         className="flex items-center gap-3 px-4 py-2 bg-white/10 backdrop-blur-sm hover:bg-white/20 rounded-xl transition-all duration-200 border border-white/20"
                                     >
                                         <div className="w-8 h-8 bg-gradient-to-br from-blue-500 to-cyan-500 rounded-full flex items-center justify-center text-white font-bold shadow-lg">
-                                            {user?.username?.charAt(0).toUpperCase()}
+                                            <UserIcon className="w-5 h-5" />
                                         </div>
                                         <div className="hidden sm:block text-left">
-                                            <p className="text-sm font-semibold text-white">{user?.username}</p>
+                                            <p className="text-sm font-semibold text-white">{user?.fullName || user?.username}</p>
                                             {user?.role === 'ADMIN' && (
                                                 <span className="text-xs text-yellow-300 font-medium">Admin</span>
                                             )}
                                             {user?.role === 'STAFF' && (
                                                 <span className="text-xs text-blue-300 font-medium">Nhân viên</span>
-                                            )}
-                                            {user?.role === 'CUSTOMER' && (
-                                                <span className="text-xs text-white/70 font-medium">Khách hàng</span>
                                             )}
                                         </div>
                                     </Link>

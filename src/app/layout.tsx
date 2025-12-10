@@ -2,8 +2,8 @@ import type { Metadata } from 'next'
 import { Inter, Poppins } from 'next/font/google'
 import './globals.css'
 import { Providers } from '@/components/providers/Providers'
-import { DesktopLayout } from '@/components/layout/DesktopLayout'
-import { Footer } from '@/components/layout/Footer'
+import { ConditionalHeader } from '@/components/layout/ConditionalHeader'
+import { ConditionalFooter } from '@/components/layout/ConditionalFooter'
 import { ErrorBoundary } from '@/components/ErrorBoundary'
 import { Toaster } from 'react-hot-toast'
 import { ChatButton } from '@/components/chat/ChatButton'
@@ -56,10 +56,9 @@ export default function RootLayout({
           <Providers>
             <ErrorBoundary>
               <RouteGuard>
-                <DesktopLayout>
-                  {children}
-                </DesktopLayout>
-                <Footer />
+                <ConditionalHeader />
+                <main>{children}</main>
+                <ConditionalFooter />
                 <ChatButton />
               </RouteGuard>
             </ErrorBoundary>
