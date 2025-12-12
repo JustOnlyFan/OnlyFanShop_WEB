@@ -29,6 +29,14 @@ export interface GetHomepageParams {
   keyword?: string
   categoryId?: number
   brandId?: number
+  minPrice?: number
+  maxPrice?: number
+  bladeCount?: number
+  remoteControl?: boolean
+  oscillation?: boolean
+  timer?: boolean
+  minPower?: number
+  maxPower?: number
   page?: number
   size?: number
   sortBy?: string
@@ -45,6 +53,14 @@ export class ProductService {
           keyword: params.keyword,
           categoryId: params.categoryId,
           brandId: params.brandId,
+          minPrice: params.minPrice,
+          maxPrice: params.maxPrice,
+          bladeCount: params.bladeCount,
+          remoteControl: params.remoteControl,
+          oscillation: params.oscillation,
+          timer: params.timer,
+          minPower: params.minPower,
+          maxPower: params.maxPower,
           page: params.page ?? 1,
           size: params.size ?? 12,
           sortBy: params.sortBy ?? 'id',
@@ -81,6 +97,14 @@ export class ProductService {
           keyword: params.keyword,
           categoryId: params.categoryId,
           brandId: params.brandId,
+          minPrice: params.minPrice,
+          maxPrice: params.maxPrice,
+          bladeCount: params.bladeCount,
+          remoteControl: params.remoteControl,
+          oscillation: params.oscillation,
+          timer: params.timer,
+          minPower: params.minPower,
+          maxPower: params.maxPower,
           page: params.page ?? 1,
           size: params.size ?? 12,
           sortBy: params.sortBy ?? 'ProductID',
@@ -123,8 +147,17 @@ export class ProductService {
   static async getBrands(): Promise<ApiResponse<Brand[]>> {
     try {
       const response = await axios.get(`${API_URL}/brands/public`)
-      return { statusCode: 200, message: 'Success', data: response.data as any }
+      console.log('Brands API raw response:', response.data);
+      const raw = response.data as any[];
+      const mapped: Brand[] = (raw || []).map((b: any) => ({
+        brandID: b.brandID ?? b.id ?? b.brand_id,
+        name: b.name ?? b.brandName,
+        imageURL: b.imageURL ?? b.logoUrl ?? b.logo_url ?? b.image
+      }));
+      console.log('Brands mapped:', mapped);
+      return { statusCode: 200, message: 'Success', data: mapped }
     } catch (error: any) {
+      console.error('Error fetching brands:', error);
       throw new Error(error.response?.data?.message || 'Failed to load brands')
     }
   }
