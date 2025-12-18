@@ -13,7 +13,6 @@ import {
 import { Bell } from 'lucide-react'
 import { AnimatePresence, motion } from 'framer-motion'
 
-import { AuthService } from '@/services/authService'
 import CategoryService from '@/services/categoryService'
 
 import { useAuthStore } from '@/store/authStore'
@@ -46,7 +45,7 @@ export function Header() {
     const { user, isAuthenticated } = useAuthStore()
     const { totalItems } = useCartStore()
     const { notifications } = useNotification()
-    const { t } = useLanguageStore()
+    useLanguageStore()
 
     const isAdminRoute = pathname?.startsWith('/admin')
     const isStaffRoute = pathname?.startsWith('/staff')
