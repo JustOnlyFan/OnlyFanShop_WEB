@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { X, Loader2, MapPin, Crosshair, Upload as UploadIcon, Trash2 } from 'lucide-react'
+import { X, Loader2, MapPin, Upload as UploadIcon, Trash2 } from 'lucide-react'
 import toast from 'react-hot-toast'
 import { StoreLocationService, CreateStoreLocationRequest, UpdateStoreLocationRequest, StoreStatus } from '@/services/storeLocationService'
 import AddressPickerModal from './AddressPickerModal'

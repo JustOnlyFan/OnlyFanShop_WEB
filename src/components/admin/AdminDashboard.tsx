@@ -14,15 +14,8 @@ import {
   XCircle,
   AlertCircle,
   Eye,
-  MoreHorizontal,
-  Shield,
-  Store,
-  Palette,
-  Tags,
-  Warehouse,
-  FileSpreadsheet
+  MoreHorizontal
 } from 'lucide-react';
-import Link from 'next/link';
 import { AdminStats } from './ui/AdminStats';
 import { AdminCard, AdminCardHeader, AdminCardBody } from './ui/AdminCard';
 import { AdminBadge } from './ui/AdminBadge';
@@ -57,15 +50,6 @@ export function AdminDashboard() {
       </AdminBadge>
     );
   };
-
-  const quickActions = [
-    { name: 'Bảo hành', href: '/admin/warranties', icon: Shield, color: 'bg-green-500', description: 'Quản lý gói bảo hành' },
-    { name: 'Cửa hàng', href: '/admin/stores', icon: Store, color: 'bg-blue-500', description: 'Quản lý cửa hàng' },
-    { name: 'Màu sắc', href: '/admin/colors', icon: Palette, color: 'bg-purple-500', description: 'Quản lý màu sắc' },
-    { name: 'Thương hiệu', href: '/admin/brands', icon: Tags, color: 'bg-orange-500', description: 'Quản lý thương hiệu' },
-    { name: 'Kho hàng', href: '/admin/warehouses', icon: Warehouse, color: 'bg-cyan-500', description: 'Quản lý kho' },
-    { name: 'Import SP', href: '/admin/products', icon: FileSpreadsheet, color: 'bg-emerald-500', description: 'Import sản phẩm' },
-  ];
 
   return (
     <div className="space-y-6">
