@@ -16,18 +16,12 @@ const ProductCard3D = dynamic(
 )
 import { 
   Star, 
-  Truck, 
-  Shield, 
-  RotateCcw,
   ArrowRight,
   TrendingUp,
   Award,
-  Users,
   Package,
   Quote,
-  ThumbsUp,
   Mail,
-  Phone,
   ChevronLeft,
   ChevronRight
 } from 'lucide-react'
