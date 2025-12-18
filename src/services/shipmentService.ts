@@ -1,4 +1,4 @@
-import api from './api';
+import { apiClient as api } from '@/lib/api';
 
 // Enums
 export enum ShipmentType {

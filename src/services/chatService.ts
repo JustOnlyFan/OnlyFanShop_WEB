@@ -13,7 +13,7 @@ export interface Message {
   message?: string
   content?: string // Fallback for compatibility
   messageType?: 'TEXT' | 'IMAGE' | 'FILE'
-  timestamp?: string | LocalDateTime
+  timestamp?: string
   epochMillis?: number
   isRead: boolean
   replyToMessageId?: string

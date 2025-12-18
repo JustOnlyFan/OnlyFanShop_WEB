@@ -2,7 +2,6 @@ import axios from 'axios'
 import { Product, Brand, Category, ApiResponse, HomepageResponse } from '@/types'
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080'
-const PROXY_URL = '/api/proxy'
 
 export interface ProductFullDetails {
   id: number
