@@ -22,14 +22,12 @@ import {
   TrendingUp,
   AlertCircle,
   BarChart3,
-  Eye,
-  FileSpreadsheet
+  Eye
 } from 'lucide-react'
 import toast from 'react-hot-toast'
 import Image from 'next/image'
 import { ProductManagementModal } from '@/components/admin/ProductManagementModal'
 import { ProductViewModal } from '@/components/admin/ProductViewModal'
-import { ProductImportModal } from '@/components/admin/ProductImportModal'
 import { 
   AdminButton, 
   AdminCard, 

@@ -39,7 +39,6 @@ function AnimatedFan({ className = '' }: { className?: string }) {
         
         {/* Fan Blades */}
         {[0, 1, 2, 3].map((i) => {
-          const angle = (i * 90) * (Math.PI / 180)
           const bladeX = 100
           const bladeY = 60
           return (

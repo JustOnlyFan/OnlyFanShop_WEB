@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { ReviewService, ProductReview, CreateReviewRequest } from '@/services/reviewService'
-import { Star, User, Calendar, Image as ImageIcon, Send, X } from 'lucide-react'
+import { Star, User, Calendar, X } from 'lucide-react'
 import { Button } from '@/components/ui/Button'
 import { useAuthStore } from '@/store/authStore'
 import toast from 'react-hot-toast'
