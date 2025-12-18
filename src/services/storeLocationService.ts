@@ -1,11 +1,4 @@
-import axios from 'axios'
 import { apiClient } from '@/lib/api'
-import { tokenStorage } from '@/utils/tokenStorage'
-
-// Respect empty string from next.config rewrites (same-origin proxy in dev)
-const API_URL = typeof process.env.NEXT_PUBLIC_API_URL !== 'undefined'
-  ? (process.env.NEXT_PUBLIC_API_URL as string)
-  : 'http://localhost:8080'
 
 export type StoreStatus = 'ACTIVE' | 'PAUSED' | 'CLOSED'
 
@@ -89,17 +82,6 @@ export interface ApiResponse<T> {
 }
 
 export class StoreLocationService {
-  private static getAuthHeaders() {
-    const token = tokenStorage.getAccessToken()
-    const headers: Record<string, string> = {
-      'Content-Type': 'application/json'
-    }
-    if (token) {
-      headers['Authorization'] = `Bearer ${token}`
-    }
-    return headers
-  }
-
   // Get store locations (backend may not support pagination; send only provided params)
   static async getStoreLocations(page?: number, size?: number, city?: string): Promise<ApiResponse<any>> {
     try {
@@ -109,10 +91,8 @@ export class StoreLocationService {
       if (city) params.append('city', city)
 
       const query = params.toString()
-      const url = query
-        ? `${API_URL}/store-locations?${query}`
-        : `${API_URL}/store-locations`
-      const response = await axios.get(url, { headers: this.getAuthHeaders() })
+      const url = query ? `/store-locations?${query}` : `/store-locations`
+      const response = await apiClient.get(url)
       return response.data
     } catch (error: any) {
       throw new Error(error.response?.data?.message || 'Failed to get store locations')
@@ -122,9 +102,7 @@ export class StoreLocationService {
   // Get store location by ID
   static async getStoreLocationById(storeId: number): Promise<ApiResponse<StoreLocation>> {
     try {
-      const response = await axios.get(`${API_URL}/store-locations/${storeId}`,
-        { headers: this.getAuthHeaders() }
-      )
+      const response = await apiClient.get(`/store-locations/${storeId}`)
       return response.data
     } catch (error: any) {
       throw new Error(error.response?.data?.message || 'Failed to get store location')
@@ -140,7 +118,7 @@ export class StoreLocationService {
       if (request.radius) params.append('radius', request.radius.toString())
       if (request.limit) params.append('limit', request.limit.toString())
 
-      const response = await axios.get(`${API_URL}/api/store-locations/nearby?${params}`)
+      const response = await apiClient.get(`/api/store-locations/nearby?${params}`)
       return response.data
     } catch (error: any) {
       throw new Error(error.response?.data?.message || 'Failed to get nearby stores')
@@ -150,7 +128,7 @@ export class StoreLocationService {
   // Create store location (Admin only)
   static async createStoreLocation(storeData: CreateStoreLocationRequest): Promise<ApiResponse<StoreLocation>> {
     try {
-      const response = await apiClient.post(`${API_URL}/store-locations`, storeData)
+      const response = await apiClient.post(`/store-locations`, storeData)
       return response.data
     } catch (error: any) {
       throw new Error(error.response?.data?.message || 'Failed to create store location')
@@ -160,9 +138,7 @@ export class StoreLocationService {
   // Update store location (Admin only)
   static async updateStoreLocation(storeId: number, storeData: UpdateStoreLocationRequest): Promise<ApiResponse<StoreLocation>> {
     try {
-      const response = await axios.put(`${API_URL}/store-locations/${storeId}`, storeData, {
-        headers: this.getAuthHeaders()
-      })
+      const response = await apiClient.put(`/store-locations/${storeId}`, storeData)
       return response.data
     } catch (error: any) {
       throw new Error(error.response?.data?.message || 'Failed to update store location')
@@ -172,9 +148,7 @@ export class StoreLocationService {
   // Delete store location (Admin only)
   static async deleteStoreLocation(storeId: number): Promise<ApiResponse<void>> {
     try {
-      const response = await axios.delete(`${API_URL}/store-locations/${storeId}`, {
-        headers: this.getAuthHeaders()
-      })
+      const response = await apiClient.delete(`/store-locations/${storeId}`)
       return response.data
     } catch (error: any) {
       throw new Error(error.response?.data?.message || 'Failed to delete store location')
@@ -188,7 +162,7 @@ export class StoreLocationService {
       params.append('query', query)
       if (city) params.append('city', city)
 
-      const response = await axios.get(`${API_URL}/api/store-locations/search?${params}`)
+      const response = await apiClient.get(`/api/store-locations/search?${params}`)
       return response.data
     } catch (error: any) {
       throw new Error(error.response?.data?.message || 'Failed to search stores')
@@ -204,14 +178,9 @@ export class StoreLocationService {
 
       const queryString = params.toString()
       const url = queryString 
-        ? `${API_URL}/store-locations/product/${productId}?${queryString}`
-        : `${API_URL}/store-locations/product/${productId}`
-      console.log('[StoreLocationService] Fetching stores with product:', url)
-      console.log('[StoreLocationService] Full URL:', url)
-      const response = await axios.get(url)
-      console.log('[StoreLocationService] Response status:', response.status)
-      console.log('[StoreLocationService] Response data:', response.data)
-      console.log('[StoreLocationService] Stores found:', response.data?.data?.length || 0)
+        ? `/store-locations/product/${productId}?${queryString}`
+        : `/store-locations/product/${productId}`
+      const response = await apiClient.get(url)
       return response.data
     } catch (error: any) {
       // If endpoint doesn't exist, return empty array
@@ -225,9 +194,7 @@ export class StoreLocationService {
   // Get store statistics (Admin only)
   static async getStoreStatistics(): Promise<ApiResponse<any>> {
     try {
-      const response = await axios.get(`${API_URL}/api/store-locations/statistics`, {
-        headers: this.getAuthHeaders()
-      })
+      const response = await apiClient.get(`/api/store-locations/statistics`)
       return response.data
     } catch (error: any) {
       throw new Error(error.response?.data?.message || 'Failed to get store statistics')
@@ -481,28 +448,20 @@ export class StoreLocationService {
     try {
       const formData = new FormData()
       formData.append('file', file)
-      
-      // Build headers specifically for multipart: only include Authorization if token exists
-      const token = tokenStorage.getAccessToken()
-      const headers: Record<string, string> = {}
-      if (token) headers['Authorization'] = `Bearer ${token}`
-      
-      // Optional explicit override via env
-      const override = (process.env.NEXT_PUBLIC_UPLOAD_URL as string) || ''
 
       // Try multiple known endpoints (backend variants)
       const candidates = [
-        override && `${API_URL}${override.startsWith('/') ? '' : '/'}${override}`,
-        `${API_URL}/api/upload/store-image`,
-        `${API_URL}/api/upload/image`,
-        `${API_URL}/api/upload/brand-image`,
-        `${API_URL}/upload/store-image`,
-      ].filter(Boolean) as string[]
+        `/api/upload/store-image`,
+        `/api/upload/image`,
+        `/api/upload/brand-image`,
+      ]
 
       let lastError: any = null
       for (const url of candidates) {
         try {
-          const response = await axios.post(url, formData, { headers })
+          const response = await apiClient.post(url, formData, {
+            headers: { 'Content-Type': 'multipart/form-data' }
+          })
           return response.data
         } catch (err: any) {
           lastError = err

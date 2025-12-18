@@ -32,11 +32,11 @@ export function RouteGuard({ children }: RouteGuardProps) {
       return
     }
 
-    const checkAccess = async () => {
+    const checkAccess = () => {
       const subdomain = getSubdomain()
 
       // Public routes - always allow
-      const publicRoutes = ['/auth/login', '/auth/register', '/auth/staff-login', '/', '/products', '/brands', '/contact', '/search']
+      const publicRoutes = ['/auth/login', '/auth/register', '/auth/staff-login', '/auth/admin-login', '/', '/products', '/brands', '/contact', '/search']
       const isPublicRoute = publicRoutes.some(route => {
         if (route === '/') return pathname === '/'
         return pathname?.startsWith(route)
@@ -99,7 +99,8 @@ export function RouteGuard({ children }: RouteGuardProps) {
     }
 
     checkAccess()
-  }, [hasHydrated, isAuthenticated, user, pathname, router])
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [hasHydrated, isAuthenticated, user?.role, pathname])
 
   if (!hasHydrated || isChecking) {
     return (

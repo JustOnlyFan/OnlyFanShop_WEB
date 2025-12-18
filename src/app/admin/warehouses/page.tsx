@@ -6,10 +6,10 @@ import { useAuthStore } from '@/store/authStore'
 import { LoadingSpinner } from '@/components/ui/LoadingSpinner'
 import { StoreLocationService, StoreLocation } from '@/services/storeLocationService'
 import { motion } from 'framer-motion'
-import { Store as StoreIcon, Search, Settings, CheckCircle2, XCircle, Package } from 'lucide-react'
-import { StoreProductModal } from '@/components/admin/StoreProductModal'
+import { Store as StoreIcon, Search, Package, ClipboardList, CheckCircle2, XCircle, Warehouse } from 'lucide-react'
+import Link from 'next/link'
 import toast from 'react-hot-toast'
-import { AdminCard, AdminCardHeader, AdminCardBody, AdminInput, AdminBadge, AdminStats } from '@/components/admin/ui'
+import { AdminCard, AdminCardHeader, AdminCardBody, AdminInput, AdminStats } from '@/components/admin/ui'
 
 type StoreWithId = StoreLocation & { id?: number; locationID?: number }
 
@@ -20,8 +20,6 @@ export default function AdminWarehousesPage() {
   const [stores, setStores] = useState<StoreWithId[]>([])
   const [searchTerm, setSearchTerm] = useState('')
   const [selectedCity, setSelectedCity] = useState('')
-  const [selectedStore, setSelectedStore] = useState<StoreWithId | null>(null)
-  const [storeProductStats, setStoreProductStats] = useState<Record<number, { available: number; total: number }>>({})
 
   useEffect(() => {
     if (!hasHydrated) return
@@ -44,7 +42,7 @@ export default function AdminWarehousesPage() {
       }))
       setStores(normalized)
     } catch (error: any) {
-      toast.error(error.message || 'Không thể tải danh sách cửa hàng')
+      toast.error(error.message || 'Không thể tải danh sách kho')
       setStores([])
     } finally {
       setLoading(false)
@@ -67,19 +65,21 @@ export default function AdminWarehousesPage() {
     return { total, active, paused, closed }
   }, [stores])
 
-  const handleStatsChange = (storeId: number, stats: { available: number; total: number }) => {
-    setStoreProductStats((prev) => ({ ...prev, [storeId]: stats }))
-  }
-
   if (!hasHydrated || loading) {
     return <div className="min-h-screen flex items-center justify-center"><LoadingSpinner /></div>
   }
 
   return (
     <div className="space-y-6">
+      {/* Header */}
+      <div>
+        <h1 className="text-2xl font-bold text-gray-900">Quản lý kho hàng</h1>
+        <p className="text-sm text-gray-500">Quản lý sản phẩm và tồn kho theo từng cửa hàng</p>
+      </div>
+
       {/* Statistics */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        <AdminStats title="Tổng cửa hàng" value={statistics.total} icon={<StoreIcon className="w-5 h-5" />} color="blue" />
+        <AdminStats title="Tổng kho" value={statistics.total} icon={<Warehouse className="w-5 h-5" />} color="blue" />
         <AdminStats title="Đang hoạt động" value={statistics.active} icon={<CheckCircle2 className="w-5 h-5" />} color="green" />
         <AdminStats title="Tạm dừng" value={statistics.paused} icon={<Package className="w-5 h-5" />} color="orange" />
         <AdminStats title="Đã đóng" value={statistics.closed} icon={<XCircle className="w-5 h-5" />} color="red" />
@@ -104,24 +104,23 @@ export default function AdminWarehousesPage() {
         </AdminCardBody>
       </AdminCard>
 
-      {/* Store list */}
+      {/* Store/Warehouse list */}
       <AdminCard>
-        <AdminCardHeader title="Danh sách cửa hàng" subtitle={`${filteredStores.length} cửa hàng`} />
+        <AdminCardHeader title="Danh sách kho hàng" subtitle={`${filteredStores.length} kho`} />
         <AdminCardBody className="p-0">
           {filteredStores.length === 0 ? (
             <div className="p-12 text-center">
-              <Package className="w-16 h-16 mx-auto mb-4 text-gray-300" />
-              <p className="text-gray-500">Không tìm thấy cửa hàng phù hợp</p>
+              <Warehouse className="w-16 h-16 mx-auto mb-4 text-gray-300" />
+              <p className="text-gray-500">Không tìm thấy kho hàng phù hợp</p>
             </div>
           ) : (
             <div className="overflow-x-auto">
               <table className="w-full">
                 <thead className="bg-gray-50 border-b border-gray-100">
                   <tr>
-                    <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase">Cửa hàng</th>
+                    <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase">Kho hàng</th>
                     <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase">Địa chỉ</th>
                     <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase">Trạng thái</th>
-                    <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase">Sản phẩm</th>
                     <th className="px-4 py-3 text-center text-xs font-semibold text-gray-600 uppercase">Thao tác</th>
                   </tr>
                 </thead>
@@ -129,33 +128,47 @@ export default function AdminWarehousesPage() {
                   {filteredStores.map((store, index) => {
                     const storeId = store.id ?? (store as any).locationID
                     const status = StoreLocationService.resolveStoreStatus(store)
-                    const stats = storeId ? storeProductStats[storeId] : undefined
 
                     return (
                       <motion.tr key={storeId} initial={{ opacity: 0, x: -10 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: index * 0.03 }} className="hover:bg-indigo-50/50 transition-colors">
                         <td className="px-4 py-4">
-                          <div className="font-semibold text-gray-900">{store.name}</div>
-                          {store.phoneNumber && <div className="text-sm text-gray-500">{store.phoneNumber}</div>}
+                          <div className="flex items-center gap-3">
+                            <div className="w-10 h-10 rounded-lg bg-indigo-100 flex items-center justify-center">
+                              <Warehouse className="w-5 h-5 text-indigo-600" />
+                            </div>
+                            <div>
+                              <div className="font-semibold text-gray-900">{store.name}</div>
+                              {store.phoneNumber && <div className="text-sm text-gray-500">{store.phoneNumber}</div>}
+                            </div>
+                          </div>
                         </td>
                         <td className="px-4 py-4 text-sm text-gray-600">{StoreLocationService.formatStoreAddress(store)}</td>
                         <td className="px-4 py-4">
-                          <AdminBadge variant={status === 'ACTIVE' ? 'success' : status === 'PAUSED' ? 'warning' : 'danger'} size="sm" dot>
+                          <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium ${
+                            status === 'ACTIVE' ? 'bg-green-100 text-green-700' : 
+                            status === 'PAUSED' ? 'bg-yellow-100 text-yellow-700' : 
+                            'bg-red-100 text-red-700'
+                          }`}>
                             {StoreLocationService.getStoreStatusLabel(status)}
-                          </AdminBadge>
-                        </td>
-                        <td className="px-4 py-4 text-sm">
-                          {stats ? (
-                            <div className="flex items-center gap-2">
-                              <span className="font-semibold text-indigo-700">{stats.available}</span>
-                              <span className="text-gray-400">/ {stats.total}</span>
-                            </div>
-                          ) : <span className="text-gray-400">Chưa tải</span>}
+                          </span>
                         </td>
                         <td className="px-4 py-4 text-center">
-                          <button onClick={() => setSelectedStore(store)} className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 rounded-lg transition-colors">
-                            <Settings className="w-4 h-4" />
-                            Quản lý
-                          </button>
+                          <div className="flex items-center justify-center gap-2">
+                            <Link 
+                              href={`/admin/warehouses/${storeId}/products`}
+                              className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 rounded-lg transition-colors"
+                            >
+                              <Package className="w-4 h-4" />
+                              Sản phẩm
+                            </Link>
+                            <Link 
+                              href={`/admin/warehouses/${storeId}/inventory-requests`}
+                              className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-green-600 bg-green-50 hover:bg-green-100 rounded-lg transition-colors"
+                            >
+                              <ClipboardList className="w-4 h-4" />
+                              Nhập hàng
+                            </Link>
+                          </div>
                         </td>
                       </motion.tr>
                     )
@@ -166,10 +179,6 @@ export default function AdminWarehousesPage() {
           )}
         </AdminCardBody>
       </AdminCard>
-
-      {selectedStore && (
-        <StoreProductModal store={selectedStore} onClose={() => setSelectedStore(null)} onStatsChange={handleStatsChange} />
-      )}
     </div>
   )
 }

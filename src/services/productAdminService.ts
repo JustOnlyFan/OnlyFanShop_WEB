@@ -60,23 +60,42 @@ class ProductAdminService {
     }
   }
 
-  // Add product
-  static async addProduct(product: ProductRequest): Promise<ProductDTO> {
+  // Add product with categories and tags
+  static async addProduct(product: ProductRequest & { categoryIds?: number[]; tagIds?: number[] }): Promise<ProductDTO> {
     try {
       const token = tokenStorage.getAccessToken()
       if (!token) {
         throw new Error('No authentication token found. Please login again.')
       }
       
-      const response = await axios.post(`${API_URL}/product`, product, {
+      // Extract categoryIds and tagIds from product
+      const { categoryIds, tagIds, ...productData } = product
+      
+      const response = await axios.post(`${API_URL}/product`, productData, {
         headers: this.getAuthHeaders()
       })
       // Backend may return Product directly or wrapped in ApiResponse
       // Check if response.data has data field (ApiResponse) or is Product directly
+      let createdProduct: ProductDTO
       if (response.data && response.data.data) {
-        return response.data.data
+        createdProduct = response.data.data
+      } else {
+        createdProduct = response.data
       }
-      return response.data
+      
+      const productId = createdProduct.productID || createdProduct.id
+      
+      // Assign categories if provided
+      if (categoryIds && categoryIds.length > 0 && productId) {
+        await this.assignCategoriesToProduct(productId, categoryIds)
+      }
+      
+      // Assign tags if provided
+      if (tagIds && tagIds.length > 0 && productId) {
+        await this.assignTagsToProduct(productId, tagIds)
+      }
+      
+      return createdProduct
     } catch (error: any) {
       console.error('Error adding product:', error.response?.status, error.response?.data)
       
@@ -114,17 +133,31 @@ class ProductAdminService {
     }
   }
 
-  // Update product
-  static async updateProduct(productID: number, product: ProductRequest): Promise<ProductDTO> {
+  // Update product with categories and tags
+  static async updateProduct(productID: number, product: ProductRequest & { categoryIds?: number[]; tagIds?: number[] }): Promise<ProductDTO> {
     try {
       const token = tokenStorage.getAccessToken()
       if (!token) {
         throw new Error('No authentication token found. Please login again.')
       }
       
-      const response = await axios.put(`${API_URL}/product/${productID}`, product, {
+      // Extract categoryIds and tagIds from product
+      const { categoryIds, tagIds, ...productData } = product
+      
+      const response = await axios.put(`${API_URL}/product/${productID}`, productData, {
         headers: this.getAuthHeaders()
       })
+      
+      // Replace categories if provided
+      if (categoryIds && categoryIds.length > 0) {
+        await this.replaceProductCategories(productID, categoryIds)
+      }
+      
+      // Replace tags if provided
+      if (tagIds) {
+        await this.replaceProductTags(productID, tagIds)
+      }
+      
       return response.data
     } catch (error: any) {
       console.error('Error updating product:', error.response?.status, error.response?.data)
@@ -174,6 +207,54 @@ class ProductAdminService {
       return response.data.data
     } catch (error: any) {
       throw new Error(error.response?.data?.message || 'Failed to upload image')
+    }
+  }
+
+  // Assign categories to product
+  static async assignCategoriesToProduct(productId: number, categoryIds: number[]): Promise<void> {
+    try {
+      await axios.post(`${API_URL}/product/${productId}/categories`, categoryIds, {
+        headers: this.getAuthHeaders()
+      })
+    } catch (error: any) {
+      console.error('Error assigning categories:', error.response?.data)
+      // Don't throw - categories assignment is secondary
+    }
+  }
+
+  // Replace product categories
+  static async replaceProductCategories(productId: number, categoryIds: number[]): Promise<void> {
+    try {
+      await axios.put(`${API_URL}/product/${productId}/categories`, categoryIds, {
+        headers: this.getAuthHeaders()
+      })
+    } catch (error: any) {
+      console.error('Error replacing categories:', error.response?.data)
+      // Don't throw - categories replacement is secondary
+    }
+  }
+
+  // Assign tags to product
+  static async assignTagsToProduct(productId: number, tagIds: number[]): Promise<void> {
+    try {
+      await axios.post(`${API_URL}/product/${productId}/tags`, tagIds, {
+        headers: this.getAuthHeaders()
+      })
+    } catch (error: any) {
+      console.error('Error assigning tags:', error.response?.data)
+      // Don't throw - tags assignment is secondary
+    }
+  }
+
+  // Replace product tags
+  static async replaceProductTags(productId: number, tagIds: number[]): Promise<void> {
+    try {
+      await axios.put(`${API_URL}/product/${productId}/tags`, tagIds, {
+        headers: this.getAuthHeaders()
+      })
+    } catch (error: any) {
+      console.error('Error replacing tags:', error.response?.data)
+      // Don't throw - tags replacement is secondary
     }
   }
 }

@@ -48,7 +48,7 @@ export function ChatButton() {
     <motion.button
       onClick={handleChatClick}
       disabled={loading}
-      className="fixed bottom-6 right-6 w-14 h-14 bg-gradient-to-r from-blue-600 to-cyan-600 text-white rounded-full shadow-lg hover:shadow-xl flex items-center justify-center z-50 transition-all hover:scale-110 disabled:opacity-50"
+      className="fixed bottom-6 right-6 w-14 h-14 bg-primary-500 hover:bg-primary-600 text-white rounded-full shadow-lg hover:shadow-xl flex items-center justify-center z-50 transition-all hover:scale-110 disabled:opacity-50"
       whileHover={{ scale: 1.1 }}
       whileTap={{ scale: 0.95 }}
       aria-label="Mở chat với hỗ trợ"

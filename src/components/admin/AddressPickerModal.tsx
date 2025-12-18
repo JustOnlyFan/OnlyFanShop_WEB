@@ -2,19 +2,28 @@
 
 import { useEffect, useRef, useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { X, MapPin, Crosshair, Search } from 'lucide-react'
+import { X, Search, Loader2, MapPin, Navigation } from 'lucide-react'
 import toast from 'react-hot-toast'
 import { StoreLocationService } from '@/services/storeLocationService'
-import { AddressService } from '@/services/addressService'
-import type { VietnamProvince, VietnamWard } from '@/types'
 
 type AddressState = {
   address: string
   city: string
-  district: string // Deprecated - kept for backward compatibility
+  district: string
   ward: string
   latitude: number
   longitude: number
+}
+
+interface Province {
+  code: number
+  name: string
+}
+
+interface Ward {
+  code: number
+  name: string
+  districtName?: string
 }
 
 interface AddressPickerModalProps {
@@ -23,238 +32,269 @@ interface AddressPickerModalProps {
   onApply: (value: AddressState) => void
 }
 
+// API Việt Nam
+const VIETNAM_API = 'https://provinces.open-api.vn/api'
+
 export default function AddressPickerModal({ initial, onClose, onApply }: AddressPickerModalProps) {
-  const [value, setValue] = useState<AddressState>(initial)
-  const [provinces, setProvinces] = useState<VietnamProvince[]>([])
-  const [wards, setWards] = useState<VietnamWard[]>([])
+  const [value, setValue] = useState<AddressState>({
+    address: '',
+    city: '',
+    district: '',
+    ward: '',
+    latitude: 10.8231,
+    longitude: 106.6297
+  })
+  const [provinces, setProvinces] = useState<Province[]>([])
+  const [wards, setWards] = useState<Ward[]>([])
+  const [selectedProvince, setSelectedProvince] = useState<number | null>(null)
+  const [loading, setLoading] = useState({ provinces: false, wards: false, geocode: false })
+  const [searchQuery, setSearchQuery] = useState('')
+  const [searchResults, setSearchResults] = useState<any[]>([])
+  const [showSearchResults, setShowSearchResults] = useState(false)
+  
   const mapRef = useRef<HTMLDivElement>(null)
-  const leafletRef = useRef<any>(null)
-  const markerRef = useRef<any>(null)
   const mapInstanceRef = useRef<any>(null)
+  const markerRef = useRef<any>(null)
+  const searchTimeoutRef = useRef<NodeJS.Timeout | null>(null)
 
-  // Load Leaflet from CDN (no dependency installation needed)
+  // Load provinces on mount
   useEffect(() => {
-    // Load provinces list
-    AddressService.getProvinces()
-      .then((p) => setProvinces(p))
-      .catch(() => {})
+    loadProvinces()
+  }, [])
 
-    const ensureLeaflet = async () => {
-      if ((window as any).L) return (window as any).L
-      await new Promise<void>((resolve, reject) => {
+  // Load Leaflet map
+  useEffect(() => {
+    let destroyed = false
+    
+    const initMap = async () => {
+      if (!document.querySelector('link[href*="leaflet"]')) {
         const link = document.createElement('link')
         link.rel = 'stylesheet'
         link.href = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.css'
-        link.integrity = 'sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY='
-        link.crossOrigin = ''
-        link.onload = () => resolve()
-        link.onerror = () => resolve()
         document.head.appendChild(link)
+      }
+
+      if (!(window as any).L) {
+        await new Promise<void>((resolve, reject) => {
+          const script = document.createElement('script')
+          script.src = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.js'
+          script.async = true
+          script.onload = () => resolve()
+          script.onerror = () => reject()
+          document.body.appendChild(script)
+        })
+      }
+
+      if (destroyed || !mapRef.current) return
+
+      const L = (window as any).L
+      const map = L.map(mapRef.current).setView([10.8231, 106.6297], 12)
+      
+      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        attribution: '© OpenStreetMap'
+      }).addTo(map)
+
+      const marker = L.marker([10.8231, 106.6297], { draggable: true }).addTo(map)
+
+      marker.on('dragend', () => {
+        const pos = marker.getLatLng()
+        setValue(prev => ({ ...prev, latitude: pos.lat, longitude: pos.lng }))
       })
-      await new Promise<void>((resolve, reject) => {
-        const script = document.createElement('script')
-        script.src = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.js'
-        script.integrity = 'sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo='
-        script.crossOrigin = ''
-        script.async = true
-        script.onload = () => resolve()
-        script.onerror = () => reject(new Error('Failed to load Leaflet'))
-        document.body.appendChild(script)
+
+      map.on('click', (e: any) => {
+        const { lat, lng } = e.latlng
+        marker.setLatLng([lat, lng])
+        setValue(prev => ({ ...prev, latitude: lat, longitude: lng }))
       })
-      return (window as any).L
+
+      mapInstanceRef.current = map
+      markerRef.current = marker
     }
 
-    let destroyed = false
-    ensureLeaflet()
-      .then((L) => {
-        if (destroyed || !mapRef.current) return
-        leafletRef.current = L
-        const map = L.map(mapRef.current).setView([value.latitude || 10.776, value.longitude || 106.700], 13)
-        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-          attribution: '&copy; OpenStreetMap'
-        }).addTo(map)
-        const marker = L.marker([value.latitude || 10.776, value.longitude || 106.700], { draggable: true }).addTo(map)
-        marker.on('dragend', () => {
-          const pos = marker.getLatLng()
-          setValue((prev) => ({ ...prev, latitude: pos.lat, longitude: pos.lng }))
-          // Reverse geocode to get accurate address
-          reverseGeocode(pos.lat, pos.lng, { recenter: false })
-        })
-        
-        // Click on map to move marker and get address
-        map.on('click', (e: any) => {
-          const lat = e.latlng.lat
-          const lng = e.latlng.lng
-          marker.setLatLng([lat, lng])
-          setValue((prev) => ({ ...prev, latitude: lat, longitude: lng }))
-          reverseGeocode(lat, lng, { recenter: false })
-        })
-        
-        markerRef.current = marker
-        mapInstanceRef.current = map
-        ;(map as any)._leaflet_id // keep ref
-
-        // If we came in with coordinates but missing address, fetch it once
-        if ((!initial.address || !initial.city) && (initial.latitude && initial.longitude)) {
-          reverseGeocode(initial.latitude, initial.longitude, { recenter: true })
-        }
-      })
-      .catch(() => toast.error('Không thể tải bản đồ'))
+    initMap().catch(() => toast.error('Không thể tải bản đồ'))
 
     return () => {
       destroyed = true
-      try {
-        const L = (window as any).L
-        if (L && mapRef.current && (mapRef.current as any)._leaflet_id) {
-          const map = (mapRef.current as any)
-          // Leaflet cleans up when element is removed
-        }
-      } catch {}
+      if (mapInstanceRef.current) {
+        mapInstanceRef.current.remove()
+      }
     }
   }, [])
 
-  const reverseGeocode = async (lat: number, lon: number, opts?: { recenter?: boolean }) => {
+  const loadProvinces = async () => {
+    setLoading(prev => ({ ...prev, provinces: true }))
     try {
-      const params = new URLSearchParams({
-        lat: lat.toString(),
-        lon: lon.toString(),
-        format: 'json',
-        addressdetails: '1',
-        'accept-language': 'vi'
-      })
-      const resp = await fetch(`https://nominatim.openstreetmap.org/reverse?${params.toString()}`, {
-        headers: { 'Accept-Language': 'vi' }
-      })
-      const result = await resp.json()
-      if (result && result.address) {
-        const addr = result.address
-        // Prefer explicit fields. Vietnam has provinces (state/city), no districts (post-merger).
-        const road = addr.road || addr.street || addr.pedestrian || ''
-        const house = addr.house_number ? `${addr.house_number} ` : ''
-        const ward = addr.quarter || addr.neighbourhood || addr.village || addr.suburb || ''
-        const city = addr.state || addr.city || addr.town || addr.county || ''
-
-        setValue((prev) => ({
-          ...prev,
-          address: (house + road).trim() || prev.address,
-          city: city || prev.city,
-          district: '', // deprecated
-          ward: ward || prev.ward,
-          latitude: lat,
-          longitude: lon
-        }))
-        // Recenter and zoom closer if requested
-        if (opts?.recenter && mapInstanceRef.current && markerRef.current) {
-          mapInstanceRef.current.setView([lat, lon], 17)
-          markerRef.current.setLatLng([lat, lon])
-        }
-        toast.success('Đã cập nhật địa chỉ từ vị trí')
-      }
+      const res = await fetch(`${VIETNAM_API}/p/`)
+      const data = await res.json()
+      setProvinces(data || [])
     } catch (err) {
-      console.error('Reverse geocode error:', err)
+      toast.error('Không thể tải danh sách tỉnh/thành')
+    } finally {
+      setLoading(prev => ({ ...prev, provinces: false }))
     }
   }
 
-  const geocode = async () => {
-    if (!value.address?.trim() && !value.city?.trim()) {
-      toast.error('Vui lòng nhập địa chỉ hoặc chọn tỉnh/thành phố')
-      return
-    }
-    
-    // Build query with proper format for Vietnam addresses (no district after merger)
-    const parts: string[] = []
-    if (value.address?.trim()) parts.push(value.address.trim())
-    if (value.ward?.trim()) parts.push(value.ward.trim())
-    if (value.city?.trim()) parts.push(value.city.trim())
-    parts.push('Vietnam')
-    
-    const query = parts.join(', ')
-    
+  const loadWards = async (provinceCode: number) => {
+    setLoading(prev => ({ ...prev, wards: true }))
+    setWards([])
     try {
-      const params = new URLSearchParams({
-        q: query,
-        format: 'json',
-        limit: '5',
-        addressdetails: '1',
-        countrycodes: 'vn',
-        'accept-language': 'vi'
-      })
-      const resp = await fetch(`https://nominatim.openstreetmap.org/search?${params.toString()}`, {
-        headers: { 'Accept-Language': 'vi' }
-      })
-      const results = await resp.json()
-      if (Array.isArray(results) && results.length > 0) {
-        // Use first result (most relevant)
-        const first = results[0]
-        const lat = parseFloat(first.lat)
-        const lon = parseFloat(first.lon)
-        if (Number.isFinite(lat) && Number.isFinite(lon)) {
-          // Update coordinates
-          setValue((prev) => ({ ...prev, latitude: lat, longitude: lon }))
-          
-          // Update address from result if available
-          if (first.address) {
-            const addr = first.address
-            setValue((prev) => ({
-              ...prev,
-              address: addr.house_number 
-                ? `${addr.house_number} ${addr.road || addr.street || ''}`.trim()
-                : (addr.road || addr.street || prev.address),
-              city: addr.state || addr.city || prev.city,
-              district: addr.suburb || addr.city_district || prev.district,
-              ward: addr.quarter || addr.neighbourhood || prev.ward,
-              latitude: lat,
-              longitude: lon
-            }))
+      const res = await fetch(`${VIETNAM_API}/p/${provinceCode}?depth=3`)
+      const data = await res.json()
+      
+      const allWards: Ward[] = []
+      if (data.districts && Array.isArray(data.districts)) {
+        data.districts.forEach((district: any) => {
+          if (district.wards && Array.isArray(district.wards)) {
+            district.wards.forEach((ward: any) => {
+              allWards.push({
+                code: ward.code,
+                name: ward.name,
+                districtName: district.name
+              })
+            })
           }
-          
-          const map = mapInstanceRef.current
-          if (map && markerRef.current) {
-            map.setView([lat, lon], 18) // Zoom closer for accuracy
-            markerRef.current.setLatLng([lat, lon])
-          }
-          toast.success(`Đã tìm thấy: ${first.display_name || 'Địa chỉ'}`)
-        } else {
-          toast.error('Không tìm thấy toạ độ phù hợp')
-        }
-      } else {
-        toast.error('Không tìm thấy địa chỉ phù hợp. Vui lòng kiểm tra lại thông tin.')
+        })
       }
+      
+      allWards.sort((a, b) => a.name.localeCompare(b.name, 'vi'))
+      setWards(allWards)
     } catch (err) {
-      console.error('Geocode error:', err)
-      toast.error('Lỗi khi tra cứu địa chỉ')
+      console.error('Failed to load wards:', err)
+    } finally {
+      setLoading(prev => ({ ...prev, wards: false }))
     }
   }
 
-  // When province name changes, fetch wards from API v2
   useEffect(() => {
-    const selected = provinces.find((p) => p.name === value.city || p.fullName === value.city)
-    if (!selected) {
-      setWards([])
+    if (selectedProvince) {
+      loadWards(selectedProvince)
+    }
+  }, [selectedProvince])
+
+  const handleSearchChange = (query: string) => {
+    setSearchQuery(query)
+    
+    if (searchTimeoutRef.current) {
+      clearTimeout(searchTimeoutRef.current)
+    }
+
+    if (!query.trim()) {
+      setSearchResults([])
+      setShowSearchResults(false)
       return
     }
-    AddressService.getProvinceWithWards(selected.code)
-      .then((prov) => setWards(prov.wards || []))
-      .catch(() => setWards([]))
-  }, [value.city, provinces])
 
-  const useCurrent = async () => {
+    searchTimeoutRef.current = setTimeout(async () => {
+      try {
+        const params = new URLSearchParams({
+          q: `${query}, Vietnam`,
+          format: 'json',
+          limit: '5',
+          countrycodes: 'vn',
+          'accept-language': 'vi'
+        })
+        const res = await fetch(`https://nominatim.openstreetmap.org/search?${params}`)
+        const data = await res.json()
+        setSearchResults(data || [])
+        setShowSearchResults(true)
+      } catch (err) {
+        console.error('Search error:', err)
+      }
+    }, 500)
+  }
+
+  const selectSearchResult = (result: any) => {
+    const lat = parseFloat(result.lat)
+    const lng = parseFloat(result.lon)
+    
+    if (Number.isFinite(lat) && Number.isFinite(lng)) {
+      setValue(prev => ({ ...prev, latitude: lat, longitude: lng }))
+      
+      if (mapInstanceRef.current && markerRef.current) {
+        mapInstanceRef.current.setView([lat, lng], 17)
+        markerRef.current.setLatLng([lat, lng])
+      }
+    }
+
+    setSearchQuery('')
+    setShowSearchResults(false)
+    toast.success('Đã chọn vị trí')
+  }
+
+  const handleGetCurrentLocation = async () => {
+    setLoading(prev => ({ ...prev, geocode: true }))
     try {
       const { latitude, longitude } = await StoreLocationService.getCurrentLocation()
-      setValue((prev) => ({ ...prev, latitude, longitude }))
-      const map = mapInstanceRef.current
-      if (map && markerRef.current) {
-        map.setView([latitude, longitude], 15)
+      setValue(prev => ({ ...prev, latitude, longitude }))
+      
+      if (mapInstanceRef.current && markerRef.current) {
+        mapInstanceRef.current.setView([latitude, longitude], 17)
         markerRef.current.setLatLng([latitude, longitude])
       }
+      
       toast.success('Đã lấy vị trí hiện tại')
     } catch (err: any) {
       toast.error(err.message || 'Không thể lấy vị trí')
+    } finally {
+      setLoading(prev => ({ ...prev, geocode: false }))
     }
   }
 
-  const apply = () => {
-    onApply(value)
+  const handleProvinceChange = (code: number) => {
+    const province = provinces.find(p => p.code === code)
+    setSelectedProvince(code)
+    setValue(prev => ({ ...prev, city: province?.name || '', ward: '', district: '' }))
+  }
+
+  const handleWardChange = (wardName: string) => {
+    const ward = wards.find(w => w.name === wardName)
+    setValue(prev => ({ 
+      ...prev, 
+      ward: wardName,
+      district: ward?.districtName || ''
+    }))
+  }
+
+  const geocodeFromAddress = async () => {
+    const parts = [value.address, value.ward, value.city].filter(Boolean)
+    if (parts.length === 0) {
+      toast.error('Vui lòng nhập địa chỉ')
+      return
+    }
+
+    setLoading(prev => ({ ...prev, geocode: true }))
+    try {
+      const query = parts.join(', ') + ', Vietnam'
+      const params = new URLSearchParams({
+        q: query,
+        format: 'json',
+        limit: '1',
+        countrycodes: 'vn'
+      })
+      const res = await fetch(`https://nominatim.openstreetmap.org/search?${params}`)
+      const data = await res.json()
+      
+      if (data && data.length > 0) {
+        const lat = parseFloat(data[0].lat)
+        const lng = parseFloat(data[0].lon)
+        
+        if (Number.isFinite(lat) && Number.isFinite(lng)) {
+          setValue(prev => ({ ...prev, latitude: lat, longitude: lng }))
+          
+          if (mapInstanceRef.current && markerRef.current) {
+            mapInstanceRef.current.setView([lat, lng], 17)
+            markerRef.current.setLatLng([lat, lng])
+          }
+          toast.success('Đã tìm thấy vị trí')
+        }
+      } else {
+        toast.error('Không tìm thấy địa chỉ')
+      }
+    } catch (err) {
+      toast.error('Lỗi khi tra cứu địa chỉ')
+    } finally {
+      setLoading(prev => ({ ...prev, geocode: false }))
+    }
   }
 
   return (
@@ -268,74 +308,182 @@ export default function AddressPickerModal({ initial, onClose, onApply }: Addres
           onClick={onClose}
         />
         <motion.div
-          initial={{ opacity: 0, scale: 0.95 }}
-          animate={{ opacity: 1, scale: 1 }}
-          exit={{ opacity: 0, scale: 0.95 }}
-          className="relative bg-white rounded-xl shadow-2xl w-full max-w-4xl max-h-[90vh] overflow-y-auto"
+          initial={{ opacity: 0, scale: 0.95, y: 20 }}
+          animate={{ opacity: 1, scale: 1, y: 0 }}
+          exit={{ opacity: 0, scale: 0.95, y: 20 }}
+          className="relative bg-white rounded-2xl shadow-2xl w-full max-w-4xl max-h-[90vh] overflow-hidden"
         >
-          <div className="sticky top-0 bg-white border-b px-6 py-4 flex items-center justify-between">
-            <h3 className="text-lg font-semibold">Lấy địa chỉ và vị trí</h3>
-            <button onClick={onClose} className="p-2 text-gray-500 hover:text-gray-700">
+          {/* Header */}
+          <div className="sticky top-0 bg-gradient-to-r from-blue-600 to-indigo-600 px-6 py-4 flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 bg-white/20 rounded-xl flex items-center justify-center">
+                <MapPin className="w-5 h-5 text-white" />
+              </div>
+              <div>
+                <h3 className="text-lg font-semibold text-white">Chọn địa chỉ cửa hàng</h3>
+                <p className="text-sm text-white/70">Nhấp vào bản đồ hoặc kéo marker để chọn vị trí</p>
+              </div>
+            </div>
+            <button onClick={onClose} className="p-2 text-white/80 hover:text-white hover:bg-white/10 rounded-lg">
               <X className="w-5 h-5" />
             </button>
           </div>
 
-          <div className="p-6 space-y-4">
-            <div className="grid md:grid-cols-2 gap-3">
-              <select
-                className="px-3 py-2 border rounded-lg bg-white"
-                value={value.city}
-                onChange={(e) => setValue({ ...value, city: e.target.value, district: '', ward: '' })}
-              >
-                <option value="">Chọn Tỉnh/Thành phố</option>
-                {provinces.map((p) => (
-                  <option key={p.code} value={p.name}>{p.name}</option>
-                ))}
-              </select>
-
-              <select
-                className="px-3 py-2 border rounded-lg bg-white"
-                value={value.ward}
-                onChange={(e) => setValue({ ...value, ward: e.target.value })}
-                disabled={!value.city || wards.length === 0}
-              >
-                <option value="">Chọn Phường/Xã</option>
-                {wards.map((w) => (
-                  <option key={w.code} value={w.name}>{w.name}</option>
-                ))}
-              </select>
-            </div>
-            <div className="flex gap-2">
-              <input
-                className="flex-1 px-3 py-2 border rounded-lg"
-                placeholder="Địa chỉ (số nhà, đường) *"
-                value={value.address}
-                onChange={(e) => setValue({ ...value, address: e.target.value })}
-              />
-              <button onClick={geocode} type="button" className="px-3 py-2 border rounded-lg inline-flex items-center gap-2 hover:bg-gray-50">
-                <Search className="w-4 h-4" /> Tra cứu
-              </button>
-              <button onClick={useCurrent} type="button" className="px-3 py-2 border rounded-lg inline-flex items-center gap-2 hover:bg-gray-50">
-                <Crosshair className="w-4 h-4" /> Vị trí hiện tại
-              </button>
-            </div>
-
-            <div ref={mapRef} className="w-full h-[360px] rounded-lg border" />
-
-            <div className="grid md:grid-cols-2 gap-3">
-              <div className="px-3 py-2 border rounded-lg bg-gray-50">Vĩ độ: {value.latitude.toFixed(6)}</div>
-              <div className="px-3 py-2 border rounded-lg bg-gray-50">Kinh độ: {value.longitude.toFixed(6)}</div>
+          <div className="p-6 space-y-5 overflow-y-auto max-h-[calc(90vh-180px)]">
+            {/* Search Box */}
+            <div className="relative">
+              <div className="flex gap-2">
+                <div className="relative flex-1">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
+                  <input
+                    type="text"
+                    value={searchQuery}
+                    onChange={(e) => handleSearchChange(e.target.value)}
+                    placeholder="Tìm kiếm địa chỉ nhanh..."
+                    className="w-full pl-10 pr-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500"
+                  />
+                </div>
+                <button
+                  onClick={handleGetCurrentLocation}
+                  disabled={loading.geocode}
+                  className="px-4 py-3 bg-blue-50 text-blue-600 rounded-xl hover:bg-blue-100 flex items-center gap-2 font-medium disabled:opacity-50"
+                >
+                  {loading.geocode ? <Loader2 className="w-5 h-5 animate-spin" /> : <Navigation className="w-5 h-5" />}
+                  <span className="hidden sm:inline">Vị trí hiện tại</span>
+                </button>
+              </div>
+              
+              {showSearchResults && searchResults.length > 0 && (
+                <div className="absolute top-full left-0 right-0 mt-2 bg-white border border-gray-200 rounded-xl shadow-lg z-10 max-h-60 overflow-y-auto">
+                  {searchResults.map((result, idx) => (
+                    <button
+                      key={idx}
+                      onClick={() => selectSearchResult(result)}
+                      className="w-full px-4 py-3 text-left hover:bg-blue-50 flex items-start gap-3 border-b border-gray-100 last:border-0"
+                    >
+                      <MapPin className="w-5 h-5 text-blue-500 flex-shrink-0 mt-0.5" />
+                      <span className="text-sm text-gray-700 line-clamp-2">{result.display_name}</span>
+                    </button>
+                  ))}
+                </div>
+              )}
             </div>
 
-            <div className="flex justify-end gap-3 pt-2">
-              <button type="button" onClick={onClose} className="px-4 py-2 rounded-lg border">Hủy</button>
-              <button type="button" onClick={apply} className="px-4 py-2 rounded-lg bg-green-600 text-white hover:bg-green-700">Áp dụng</button>
+            {/* Address Dropdowns - Chỉ Tỉnh và Phường/Xã */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Tỉnh/Thành phố *</label>
+                <select
+                  value={selectedProvince || ''}
+                  onChange={(e) => handleProvinceChange(Number(e.target.value))}
+                  disabled={loading.provinces}
+                  className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 bg-white disabled:bg-gray-50"
+                >
+                  <option value="">-- Chọn Tỉnh/Thành phố --</option>
+                  {provinces.map(p => (
+                    <option key={p.code} value={p.code}>{p.name}</option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Phường/Xã *</label>
+                <select
+                  value={value.ward}
+                  onChange={(e) => handleWardChange(e.target.value)}
+                  disabled={!selectedProvince || loading.wards}
+                  className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 bg-white disabled:bg-gray-50"
+                >
+                  <option value="">-- Chọn Phường/Xã --</option>
+                  {wards.map(w => (
+                    <option key={w.code} value={w.name}>
+                      {w.name}{w.districtName ? ` (${w.districtName})` : ''}
+                    </option>
+                  ))}
+                </select>
+                {loading.wards && (
+                  <p className="text-xs text-gray-500 mt-1 flex items-center gap-1">
+                    <Loader2 className="w-3 h-3 animate-spin" /> Đang tải...
+                  </p>
+                )}
+              </div>
             </div>
+
+            {/* Street Address */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Địa chỉ chi tiết (số nhà, tên đường) *</label>
+              <div className="flex gap-2">
+                <input
+                  type="text"
+                  value={value.address}
+                  onChange={(e) => setValue(prev => ({ ...prev, address: e.target.value }))}
+                  placeholder="VD: 123 Nguyễn Văn Linh"
+                  className="flex-1 px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500"
+                />
+                <button
+                  onClick={geocodeFromAddress}
+                  disabled={loading.geocode}
+                  className="px-4 py-3 bg-green-50 text-green-600 rounded-xl hover:bg-green-100 flex items-center gap-2 font-medium disabled:opacity-50"
+                >
+                  {loading.geocode ? <Loader2 className="w-5 h-5 animate-spin" /> : <Search className="w-5 h-5" />}
+                  Tìm
+                </button>
+              </div>
+            </div>
+
+            {/* Map */}
+            <div className="relative">
+              <div ref={mapRef} className="w-full h-[300px] rounded-xl border border-gray-200 overflow-hidden" />
+              <div className="absolute bottom-3 left-3 bg-white/90 backdrop-blur-sm px-3 py-2 rounded-lg shadow-sm text-xs text-gray-600">
+                📍 Nhấp vào bản đồ hoặc kéo marker để chọn vị trí
+              </div>
+            </div>
+
+            {/* Coordinates */}
+            <div className="grid grid-cols-2 gap-4">
+              <div className="px-4 py-3 bg-gray-50 rounded-xl">
+                <span className="text-xs text-gray-500 block mb-1">Vĩ độ</span>
+                <span className="font-mono text-sm text-gray-900">{value.latitude.toFixed(6)}</span>
+              </div>
+              <div className="px-4 py-3 bg-gray-50 rounded-xl">
+                <span className="text-xs text-gray-500 block mb-1">Kinh độ</span>
+                <span className="font-mono text-sm text-gray-900">{value.longitude.toFixed(6)}</span>
+              </div>
+            </div>
+
+            {/* Preview */}
+            {(value.address || value.ward || value.city) && (
+              <div className="p-4 bg-blue-50 rounded-xl border border-blue-100">
+                <div className="flex items-start gap-3">
+                  <MapPin className="w-5 h-5 text-blue-600 flex-shrink-0 mt-0.5" />
+                  <div>
+                    <p className="text-sm font-medium text-blue-900">Địa chỉ đã chọn:</p>
+                    <p className="text-sm text-blue-700 mt-1">
+                      {[value.address, value.ward, value.city].filter(Boolean).join(', ')}
+                    </p>
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* Footer */}
+          <div className="sticky bottom-0 bg-gray-50 border-t border-gray-200 px-6 py-4 flex justify-end gap-3">
+            <button
+              onClick={onClose}
+              className="px-6 py-2.5 border border-gray-300 text-gray-700 rounded-xl hover:bg-gray-100 font-medium"
+            >
+              Hủy
+            </button>
+            <button
+              onClick={() => onApply(value)}
+              className="px-6 py-2.5 bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-xl hover:from-blue-700 hover:to-indigo-700 font-medium shadow-lg shadow-blue-500/25"
+            >
+              Áp dụng địa chỉ
+            </button>
           </div>
         </motion.div>
       </div>
     </AnimatePresence>
   )
 }
-
-

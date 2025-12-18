@@ -54,7 +54,7 @@ export function ServiceCommitmentSection() {
           className="text-center mb-16"
         >
           <h2 className="text-4xl md:text-5xl font-bold text-gray-900 mb-4">
-            Cam kết <span className="bg-gradient-to-r from-blue-600 to-cyan-600 bg-clip-text text-transparent">của chúng tôi</span>
+            Cam kết <span className="text-primary-600">của chúng tôi</span>
           </h2>
           <p className="text-xl text-gray-600 max-w-3xl mx-auto">
             Sự hài lòng của khách hàng là ưu tiên hàng đầu. Chúng tôi cam kết mang đến trải nghiệm mua sắm tốt nhất.
@@ -102,21 +102,21 @@ export function ServiceCommitmentSection() {
           transition={{ duration: 0.6, delay: 0.6 }}
           className="mt-16 text-center"
         >
-          <div className="bg-gradient-to-r from-blue-600 to-cyan-600 rounded-2xl p-8 text-white">
+          <div className="bg-primary-500 rounded-2xl p-8 text-white">
             <h3 className="text-2xl font-bold mb-4">Bạn cần tư vấn?</h3>
-            <p className="text-lg mb-6 text-blue-100">
+            <p className="text-lg mb-6 text-white/90">
               Đội ngũ chuyên gia của chúng tôi sẵn sàng tư vấn giúp bạn chọn sản phẩm phù hợp nhất
             </p>
             <div className="flex flex-col sm:flex-row gap-4 justify-center items-center">
               <a
                 href="tel:+84123456789"
-                className="px-8 py-3 bg-white text-blue-600 rounded-xl font-semibold hover:bg-blue-50 transition-colors duration-200 shadow-lg"
+                className="px-8 py-3 bg-white text-primary-600 rounded-xl font-semibold hover:bg-gray-100 transition-colors duration-200 shadow-lg"
               >
                 Gọi ngay: +84 123 456 789
               </a>
               <a
                 href="/contact"
-                className="px-8 py-3 bg-blue-700 text-white rounded-xl font-semibold hover:bg-blue-800 transition-colors duration-200 border-2 border-white/20"
+                className="px-8 py-3 bg-primary-600 text-white rounded-xl font-semibold hover:bg-primary-700 transition-colors duration-200 border-2 border-white/20"
               >
                 Liên hệ tư vấn
               </a>

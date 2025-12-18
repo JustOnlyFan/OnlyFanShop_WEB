@@ -1,19 +1,18 @@
 'use client'
 
 import { useEffect, useMemo, useState } from 'react'
-import { useRouter } from 'next/navigation'
 import { useAuthStore } from '@/store/authStore'
 import { LoadingSpinner } from '@/components/ui/LoadingSpinner'
 import { StoreLocationService, StoreLocation, StoreStatus } from '@/services/storeLocationService'
 import { StaffService } from '@/services/staffService'
 import { motion } from 'framer-motion'
-import { Plus, Edit2, Trash2, Search, PowerOff, Clock, Phone, Store, TrendingUp, Building2, User } from 'lucide-react'
+import { Plus, Edit2, Trash2, Search, PowerOff, Clock, Phone, Store, TrendingUp, Building2, User, MapPin, Mail, Eye } from 'lucide-react'
+import Link from 'next/link'
+import Image from 'next/image'
 import toast from 'react-hot-toast'
-import StoreManagementModal from '@/components/admin/StoreManagementModal'
-import { AdminButton, AdminCard, AdminCardHeader, AdminCardBody, AdminInput, AdminBadge, AdminStats } from '@/components/admin/ui'
+import { AdminCard, AdminCardHeader, AdminCardBody, AdminInput, AdminStats } from '@/components/admin/ui'
 
 export default function AdminStoresPage() {
-  const router = useRouter()
   const { user, isAuthenticated, hasHydrated } = useAuthStore()
   const [loading, setLoading] = useState(true)
   const [stores, setStores] = useState<StoreLocation[]>([])
@@ -23,24 +22,24 @@ export default function AdminStoresPage() {
   const [totalPages, setTotalPages] = useState(0)
   const [searchTerm, setSearchTerm] = useState('')
   const [cityFilter, setCityFilter] = useState('')
-  const [showModal, setShowModal] = useState(false)
-  const [editingStore, setEditingStore] = useState<any | null>(null)
+
   const [storeStaffMap, setStoreStaffMap] = useState<Record<number, any[]>>({})
 
-  useEffect(() => {
-    if (!hasHydrated) return
-    if (!isAuthenticated || user?.role !== 'ADMIN') {
-      router.push('/')
-      return
-    }
-    loadStores({ resetPage: true })
-  }, [hasHydrated, isAuthenticated, user, router])
 
+  // Initial load
   useEffect(() => {
-    if (!hasHydrated) return
+    if (!hasHydrated || !isAuthenticated || user?.role !== 'ADMIN') return
+    loadStores({ resetPage: true })
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [hasHydrated, isAuthenticated, user?.role])
+
+  // Filter/search changes
+  useEffect(() => {
+    if (!hasHydrated || !isAuthenticated || user?.role !== 'ADMIN') return
     const t = setTimeout(() => loadStores(), 300)
     return () => clearTimeout(t)
-  }, [searchTerm, cityFilter, page, hasHydrated])
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchTerm, cityFilter, page])
 
   const loadStores = async (opts?: { resetPage?: boolean }) => {
     try {
@@ -83,16 +82,9 @@ export default function AdminStoresPage() {
     }
   }
 
-  const handleAdd = () => { setEditingStore(null); setShowModal(true) }
+  // handleAdd removed - using Link to /admin/stores/new instead
 
-  const handleEdit = (s: StoreLocation) => {
-    setEditingStore({
-      id: s.id ?? (s as any).locationID, name: s.name, address: s.address, city: s.city, district: s.district, ward: s.ward,
-      latitude: s.latitude, longitude: s.longitude, phoneNumber: s.phoneNumber, email: s.email, openingHours: s.openingHours,
-      description: s.description, images: s.images || [], services: s.services || [], status: StoreLocationService.resolveStoreStatus(s), isActive: s.isActive
-    })
-    setShowModal(true)
-  }
+  // handleEdit removed - using Link to /admin/stores/[id]/settings instead
 
   const handleDelete = async (s: StoreLocation) => {
     if (!confirm(`Xoá cửa hàng "${s.name}"?`)) return
@@ -136,7 +128,13 @@ export default function AdminStoresPage() {
     <div className="space-y-6">
       {/* Action Button */}
       <div className="flex justify-end">
-        <AdminButton variant="success" icon={<Plus className="w-5 h-5" />} onClick={handleAdd}>Thêm cửa hàng</AdminButton>
+        <Link 
+          href="/admin/stores/new" 
+          className="px-6 py-2.5 bg-gradient-to-r from-green-600 to-green-700 hover:from-green-700 hover:to-green-800 text-white rounded-xl font-medium shadow-lg inline-flex items-center gap-2 transition-all"
+        >
+          <Plus className="w-5 h-5" />
+          Thêm cửa hàng
+        </Link>
       </div>
 
       {/* Statistics */}
@@ -165,78 +163,224 @@ export default function AdminStoresPage() {
         </AdminCardBody>
       </AdminCard>
 
-      {/* Store List */}
+      {/* Store List - Table View */}
       <AdminCard>
         <AdminCardHeader title="Danh sách cửa hàng" subtitle={`${allStores.length} cửa hàng`} />
-        <AdminCardBody className="p-4">
+        <AdminCardBody className="p-0">
           {stores.length === 0 ? (
             <div className="p-12 text-center"><Store className="w-16 h-16 mx-auto mb-4 text-gray-300" /><p className="text-gray-500">Không tìm thấy cửa hàng nào</p></div>
           ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {stores.map((s, idx) => {
-                const status = StoreLocationService.resolveStoreStatus(s)
-                const storeId = s.id ?? (s as any).locationID
-                const staffList = storeId ? storeStaffMap[storeId] || [] : []
-                return (
-                  <motion.div key={storeId || idx} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: idx * 0.03 }} className="border border-gray-200 rounded-xl p-4 bg-white hover:shadow-lg transition-shadow">
-                    <div className="flex items-start justify-between gap-2">
-                      <div className="flex-1 min-w-0">
-                        <h3 className="font-semibold text-gray-900">{s.name}</h3>
-                        <p className="text-sm text-gray-600 mt-1">{StoreLocationService.formatStoreAddress(s)}</p>
-                        {(s.phone || s.phoneNumber) && (
-                          <div className="text-sm text-gray-600 mt-1 flex items-center gap-1"><Phone className="w-3 h-3" /><span>{(s as any).phone || s.phoneNumber}</span></div>
-                        )}
-                        {s.openingHours && (
-                          <div className="text-sm text-gray-600 mt-1 flex items-center gap-1"><Clock className="w-3 h-3" /><span>{s.openingHours}</span></div>
-                        )}
-                        <div className="mt-2">
-                          <AdminBadge variant={status === 'ACTIVE' ? 'success' : status === 'PAUSED' ? 'warning' : 'danger'} size="sm" dot>
-                            {StoreLocationService.getStoreStatusLabel(status)}
-                          </AdminBadge>
-                        </div>
-                        {/* Staff Info */}
-                        <div className="mt-3 pt-3 border-t border-gray-100">
+            <div className="overflow-x-auto">
+              <table className="w-full">
+                <thead className="bg-gray-50 border-b border-gray-200">
+                  <tr>
+                    <th className="px-4 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Cửa hàng</th>
+                    <th className="px-4 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Liên hệ</th>
+                    <th className="px-4 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Quản lý</th>
+                    <th className="px-4 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Trạng thái</th>
+                    <th className="px-4 py-4 text-center text-xs font-semibold text-gray-600 uppercase tracking-wider">Thao tác</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-gray-100 bg-white">
+                  {stores.map((s, idx) => {
+                    const status = StoreLocationService.resolveStoreStatus(s)
+                    const storeId = s.id ?? (s as any).locationID
+                    const staffList = storeId ? storeStaffMap[storeId] || [] : []
+                    const storeImage = (s as any).imageUrl || s.images?.[0]
+                    
+                    return (
+                      <motion.tr 
+                        key={storeId || idx} 
+                        initial={{ opacity: 0, x: -10 }} 
+                        animate={{ opacity: 1, x: 0 }} 
+                        transition={{ delay: idx * 0.03 }} 
+                        className="hover:bg-blue-50/50 transition-colors"
+                      >
+                        {/* Store Info with Image */}
+                        <td className="px-4 py-4">
+                          <div className="flex items-center gap-4">
+                            {/* Store Image */}
+                            <div className="flex-shrink-0 w-20 h-20 rounded-xl overflow-hidden bg-gradient-to-br from-blue-100 to-indigo-100 border border-gray-200">
+                              {storeImage ? (
+                                <Image 
+                                  src={storeImage} 
+                                  alt={s.name} 
+                                  width={80} 
+                                  height={80} 
+                                  className="w-full h-full object-cover"
+                                />
+                              ) : (
+                                <div className="w-full h-full flex items-center justify-center">
+                                  <Store className="w-8 h-8 text-blue-400" />
+                                </div>
+                              )}
+                            </div>
+                            {/* Store Details */}
+                            <div className="min-w-0">
+                              <Link href={`/admin/stores/${storeId}`} className="font-semibold text-gray-900 text-base hover:text-indigo-600 transition-colors">
+                                {s.name}
+                              </Link>
+                              <div className="flex items-start gap-1 mt-1 text-sm text-gray-500">
+                                <MapPin className="w-4 h-4 flex-shrink-0 mt-0.5" />
+                                <span className="line-clamp-2">{StoreLocationService.formatStoreAddress(s)}</span>
+                              </div>
+                              {s.openingHours && (
+                                <div className="flex items-center gap-1 mt-1 text-sm text-gray-500">
+                                  <Clock className="w-4 h-4" />
+                                  <span>{s.openingHours}</span>
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                        </td>
+
+                        {/* Contact Info */}
+                        <td className="px-4 py-4">
+                          <div className="space-y-2">
+                            {(s.phone || s.phoneNumber) && (
+                              <div className="flex items-center gap-2 text-sm">
+                                <div className="w-8 h-8 rounded-lg bg-green-100 flex items-center justify-center">
+                                  <Phone className="w-4 h-4 text-green-600" />
+                                </div>
+                                <span className="text-gray-700 font-medium">{(s as any).phone || s.phoneNumber}</span>
+                              </div>
+                            )}
+                            {s.email && (
+                              <div className="flex items-center gap-2 text-sm">
+                                <div className="w-8 h-8 rounded-lg bg-blue-100 flex items-center justify-center">
+                                  <Mail className="w-4 h-4 text-blue-600" />
+                                </div>
+                                <span className="text-gray-600 truncate max-w-[150px]">{s.email}</span>
+                              </div>
+                            )}
+                          </div>
+                        </td>
+
+                        {/* Staff Manager */}
+                        <td className="px-4 py-4">
                           {staffList.length > 0 ? (
-                            <div className="flex items-center gap-2 text-sm">
-                              <User className="w-4 h-4 text-blue-600" />
-                              <span className="text-gray-600">Nhân viên:</span>
-                              <span className="text-gray-900 font-medium">{staffList[0].username}</span>
+                            <div className="flex items-center gap-3">
+                              <div className="w-10 h-10 rounded-full bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center text-white font-semibold text-sm">
+                                {(staffList[0].username || staffList[0].fullName || 'S').charAt(0).toUpperCase()}
+                              </div>
+                              <div>
+                                <p className="font-medium text-gray-900 text-sm">{staffList[0].username || staffList[0].fullName}</p>
+                                <p className="text-xs text-gray-500">{staffList[0].email || 'Nhân viên quản lý'}</p>
+                              </div>
                             </div>
                           ) : (
-                            <div className="flex items-center gap-2 text-sm text-gray-400"><User className="w-4 h-4" /><span>Chưa có nhân viên</span></div>
+                            <div className="flex items-center gap-2 text-gray-400">
+                              <div className="w-10 h-10 rounded-full bg-gray-100 flex items-center justify-center">
+                                <User className="w-5 h-5 text-gray-400" />
+                              </div>
+                              <span className="text-sm">Chưa có nhân viên</span>
+                            </div>
                           )}
-                        </div>
-                      </div>
-                      <div className="flex flex-col gap-2 items-end">
-                        <select value={status} onChange={(e) => handleChangeStatus(s, e.target.value as StoreStatus)} className="px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500/20 bg-white">
-                          <option value="ACTIVE">Hoạt động</option>
-                          <option value="PAUSED">Tạm dừng</option>
-                          <option value="CLOSED">Đã đóng cửa</option>
-                        </select>
-                        <div className="flex gap-1">
-                          <button onClick={() => handleEdit(s)} className="p-2 rounded-lg text-blue-600 bg-blue-50 hover:bg-blue-100 transition-colors" title="Sửa"><Edit2 className="w-4 h-4" /></button>
-                          <button onClick={() => handleDelete(s)} className="p-2 rounded-lg text-red-600 bg-red-50 hover:bg-red-100 transition-colors" title="Xoá"><Trash2 className="w-4 h-4" /></button>
-                        </div>
-                      </div>
-                    </div>
-                  </motion.div>
-                )
-              })}
+                        </td>
+
+                        {/* Status */}
+                        <td className="px-4 py-4">
+                          <select 
+                            value={status} 
+                            onChange={(e) => handleChangeStatus(s, e.target.value as StoreStatus)} 
+                            className={`px-3 py-2 text-sm font-medium rounded-lg border-0 focus:outline-none focus:ring-2 focus:ring-offset-1 cursor-pointer transition-colors ${
+                              status === 'ACTIVE' 
+                                ? 'bg-green-100 text-green-700 focus:ring-green-500' 
+                                : status === 'PAUSED' 
+                                  ? 'bg-yellow-100 text-yellow-700 focus:ring-yellow-500' 
+                                  : 'bg-red-100 text-red-700 focus:ring-red-500'
+                            }`}
+                          >
+                            <option value="ACTIVE">🟢 Hoạt động</option>
+                            <option value="PAUSED">🟡 Tạm dừng</option>
+                            <option value="CLOSED">🔴 Đã đóng</option>
+                          </select>
+                        </td>
+
+                        {/* Actions */}
+                        <td className="px-4 py-4">
+                          <div className="flex items-center justify-center gap-2">
+                            <Link 
+                              href={`/admin/stores/${storeId}`}
+                              className="p-2.5 rounded-xl text-indigo-600 bg-indigo-50 hover:bg-indigo-100 transition-all hover:scale-105" 
+                              title="Xem chi tiết"
+                            >
+                              <Eye className="w-4 h-4" />
+                            </Link>
+                            <Link 
+                              href={`/admin/stores/${storeId}/settings`}
+                              className="p-2.5 rounded-xl text-blue-600 bg-blue-50 hover:bg-blue-100 transition-all hover:scale-105" 
+                              title="Chỉnh sửa"
+                            >
+                              <Edit2 className="w-4 h-4" />
+                            </Link>
+                            <button 
+                              onClick={() => handleDelete(s)} 
+                              className="p-2.5 rounded-xl text-red-600 bg-red-50 hover:bg-red-100 transition-all hover:scale-105" 
+                              title="Xoá cửa hàng"
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </button>
+                          </div>
+                        </td>
+                      </motion.tr>
+                    )
+                  })}
+                </tbody>
+              </table>
             </div>
           )}
 
           {/* Pagination */}
           {totalPages > 1 && (
-            <div className="flex items-center justify-center gap-2 mt-6 pt-6 border-t border-gray-100">
-              <button disabled={page === 0} onClick={() => setPage(p => Math.max(0, p - 1))} className="px-4 py-2 border border-gray-200 rounded-lg disabled:opacity-50 hover:bg-gray-100 transition-colors">Trước</button>
-              <span className="text-sm text-gray-600">Trang {page + 1} / {totalPages}</span>
-              <button disabled={page >= totalPages - 1} onClick={() => setPage(p => Math.min(totalPages - 1, p + 1))} className="px-4 py-2 border border-gray-200 rounded-lg disabled:opacity-50 hover:bg-gray-100 transition-colors">Sau</button>
+            <div className="flex items-center justify-between px-6 py-4 border-t border-gray-100 bg-gray-50/50">
+              <span className="text-sm text-gray-600">
+                Hiển thị {page * size + 1} - {Math.min((page + 1) * size, allStores.length)} / {allStores.length} cửa hàng
+              </span>
+              <div className="flex items-center gap-2">
+                <button 
+                  disabled={page === 0} 
+                  onClick={() => setPage(p => Math.max(0, p - 1))} 
+                  className="px-4 py-2 text-sm font-medium border border-gray-200 rounded-lg disabled:opacity-50 hover:bg-white transition-colors"
+                >
+                  ← Trước
+                </button>
+                <div className="flex items-center gap-1">
+                  {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
+                    let pageNum = i
+                    if (totalPages > 5) {
+                      if (page < 3) pageNum = i
+                      else if (page > totalPages - 4) pageNum = totalPages - 5 + i
+                      else pageNum = page - 2 + i
+                    }
+                    return (
+                      <button
+                        key={pageNum}
+                        onClick={() => setPage(pageNum)}
+                        className={`w-9 h-9 text-sm font-medium rounded-lg transition-colors ${
+                          page === pageNum 
+                            ? 'bg-blue-600 text-white' 
+                            : 'hover:bg-gray-100 text-gray-600'
+                        }`}
+                      >
+                        {pageNum + 1}
+                      </button>
+                    )
+                  })}
+                </div>
+                <button 
+                  disabled={page >= totalPages - 1} 
+                  onClick={() => setPage(p => Math.min(totalPages - 1, p + 1))} 
+                  className="px-4 py-2 text-sm font-medium border border-gray-200 rounded-lg disabled:opacity-50 hover:bg-white transition-colors"
+                >
+                  Sau →
+                </button>
+              </div>
             </div>
           )}
         </AdminCardBody>
       </AdminCard>
 
-      {showModal && <StoreManagementModal store={editingStore} onClose={() => setShowModal(false)} onSaved={() => loadStores()} />}
     </div>
   )
 }
