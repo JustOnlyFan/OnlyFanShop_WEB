@@ -18,13 +18,11 @@ import { useAuthStore } from '@/store/authStore'
 import { useCartStore } from '@/store/cartStore'
 import { SearchModal } from '@/components/modals/SearchModal'
 import { CartDrawer } from '@/components/cart/CartDrawer'
-import { DesktopStartMenu } from './DesktopStartMenu'
 
 export function Taskbar() {
   const [isSearchOpen, setIsSearchOpen] = useState(false)
   const [isCartOpen, setIsCartOpen] = useState(false)
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false)
-  const [isStartMenuOpen, setIsStartMenuOpen] = useState(false)
   const router = useRouter()
 
   const { user, isAuthenticated, logout } = useAuthStore()
@@ -55,7 +53,6 @@ export function Taskbar() {
           {/* Left side - Logo */}
           <div className="flex items-center">
             <button
-              onClick={() => setIsStartMenuOpen(!isStartMenuOpen)}
               className="flex items-center space-x-2 px-3 py-1.5 rounded hover:bg-gray-800 transition-colors"
             >
               <div className="w-6 h-6 bg-gradient-to-br from-blue-500 to-purple-600 rounded flex items-center justify-center">
@@ -185,7 +182,6 @@ export function Taskbar() {
       {/* Modals */}
       <SearchModal isOpen={isSearchOpen} onClose={() => setIsSearchOpen(false)} />
       <CartDrawer isOpen={isCartOpen} onClose={() => setIsCartOpen(false)} />
-      <DesktopStartMenu isOpen={isStartMenuOpen} onClose={() => setIsStartMenuOpen(false)} />
     </>
   )
 }
