@@ -1,288 +1,263 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import Link from 'next/link'
-import { useRouter, usePathname } from 'next/navigation'
+import { usePathname, useRouter } from 'next/navigation'
 import {
     Bars3Icon,
     XMarkIcon,
     ShoppingCartIcon,
     UserIcon,
-    MagnifyingGlassIcon
+    MagnifyingGlassIcon,
 } from '@heroicons/react/24/outline'
 import { Bell } from 'lucide-react'
+import { AnimatePresence, motion } from 'framer-motion'
+
 import { AuthService } from '@/services/authService'
+import CategoryService from '@/services/categoryService'
+
 import { useAuthStore } from '@/store/authStore'
 import { useCartStore } from '@/store/cartStore'
+import { useLanguageStore } from '@/store/languageStore'
 import { useNotification } from '@/hooks/useNotification'
+
 import { SearchModal } from '@/components/modals/SearchModal'
-// Removed CartDrawer drawer in favor of in-layout cart page
 import { NotificationModal } from '@/components/modals/NotificationModal'
-import { motion } from 'framer-motion'
+import { LanguageSwitcher } from '@/components/ui/LanguageSwitcher'
+
+import { CategoryDTO, CategoryType } from '@/types'
 
 export function Header() {
     const [isMenuOpen, setIsMenuOpen] = useState(false)
     const [isSearchOpen, setIsSearchOpen] = useState(false)
-    // Drawer removed; navigate to /cart instead
     const [isNotificationOpen, setIsNotificationOpen] = useState(false)
+
+    const [showMegaMenu, setShowMegaMenu] = useState(false)
+    const [activeCategory, setActiveCategory] = useState<'fan' | 'accessory' | 'brand'>('fan')
+
+    const [fanCategories, setFanCategories] = useState<CategoryDTO[]>([])
+    const [accessoryCategories, setAccessoryCategories] = useState<CategoryDTO[]>([])
+
+    const megaMenuRef = useRef<HTMLDivElement>(null)
+
     const router = useRouter()
     const pathname = usePathname()
-    const { user, isAuthenticated, logout } = useAuthStore()
-    
+
+    const { user, isAuthenticated } = useAuthStore()
+    const { totalItems } = useCartStore()
+    const { notifications } = useNotification()
+    const { t } = useLanguageStore()
+
     const isAdminRoute = pathname?.startsWith('/admin')
     const isStaffRoute = pathname?.startsWith('/staff')
     const isAdminOrStaffRoute = isAdminRoute || isStaffRoute
-    const { totalItems } = useCartStore()
-    const { notifications } = useNotification()
 
-    const handleLogout = async () => {
-        try {
-            await AuthService.logout()
-            logout()
-            router.push('/')
-        } catch (error) {
-            console.error('Logout error:', error)
+    /* ================= FETCH CATEGORIES ================= */
+    useEffect(() => {
+        if (isAdminOrStaffRoute) return
+
+        const fetchData = async () => {
+            const [fans, accessories] = await Promise.all([
+                CategoryService.getCategoryTree(CategoryType.FAN_TYPE),
+                CategoryService.getCategoryTree(CategoryType.ACCESSORY_TYPE),
+            ])
+            setFanCategories(fans)
+            setAccessoryCategories(accessories)
         }
-    }
 
-    const navigation = [
-        { name: 'Trang chủ', href: '/' },
-        { name: 'Sản phẩm', href: '/products' },
-        { name: 'Thương hiệu', href: '/brands' },
-        { name: 'Liên hệ', href: '/contact' },
-    ];
+        fetchData()
+    }, [isAdminOrStaffRoute])
+
+    /* ================= CLICK OUTSIDE ================= */
+    useEffect(() => {
+        const handler = (e: MouseEvent) => {
+            if (megaMenuRef.current && !megaMenuRef.current.contains(e.target as Node)) {
+                setShowMegaMenu(false)
+            }
+        }
+        document.addEventListener('mousedown', handler)
+        return () => document.removeEventListener('mousedown', handler)
+    }, [])
 
     return (
         <>
-            <header className="relative overflow-visible bg-gradient-to-r from-indigo-700 via-blue-600 to-fuchsia-700 sticky top-0 z-50 h-16 text-white">
-                {/* Background Effects - Always render */}
-                <div
-                    className="pointer-events-none absolute inset-0 opacity-70 z-0"
-                    style={{
-                        background: 'linear-gradient(90deg, rgba(99,102,241,0.35), rgba(59,130,246,0.35), rgba(168,85,247,0.35), rgba(236,72,153,0.35))',
-                        backgroundSize: '200% 100%',
-                        animation: 'gradient-shift 8s ease infinite'
-                    }}
-                />
+            <header className="sticky top-0 z-[60] bg-primary-600 text-white shadow">
+                <div className="mx-auto flex h-16 max-w-7xl items-center gap-4 px-4">
+                    {/* LOGO */}
+                    <Link href="/" className="flex items-center gap-2 font-bold">
+                        <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-white/20">F</div>
+                        OnlyFan
+                    </Link>
 
-                {/* Animated shimmer sweep */}
-                <motion.div
-                    className="pointer-events-none absolute inset-0 bg-gradient-to-r from-transparent via-white/10 to-transparent z-0"
-                    initial={{ x: '-100%' }}
-                    animate={{ x: ['-100%', '100%'] }}
-                    transition={{ duration: 4, repeat: Infinity, ease: 'linear' }}
-                />
-
-                {/* Glitter overlay */}
-                <motion.div
-                    className="pointer-events-none absolute inset-0 opacity-20 z-0"
-                    style={{
-                        backgroundImage: 'radial-gradient(rgba(255,255,255,0.9) 1px, transparent 1px)',
-                        backgroundSize: '18px 18px'
-                    }}
-                    animate={{ opacity: [0.08, 0.18, 0.08] }}
-                    transition={{ duration: 3, repeat: Infinity }}
-                />
-
-                {/* Ambient blur orbs */}
-                <div className="pointer-events-none absolute -top-10 -left-10 w-56 h-56 bg-fuchsia-500/20 blur-3xl rounded-full z-0" />
-                <div className="pointer-events-none absolute -bottom-12 -right-12 w-64 h-64 bg-indigo-500/20 blur-3xl rounded-full z-0" />
-
-                <div className="relative z-10 px-4 sm:px-6 lg:px-8">
-                    {isAdminOrStaffRoute ? (
-                        // Admin/Staff Layout - Logo centered
-                        <div className="flex justify-center items-center h-16">
-                            <Link href={isAdminRoute ? "/admin" : "/staff"} className="flex items-center">
-                                <div className="w-8 h-8 bg-white/20 backdrop-blur-sm rounded-lg flex items-center justify-center shadow-lg">
-                                    <span className="text-white font-bold text-lg">F</span>
-                                </div>
-                                <span className="ml-2 text-xl font-bold text-white drop-shadow-lg">OnlyFan</span>
-                            </Link>
-                        </div>
-                    ) : (
-                        // Customer Layout - Full navigation
-                        <div className="flex justify-between items-center h-16">
-                            {/* Logo */}
-                            <div className="flex-shrink-0">
-                                <Link href="/" className="flex items-center">
-                                    <div className="w-8 h-8 bg-white/20 backdrop-blur-sm rounded-lg flex items-center justify-center shadow-lg">
-                                        <span className="text-white font-bold text-lg">F</span>
-                                    </div>
-                                    <span className="ml-2 text-xl font-bold text-white drop-shadow-lg">OnlyFan</span>
-                                </Link>
-                            </div>
-
-                            {/* Desktop Navigation */}
-                            <nav className="hidden md:flex space-x-8">
-                                {navigation.map((item) => (
-                                    <Link
-                                        key={item.name}
-                                        href={item.href}
-                                        className="text-white/90 hover:text-white px-3 py-2 text-sm font-medium transition-colors duration-200 drop-shadow-sm"
-                                    >
-                                        {item.name}
-                                    </Link>
-                                ))}
-                            </nav>
-
-                            {/* Right Side Actions */}
-                            <div className="flex items-center space-x-4">
-                                {/* Search Button */}
-                                <button
-                                    onClick={() => setIsSearchOpen(true)}
-                                    className="p-2 text-white/90 hover:text-white transition-colors duration-200 hover:bg-white/10 rounded-lg"
-                                    aria-label="Tìm kiếm"
-                                >
-                                    <MagnifyingGlassIcon className="w-5 h-5" />
-                                </button>
-
-                                {/* Notification Button */}
-                                <button
-                                    onClick={() => setIsNotificationOpen(true)}
-                                    className="relative p-2 text-white/90 hover:text-white transition-colors duration-200 hover:bg-white/10 rounded-lg"
-                                    aria-label="Thông báo"
-                                >
-                                    <Bell className="w-5 h-5" />
-                                    {notifications.length > 0 && (
-                                        <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center font-medium shadow-lg">
-                      {notifications.length > 9 ? '9+' : notifications.length}
-                    </span>
-                                    )}
-                                </button>
-
-                                {/* Cart Button */}
-                                <button
-                                    onClick={() => router.push('/cart')}
-                                    className="relative p-2 text-white/90 hover:text-white transition-colors duration-200 hover:bg-white/10 rounded-lg"
-                                    aria-label="Giỏ hàng"
-                                >
-                                    <ShoppingCartIcon className="w-5 h-5" />
-                                    {totalItems > 0 && (
-                                        <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center font-medium shadow-lg">
-                      {totalItems}
-                    </span>
-                                    )}
-                                </button>
-
-                                {/* User Menu */}
-                                {isAuthenticated ? (
-                                    <Link 
-                                        href="/profile"
-                                        className="flex items-center gap-3 px-4 py-2 bg-white/10 backdrop-blur-sm hover:bg-white/20 rounded-xl transition-all duration-200 border border-white/20"
-                                    >
-                                        <div className="w-8 h-8 bg-gradient-to-br from-blue-500 to-cyan-500 rounded-full flex items-center justify-center text-white font-bold shadow-lg">
-                                            <UserIcon className="w-5 h-5" />
-                                        </div>
-                                        <div className="hidden sm:block text-left">
-                                            <p className="text-sm font-semibold text-white">{user?.fullName || user?.username}</p>
-                                            {user?.role === 'ADMIN' && (
-                                                <span className="text-xs text-yellow-300 font-medium">Admin</span>
-                                            )}
-                                            {user?.role === 'STAFF' && (
-                                                <span className="text-xs text-blue-300 font-medium">Nhân viên</span>
-                                            )}
-                                        </div>
-                                    </Link>
-                                ) : (
-                                    <div className="flex items-center gap-3">
-                                        <Link
-                                            href="/auth/login"
-                                            className="px-5 py-2.5 text-sm font-semibold text-white hover:bg-white/10 rounded-xl transition-all duration-200 border border-white/30 hover:border-white/50"
-                                        >
-                                            Đăng nhập
-                                        </Link>
-                                        <Link
-                                            href="/auth/register"
-                                            className="px-5 py-2.5 bg-gradient-to-r from-white to-blue-50 text-blue-700 rounded-xl text-sm font-semibold hover:shadow-xl transition-all duration-200 shadow-lg hover:scale-105"
-                                        >
-                                            Đăng ký
-                                        </Link>
-                                    </div>
-                                )}
-
-                                {/* Mobile menu button */}
-                                <button
-                                    onClick={() => setIsMenuOpen(!isMenuOpen)}
-                                    className="md:hidden p-2 text-white/90 hover:text-white transition-colors duration-200 hover:bg-white/10 rounded-lg"
-                                    aria-label="Menu"
-                                >
-                                    {isMenuOpen ? (
-                                        <XMarkIcon className="w-6 h-6" />
-                                    ) : (
-                                        <Bars3Icon className="w-6 h-6" />
-                                    )}
-                                </button>
-                            </div>
-                        </div>
-                    )}
-
-                    {/* Mobile Navigation (Customer only) */}
-                    {!isAdminOrStaffRoute && isMenuOpen && (
-                        <motion.div
-                            className="md:hidden border-t border-white/20 mt-2"
-                            initial={{ opacity: 0, height: 0 }}
-                            animate={{ opacity: 1, height: 'auto' }}
-                            exit={{ opacity: 0, height: 0 }}
+                    {/* CATEGORY BUTTON */}
+                    {!isAdminOrStaffRoute && (
+                        <div
+                            ref={megaMenuRef}
+                            className="relative hidden lg:block"
+                            onMouseEnter={() => setShowMegaMenu(true)}
+                            onMouseLeave={() => setShowMegaMenu(false)}
                         >
-                            <div className="px-2 pt-2 pb-3 space-y-1">
-                                {navigation.map((item) => (
-                                    <Link
-                                        key={item.name}
-                                        href={item.href}
-                                        className="block px-3 py-2 text-base font-medium text-white/90 hover:text-white hover:bg-white/10 rounded-lg transition-colors duration-200"
-                                        onClick={() => setIsMenuOpen(false)}
-                                    >
-                                        {item.name}
-                                    </Link>
-                                ))}
-                                {!isAuthenticated && (
-                                    <div className="pt-4 pb-3 border-t border-white/20">
-                                        <div className="flex items-center px-3 mb-3">
-                                            <div className="flex-shrink-0">
-                                                <UserIcon className="w-8 h-8 text-white/70" />
-                                            </div>
-                                            <div className="ml-3">
-                                                <div className="text-base font-medium text-white">
-                                                    Khách
-                                                </div>
-                                            </div>
-                                        </div>
-                                        <div className="space-y-1 px-2">
-                                            <Link
-                                                href="/auth/login"
-                                                className="block px-3 py-2 text-base font-medium text-white/90 hover:text-white hover:bg-white/10 rounded-lg transition-colors"
-                                                onClick={() => setIsMenuOpen(false)}
-                                            >
-                                                Đăng nhập
-                                            </Link>
-                                            <Link
-                                                href="/auth/register"
-                                                className="block px-3 py-2 text-base font-medium text-white hover:bg-white/10 rounded-lg transition-colors"
-                                                onClick={() => setIsMenuOpen(false)}
-                                            >
-                                                Đăng ký
-                                            </Link>
-                                        </div>
-                                    </div>
-                                )}
-                            </div>
-                        </motion.div>
-                    )}
-                </div>
+                            <button className="flex items-center gap-2 rounded-lg px-4 py-2 text-sm hover:bg-white/10">
+                                <Bars3Icon className="h-5 w-5" />
+                                Danh mục
+                            </button>
 
-                <style jsx global>{`
-          @keyframes gradient-shift {
-            0%, 100% {
-              background-position: 0% 50%;
-            }
-            50% {
-              background-position: 100% 50%;
-            }
-          }
-        `}</style>
+                            <AnimatePresence>
+                                {showMegaMenu && (
+                                    <motion.div
+                                        initial={{ opacity: 0, y: 8 }}
+                                        animate={{ opacity: 1, y: 0 }}
+                                        exit={{ opacity: 0, y: 8 }}
+                                        transition={{ duration: 0.2 }}
+                                        className="absolute left-0 top-full z-[100] mt-0 overflow-hidden rounded-b-2xl bg-white text-gray-800 shadow-[0_20px_50px_rgba(0,0,0,0.15)]"
+                                    >
+                                        <div className="flex">
+                                            {/* LEFT SIDEBAR */}
+                                            <div className="w-56 shrink-0 bg-gray-50 py-3">
+                                                <MegaMenuItem 
+                                                    icon={<FanIcon />}
+                                                    label="Quạt điện" 
+                                                    active={activeCategory === 'fan'} 
+                                                    onHover={() => setActiveCategory('fan')} 
+                                                />
+                                                <MegaMenuItem 
+                                                    icon={<AccessoryIcon />}
+                                                    label="Phụ kiện quạt" 
+                                                    active={activeCategory === 'accessory'} 
+                                                    onHover={() => setActiveCategory('accessory')} 
+                                                />
+                                                <MegaMenuItem 
+                                                    icon={<BrandIcon />}
+                                                    label="Thương hiệu" 
+                                                    active={activeCategory === 'brand'} 
+                                                    onHover={() => setActiveCategory('brand')} 
+                                                />
+                                                
+                                                <div className="mx-4 my-3 border-t border-gray-200" />
+                                                
+                                                <Link
+                                                    href="/contact"
+                                                    onClick={() => setShowMegaMenu(false)}
+                                                    className="mx-2 flex items-center gap-3 rounded-lg px-4 py-2.5 text-sm text-gray-600 transition-all hover:bg-white hover:text-primary-600"
+                                                >
+                                                    <ContactIcon />
+                                                    <span>Liên hệ tư vấn</span>
+                                                </Link>
+                                            </div>
+
+                                            {/* RIGHT CONTENT */}
+                                            <div className="w-[580px] border-l border-gray-100 bg-white p-5">
+                                                {activeCategory === 'fan' && (
+                                                    <MegaContent
+                                                        title="Quạt điện"
+                                                        items={fanCategories}
+                                                        baseHref="/products"
+                                                        onClick={() => setShowMegaMenu(false)}
+                                                        color="blue"
+                                                    />
+                                                )}
+
+                                                {activeCategory === 'accessory' && (
+                                                    <MegaContent
+                                                        title="Phụ kiện quạt"
+                                                        items={accessoryCategories}
+                                                        baseHref="/products/accessories"
+                                                        onClick={() => setShowMegaMenu(false)}
+                                                        color="amber"
+                                                    />
+                                                )}
+
+                                                {activeCategory === 'brand' && (
+                                                    <div>
+                                                        <div className="mb-4 flex items-center justify-between">
+                                                            <h3 className="text-lg font-bold text-gray-800">Thương hiệu nổi bật</h3>
+                                                            <Link
+                                                                href="/brands"
+                                                                onClick={() => setShowMegaMenu(false)}
+                                                                className="text-sm font-medium text-primary-600 hover:text-primary-700"
+                                                            >
+                                                                Xem tất cả →
+                                                            </Link>
+                                                        </div>
+                                                        <div className="grid grid-cols-4 gap-3">
+                                                            {['Panasonic', 'Mitsubishi', 'Toshiba', 'Asia', 'Senko', 'Lifan', 'Sunhouse', 'Midea'].map((brand) => (
+                                                                <Link
+                                                                    key={brand}
+                                                                    href={`/brands/${brand.toLowerCase()}`}
+                                                                    onClick={() => setShowMegaMenu(false)}
+                                                                    className="flex h-16 items-center justify-center rounded-xl border border-gray-100 bg-gray-50 px-3 text-sm font-medium text-gray-700 transition-all hover:border-primary-200 hover:bg-primary-50 hover:text-primary-600"
+                                                                >
+                                                                    {brand}
+                                                                </Link>
+                                                            ))}
+                                                        </div>
+                                                        <div className="mt-4 rounded-xl bg-gradient-to-r from-primary-500 to-blue-500 p-4 text-white">
+                                                            <p className="text-sm font-medium">🎁 Ưu đãi đặc biệt</p>
+                                                            <p className="mt-1 text-xs opacity-90">Giảm đến 30% cho sản phẩm chính hãng</p>
+                                                        </div>
+                                                    </div>
+                                                )}
+                                            </div>
+                                        </div>
+                                    </motion.div>
+                                )}
+                            </AnimatePresence>
+                        </div>
+                    )}
+
+                    {/* SEARCH */}
+                    {!isAdminOrStaffRoute && (
+                        <button
+                            onClick={() => setIsSearchOpen(true)}
+                            className="hidden flex-1 items-center gap-2 rounded-lg bg-white/10 px-4 py-2 text-sm text-white/70 hover:bg-white/20 md:flex"
+                        >
+                            <MagnifyingGlassIcon className="h-5 w-5" />
+                            Tìm kiếm sản phẩm...
+                        </button>
+                    )}
+
+                    {/* RIGHT */}
+                    <div className="ml-auto flex items-center gap-1">
+                        <LanguageSwitcher />
+
+                        {!isAdminOrStaffRoute && (
+                            <button onClick={() => setIsNotificationOpen(true)} className="relative rounded-lg p-2 hover:bg-white/10">
+                                <Bell className="h-5 w-5" />
+                                {notifications.length > 0 && (
+                                    <span className="absolute -right-1 -top-1 flex h-5 w-5 items-center justify-center rounded-full bg-red-500 text-xs">
+                    {notifications.length}
+                  </span>
+                                )}
+                            </button>
+                        )}
+
+                        {!isAdminOrStaffRoute && (
+                            <button onClick={() => router.push('/cart')} className="relative rounded-lg p-2 hover:bg-white/10">
+                                <ShoppingCartIcon className="h-5 w-5" />
+                                {totalItems > 0 && (
+                                    <span className="absolute -right-1 -top-1 flex h-5 w-5 items-center justify-center rounded-full bg-red-500 text-xs">
+                    {totalItems}
+                  </span>
+                                )}
+                            </button>
+                        )}
+
+                        {isAuthenticated ? (
+                            <Link href="/profile" className="flex items-center gap-2 rounded-lg px-2 py-1.5 hover:bg-white/10">
+                                <UserIcon className="h-5 w-5" />
+                                <span className="hidden text-sm sm:block">{user?.fullName || user?.username}</span>
+                            </Link>
+                        ) : (
+                            <Link href="/auth/login" className="rounded-lg px-3 py-2 text-sm hover:bg-white/10">Đăng nhập</Link>
+                        )}
+
+                        <button onClick={() => setIsMenuOpen(!isMenuOpen)} className="rounded-lg p-2 hover:bg-white/10 lg:hidden">
+                            {isMenuOpen ? <XMarkIcon className="h-6 w-6" /> : <Bars3Icon className="h-6 w-6" />}
+                        </button>
+                    </div>
+                </div>
             </header>
 
-            {/* Modals (Customer only) */}
             {!isAdminOrStaffRoute && (
                 <>
                     <SearchModal isOpen={isSearchOpen} onClose={() => setIsSearchOpen(false)} />
@@ -290,5 +265,143 @@ export function Header() {
                 </>
             )}
         </>
+    )
+}
+
+/* ================= ICONS ================= */
+
+function FanIcon() {
+    return (
+        <svg className="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
+            <path strokeLinecap="round" strokeLinejoin="round" d="M12 12c0-3 2.5-5.5 5.5-5.5S21 6.5 21 9.5c0 1.5-1 3-2.5 3.5M12 12c0 3-2.5 5.5-5.5 5.5S3 17.5 3 14.5c0-1.5 1-3 2.5-3.5M12 12c3 0 5.5-2.5 5.5-5.5S15.5 3 12.5 3c-1.5 0-3 1-3.5 2.5M12 12c-3 0-5.5 2.5-5.5 5.5S8.5 21 11.5 21c1.5 0 3-1 3.5-2.5" />
+            <circle cx="12" cy="12" r="2" />
+        </svg>
+    )
+}
+
+function AccessoryIcon() {
+    return (
+        <svg className="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
+            <path strokeLinecap="round" strokeLinejoin="round" d="M11.42 15.17L17.25 21A2.652 2.652 0 0021 17.25l-5.877-5.877M11.42 15.17l2.496-3.03c.317-.384.74-.626 1.208-.766M11.42 15.17l-4.655 5.653a2.548 2.548 0 11-3.586-3.586l6.837-5.63m5.108-.233c.55-.164 1.163-.188 1.743-.14a4.5 4.5 0 004.486-6.336l-3.276 3.277a3.004 3.004 0 01-2.25-2.25l3.276-3.276a4.5 4.5 0 00-6.336 4.486c.091 1.076-.071 2.264-.904 2.95l-.102.085m-1.745 1.437L5.909 7.5H4.5L2.25 3.75l1.5-1.5L7.5 4.5v1.409l4.26 4.26m-1.745 1.437l1.745-1.437m6.615 8.206L15.75 15.75M4.867 19.125h.008v.008h-.008v-.008z" />
+        </svg>
+    )
+}
+
+function BrandIcon() {
+    return (
+        <svg className="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
+            <path strokeLinecap="round" strokeLinejoin="round" d="M9.568 3H5.25A2.25 2.25 0 003 5.25v4.318c0 .597.237 1.17.659 1.591l9.581 9.581c.699.699 1.78.872 2.607.33a18.095 18.095 0 005.223-5.223c.542-.827.369-1.908-.33-2.607L11.16 3.66A2.25 2.25 0 009.568 3z" />
+            <path strokeLinecap="round" strokeLinejoin="round" d="M6 6h.008v.008H6V6z" />
+        </svg>
+    )
+}
+
+function ContactIcon() {
+    return (
+        <svg className="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
+            <path strokeLinecap="round" strokeLinejoin="round" d="M2.25 6.75c0 8.284 6.716 15 15 15h2.25a2.25 2.25 0 002.25-2.25v-1.372c0-.516-.351-.966-.852-1.091l-4.423-1.106c-.44-.11-.902.055-1.173.417l-.97 1.293c-.282.376-.769.542-1.21.38a12.035 12.035 0 01-7.143-7.143c-.162-.441.004-.928.38-1.21l1.293-.97c.363-.271.527-.734.417-1.173L6.963 3.102a1.125 1.125 0 00-1.091-.852H4.5A2.25 2.25 0 002.25 4.5v2.25z" />
+        </svg>
+    )
+}
+
+function ChevronRightIcon() {
+    return (
+        <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+            <path strokeLinecap="round" strokeLinejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" />
+        </svg>
+    )
+}
+
+/* ================= SUB COMPONENTS ================= */
+
+function MegaMenuItem({ icon, label, active, onHover }: { icon: React.ReactNode; label: string; active: boolean; onHover: () => void }) {
+    return (
+        <div
+            onMouseEnter={onHover}
+            className={`mx-2 flex cursor-pointer items-center justify-between rounded-lg px-4 py-3 text-sm transition-all ${
+                active 
+                    ? 'bg-white text-primary-600 shadow-sm' 
+                    : 'text-gray-700 hover:bg-white hover:text-primary-600'
+            }`}
+        >
+            <div className="flex items-center gap-3">
+                <span className={active ? 'text-primary-500' : 'text-gray-400'}>{icon}</span>
+                <span className="font-medium">{label}</span>
+            </div>
+            <ChevronRightIcon />
+        </div>
+    )
+}
+
+function MegaContent({
+    title,
+    items,
+    baseHref,
+    onClick,
+    color,
+}: {
+    title: string
+    items: CategoryDTO[]
+    baseHref: string
+    onClick: () => void
+    color: 'blue' | 'amber'
+}) {
+    const colorClasses = {
+        blue: {
+            dot: 'bg-blue-400 group-hover:bg-blue-600',
+            hover: 'hover:bg-blue-50 hover:text-blue-700',
+            badge: 'bg-blue-100 text-blue-700',
+        },
+        amber: {
+            dot: 'bg-amber-400 group-hover:bg-amber-600',
+            hover: 'hover:bg-amber-50 hover:text-amber-700',
+            badge: 'bg-amber-100 text-amber-700',
+        },
+    }
+    const colors = colorClasses[color]
+
+    return (
+        <div>
+            <div className="mb-4 flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                    <h3 className="text-lg font-bold text-gray-800">{title}</h3>
+                    <span className={`rounded-full px-2 py-0.5 text-xs font-medium ${colors.badge}`}>
+                        {items.length} loại
+                    </span>
+                </div>
+                <Link
+                    href={baseHref}
+                    onClick={onClick}
+                    className="text-sm font-medium text-primary-600 hover:text-primary-700"
+                >
+                    Xem tất cả →
+                </Link>
+            </div>
+            <div className="grid grid-cols-3 gap-x-4 gap-y-1">
+                {items.slice(0, 15).map((c) => (
+                    <Link
+                        key={c.id}
+                        href={`${baseHref}?categoryId=${c.id}`}
+                        onClick={onClick}
+                        className={`group flex items-center gap-2 rounded-lg px-3 py-2.5 text-sm text-gray-600 transition-all ${colors.hover}`}
+                    >
+                        <span className={`h-1.5 w-1.5 shrink-0 rounded-full transition-colors ${colors.dot}`} />
+                        <span className="truncate">{c.name}</span>
+                    </Link>
+                ))}
+            </div>
+            {items.length > 15 && (
+                <div className="mt-3 border-t border-gray-100 pt-3">
+                    <Link
+                        href={baseHref}
+                        onClick={onClick}
+                        className="inline-flex items-center gap-1 text-sm font-medium text-primary-600 hover:text-primary-700"
+                    >
+                        Xem thêm {items.length - 15} danh mục khác
+                        <ChevronRightIcon />
+                    </Link>
+                </div>
+            )}
+        </div>
     )
 }

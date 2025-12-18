@@ -87,6 +87,9 @@ export interface ProductDetail {
   manufacturingYear?: number // Năm sản xuất: 2025
   accessories?: string // Phụ kiện đi kèm: "Điều khiển / Pin / HDSD"
   energyRating?: string // Mức tiết kiệm điện năng: "5 sao"
+  // Multi-category support
+  productCategories?: ProductCategory[]
+  productTags?: ProductTag[]
 }
 
 export interface Brand {
@@ -104,15 +107,151 @@ export interface BrandManagement {
   active: boolean
 }
 
+// Category Types - Expanded Category System
+export enum CategoryType {
+  FAN_TYPE = 'FAN_TYPE',
+  SPACE = 'SPACE',
+  PURPOSE = 'PURPOSE',
+  TECHNOLOGY = 'TECHNOLOGY',
+  PRICE_RANGE = 'PRICE_RANGE',
+  CUSTOMER_TYPE = 'CUSTOMER_TYPE',
+  STATUS = 'STATUS',
+  ACCESSORY_TYPE = 'ACCESSORY_TYPE',
+  ACCESSORY_FUNCTION = 'ACCESSORY_FUNCTION'
+}
+
 export interface Category {
   id: number
   name: string
+  slug?: string
+  categoryType?: CategoryType
+  parentId?: number | null
+  description?: string
+  iconUrl?: string
+  displayOrder?: number
+  isActive?: boolean
+  children?: Category[]
 }
 
 export interface CategoryManagement {
   categoryID: number
   categoryName: string
   active: boolean
+}
+
+// CategoryDTO with hierarchy support (matches backend CategoryDTO)
+export interface CategoryDTO {
+  id: number
+  name: string
+  slug?: string
+  categoryType?: CategoryType
+  parentId?: number | null
+  description?: string
+  iconUrl?: string
+  displayOrder?: number
+  isActive?: boolean
+  children?: CategoryDTO[]
+}
+
+// ProductCategory - Many-to-many relationship between products and categories
+export interface ProductCategory {
+  id: number
+  productId: number
+  categoryId: number
+  isPrimary?: boolean
+  createdAt?: string
+  category?: CategoryDTO
+}
+
+// Tag Types
+export interface Tag {
+  id: number
+  code: string
+  displayName: string
+  badgeColor?: string
+  displayOrder?: number
+}
+
+// TagDTO (matches backend TagDTO)
+export interface TagDTO {
+  id: number
+  code: string
+  displayName: string
+  badgeColor?: string
+  displayOrder?: number
+}
+
+// ProductTag - Many-to-many relationship between products and tags with validity period
+export interface ProductTag {
+  id: number
+  productId: number
+  tagId: number
+  validFrom?: string | null
+  validUntil?: string | null
+  createdAt?: string
+  tag?: TagDTO
+}
+
+// Accessory Compatibility Types
+export interface AccessoryCompatibility {
+  id: number
+  accessoryProductId: number
+  compatibleFanTypeId?: number | null
+  compatibleBrandId?: number | null
+  compatibleModel?: string | null
+  notes?: string | null
+  createdAt?: string
+}
+
+// AccessoryCompatibilityDTO (matches backend AccessoryCompatibilityDTO)
+export interface AccessoryCompatibilityDTO {
+  id?: number
+  accessoryProductId: number
+  accessoryProductName?: string
+  compatibleFanTypeId?: number | null
+  compatibleFanTypeName?: string
+  compatibleBrandId?: number | null
+  compatibleBrandName?: string
+  compatibleModel?: string | null
+  notes?: string | null
+  createdAt?: string
+}
+
+// Product Filter Request (matches backend ProductFilterRequest)
+export interface ProductFilterRequest {
+  categoryIds?: number[]
+  categoryTypes?: CategoryType[]
+  brandIds?: number[]
+  minPrice?: number
+  maxPrice?: number
+  tagCodes?: string[]
+  compatibleFanTypeId?: number
+  searchQuery?: string
+  sortBy?: string
+  sortDirection?: 'ASC' | 'DESC'
+  includeSubcategories?: boolean
+}
+
+// ProductWithCategoriesDTO (matches backend ProductWithCategoriesDTO)
+export interface ProductWithCategoriesDTO {
+  id: number
+  name: string
+  slug?: string
+  basePrice: number
+  shortDescription?: string
+  brand?: BrandDTO
+  categoriesByType?: Record<CategoryType, CategoryDTO[]>
+  tags?: TagDTO[]
+  compatibility?: AccessoryCompatibilityDTO[]
+}
+
+// BrandDTO for ProductWithCategoriesDTO
+export interface BrandDTO {
+  brandID: number
+  name: string
+  description?: string
+  imageURL?: string
+  isActive?: boolean
 }
 
 export interface ProductRequest {
@@ -165,8 +304,6 @@ export interface ProductRequest {
   warrantyId?: number // Warranty ID
   // Quantity field
   quantity?: number // Số lượng sản phẩm
-  // Warehouse field (optional - if specified, add product to this warehouse instead of first main warehouse)
-  warehouseId?: number // ID của kho tổng để thêm sản phẩm
 }
 
 export interface Color {
@@ -180,6 +317,7 @@ export interface Warranty {
   id: number
   name: string
   durationMonths: number
+  price?: number
   description?: string
   termsAndConditions?: string
   coverage?: string

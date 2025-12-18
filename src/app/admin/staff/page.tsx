@@ -1,7 +1,6 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { useRouter } from 'next/navigation'
 import { useAuthStore } from '@/store/authStore'
 import { LoadingSpinner } from '@/components/ui/LoadingSpinner'
 import { StaffService, Staff } from '@/services/staffService'
@@ -9,37 +8,32 @@ import { StoreLocationService, StoreLocation } from '@/services/storeLocationSer
 import { UserAdminService, UserDTO } from '@/services/userAdminService'
 import { motion } from 'framer-motion'
 import { Plus, Edit2, Trash2, Search, User, Mail, Phone, Store, Key, Users, UserCheck, UserX } from 'lucide-react'
+import Link from 'next/link'
 import toast from 'react-hot-toast'
-import { Button } from '@/components/ui/Button'
-import StaffModal from '@/components/admin/StaffModal'
 import { AdminCard, AdminCardHeader, AdminCardBody, AdminInput, AdminBadge, AdminStats } from '@/components/admin/ui'
 
 export default function AdminStaffPage() {
-  const router = useRouter()
   const { user, isAuthenticated, hasHydrated } = useAuthStore()
   const [loading, setLoading] = useState(true)
   const [allStaffAccounts, setAllStaffAccounts] = useState<(Staff | UserDTO)[]>([])
   const [stores, setStores] = useState<StoreLocation[]>([])
   const [searchTerm, setSearchTerm] = useState('')
   const [selectedStore, setSelectedStore] = useState<number | undefined>()
-  const [showModal, setShowModal] = useState(false)
-  const [editingStaff, setEditingStaff] = useState<Staff | null>(null)
 
+
+  // Initial load
   useEffect(() => {
-    if (!hasHydrated) return
-    if (!isAuthenticated || user?.role !== 'ADMIN') {
-      router.push('/')
-      return
-    }
+    if (!hasHydrated || !isAuthenticated || user?.role !== 'ADMIN') return
     loadStores()
-  }, [hasHydrated, isAuthenticated, user, router])
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [hasHydrated, isAuthenticated, user?.role])
 
   useEffect(() => {
-    if (hasHydrated && isAuthenticated && user?.role === 'ADMIN') {
-      const handler = setTimeout(() => loadAllStaffAccounts(), 300)
-      return () => clearTimeout(handler)
-    }
-  }, [searchTerm, selectedStore, hasHydrated, isAuthenticated, user])
+    if (!hasHydrated || !isAuthenticated || user?.role !== 'ADMIN') return
+    const handler = setTimeout(() => loadAllStaffAccounts(), 300)
+    return () => clearTimeout(handler)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchTerm, selectedStore])
 
   const loadAllStaffAccounts = async () => {
     try {
@@ -105,10 +99,11 @@ export default function AdminStaffPage() {
   const isStaffType = (item: Staff | UserDTO): item is Staff => 'role' in item && typeof (item as Staff).role === 'string'
 
   const filteredAccounts = allStaffAccounts.filter(item => {
-    const username = isStaffType(item) ? item.username : (item.username || item.fullName || '')
+    const username = (isStaffType(item) ? item.username : (item.username || item.fullName)) || ''
     const email = item.email || ''
-    const phone = isStaffType(item) ? (item.phoneNumber || '') : (item.phoneNumber || item.phone || '')
-    return username.toLowerCase().includes(searchTerm.toLowerCase()) || email.toLowerCase().includes(searchTerm.toLowerCase()) || phone.toLowerCase().includes(searchTerm.toLowerCase())
+    const phone = (isStaffType(item) ? item.phoneNumber : (item.phoneNumber || item.phone)) || ''
+    const search = searchTerm.toLowerCase()
+    return username.toLowerCase().includes(search) || email.toLowerCase().includes(search) || phone.toLowerCase().includes(search)
   })
 
   const activeCount = filteredAccounts.filter(i => i.status === 'active').length
@@ -122,9 +117,13 @@ export default function AdminStaffPage() {
     <div className="space-y-6">
       {/* Action Button */}
       <div className="flex justify-end">
-        <Button onClick={() => { setEditingStaff(null); setShowModal(true) }} className="bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 shadow-lg">
-          <Plus className="w-5 h-5 mr-2" />Thêm nhân viên
-        </Button>
+        <Link 
+          href="/admin/staff/new" 
+          className="px-6 py-2.5 bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white rounded-xl font-medium shadow-lg inline-flex items-center gap-2 transition-all"
+        >
+          <Plus className="w-5 h-5" />
+          Thêm nhân viên
+        </Link>
       </div>
 
       {/* Statistics */}
@@ -171,10 +170,10 @@ export default function AdminStaffPage() {
                 <tbody className="divide-y divide-gray-100">
                   {filteredAccounts.map((item, index) => {
                     const isStaff = isStaffType(item)
-                    const username = isStaff ? item.username : (item.username || item.fullName || '')
+                    const username = (isStaff ? item.username : (item.username || item.fullName)) || ''
                     const email = item.email || ''
-                    const phone = isStaff ? (item.phoneNumber || '') : (item.phoneNumber || item.phone || '')
-                    const roleName = isStaff ? 'staff' : (item.roleName || item.role?.name || '')
+                    const phone = (isStaff ? item.phoneNumber : (item.phoneNumber || item.phone)) || ''
+                    const roleName = (isStaff ? 'staff' : (item.roleName || item.role?.name)) || ''
                     const storeLocation = isStaff ? item.storeLocation : item.storeLocation
                     const status = item.status || 'active'
                     const userID = item.userID
@@ -211,7 +210,7 @@ export default function AdminStaffPage() {
                         <td className="px-4 py-4">
                           {isStaff ? (
                             <div className="flex items-center justify-center gap-1">
-                              <button onClick={() => { setEditingStaff(item as Staff); setShowModal(true) }} className="p-2 text-blue-600 bg-blue-50 hover:bg-blue-100 rounded-lg transition-colors" title="Sửa"><Edit2 className="w-4 h-4" /></button>
+                              <Link href={`/admin/staff/${userID}/edit`} className="p-2 text-blue-600 bg-blue-50 hover:bg-blue-100 rounded-lg transition-colors" title="Sửa"><Edit2 className="w-4 h-4" /></Link>
                               <button onClick={() => handleResetPassword(userID, username)} className="p-2 text-purple-600 bg-purple-50 hover:bg-purple-100 rounded-lg transition-colors" title="Reset mật khẩu"><Key className="w-4 h-4" /></button>
                               <button onClick={() => handleDelete(userID)} className="p-2 text-red-600 bg-red-50 hover:bg-red-100 rounded-lg transition-colors" title="Xóa"><Trash2 className="w-4 h-4" /></button>
                             </div>
@@ -227,7 +226,6 @@ export default function AdminStaffPage() {
         </AdminCardBody>
       </AdminCard>
 
-      {showModal && <StaffModal staff={editingStaff} stores={stores} onClose={() => { setShowModal(false); setEditingStaff(null) }} onSave={() => { setShowModal(false); setEditingStaff(null); loadAllStaffAccounts() }} />}
     </div>
   )
 }

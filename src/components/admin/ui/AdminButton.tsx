@@ -31,11 +31,11 @@ export function AdminButton({
   className = '',
 }: AdminButtonProps) {
   const variants = {
-    primary: 'bg-gradient-to-r from-blue-600 to-cyan-600 hover:from-blue-700 hover:to-cyan-700 text-white shadow-lg shadow-blue-500/30',
+    primary: 'bg-primary-500 hover:bg-primary-600 text-white shadow-lg shadow-primary-500/30',
     secondary: 'bg-gray-100 hover:bg-gray-200 text-gray-700',
-    success: 'bg-gradient-to-r from-green-500 to-emerald-500 hover:from-green-600 hover:to-emerald-600 text-white shadow-lg shadow-green-500/30',
-    danger: 'bg-gradient-to-r from-red-500 to-rose-500 hover:from-red-600 hover:to-rose-600 text-white shadow-lg shadow-red-500/30',
-    warning: 'bg-gradient-to-r from-yellow-500 to-orange-500 hover:from-yellow-600 hover:to-orange-600 text-white shadow-lg shadow-yellow-500/30',
+    success: 'bg-success-500 hover:bg-success-600 text-white shadow-lg shadow-success-500/30',
+    danger: 'bg-danger-500 hover:bg-danger-600 text-white shadow-lg shadow-danger-500/30',
+    warning: 'bg-warning-500 hover:bg-warning-600 text-white shadow-lg shadow-warning-500/30',
     ghost: 'bg-transparent hover:bg-gray-100 text-gray-700',
   };
 

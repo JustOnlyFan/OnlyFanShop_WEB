@@ -8,7 +8,8 @@ import ProductAdminService from '@/services/productAdminService'
 import { ProductService } from '@/services/productService'
 import { WarehouseService } from '@/services/warehouseService'
 import { OrderService } from '@/services/orderService'
-import { ProductDTO, Brand, Category } from '@/types'
+import { ProductDTO, Brand, Category, CategoryDTO, CategoryType } from '@/types'
+import CategoryService from '@/services/categoryService'
 import { motion } from 'framer-motion'
 import { 
   Plus, 
@@ -21,12 +22,14 @@ import {
   TrendingUp,
   AlertCircle,
   BarChart3,
-  Eye
+  Eye,
+  FileSpreadsheet
 } from 'lucide-react'
 import toast from 'react-hot-toast'
 import Image from 'next/image'
 import { ProductManagementModal } from '@/components/admin/ProductManagementModal'
 import { ProductViewModal } from '@/components/admin/ProductViewModal'
+import { ProductImportModal } from '@/components/admin/ProductImportModal'
 import { 
   AdminButton, 
   AdminCard, 
@@ -175,10 +178,39 @@ export default function AdminProductsPage() {
 
   const loadCategories = async () => {
     try {
-      const response = await ProductService.getCategories()
-      setCategories(response.data || [])
+      // Load FAN_TYPE categories as tree and flatten for dropdown
+      const fanTypeTree = await CategoryService.getCategoryTree(CategoryType.FAN_TYPE)
+      const accessoryTypeTree = await CategoryService.getCategoryTree(CategoryType.ACCESSORY_TYPE)
+      
+      // Flatten tree to list with level info
+      const flattenTree = (tree: CategoryDTO[], level = 0): Category[] => {
+        const result: Category[] = []
+        tree.forEach(cat => {
+          result.push({
+            id: cat.id,
+            name: '—'.repeat(level) + (level > 0 ? ' ' : '') + cat.name,
+            parentId: cat.parentId,
+            categoryType: cat.categoryType
+          } as Category)
+          if (cat.children && cat.children.length > 0) {
+            result.push(...flattenTree(cat.children, level + 1))
+          }
+        })
+        return result
+      }
+      
+      const flatCategories = [
+        ...flattenTree(fanTypeTree),
+        ...flattenTree(accessoryTypeTree)
+      ]
+      setCategories(flatCategories)
     } catch (error: any) {
       console.error('Failed to load categories:', error)
+      // Fallback to legacy endpoint
+      try {
+        const response = await ProductService.getCategories()
+        setCategories(response.data || [])
+      } catch {}
     }
   }
 
@@ -248,8 +280,8 @@ export default function AdminProductsPage() {
 
   return (
     <div className="space-y-6">
-      {/* Action Button */}
-      <div className="flex justify-end">
+      {/* Action Buttons */}
+      <div className="flex justify-end gap-3">
         <AdminButton
           variant="success"
           icon={<Plus className="w-5 h-5" />}
@@ -331,7 +363,9 @@ export default function AdminProductsPage() {
               >
                 <option value="">Tất cả danh mục</option>
                 {categories.map((category) => (
-                  <option key={category.id} value={category.id}>{category.name}</option>
+                  <option key={category.id} value={category.id}>
+                    {category.name}
+                  </option>
                 ))}
               </select>
             </div>

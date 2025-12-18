@@ -194,11 +194,23 @@ export function ProductViewModal({ product, onClose }: ProductViewModalProps) {
                           {displayProduct.brand?.name || 'Chưa có'}
                         </span>
                       </div>
-                      <div className="flex items-center gap-2">
-                        <span className="text-sm text-gray-500">Danh mục:</span>
-                        <span className="text-sm font-medium text-gray-900">
-                          {displayProduct.category?.name || 'Chưa có'}
-                        </span>
+                      <div className="flex items-start gap-2">
+                        <span className="text-sm text-gray-500 mt-0.5">Danh mục:</span>
+                        <div className="flex flex-wrap gap-1">
+                          {displayProduct.productCategories && displayProduct.productCategories.length > 0 ? (
+                            displayProduct.productCategories.map((pc: any, idx: number) => (
+                              <span key={idx} className="text-xs px-2 py-0.5 bg-blue-100 text-blue-700 rounded">
+                                {pc.category?.name || pc.categoryName || 'N/A'}
+                              </span>
+                            ))
+                          ) : displayProduct.category?.name ? (
+                            <span className="text-sm font-medium text-gray-900">
+                              {displayProduct.category.name}
+                            </span>
+                          ) : (
+                            <span className="text-sm text-gray-400">Chưa có</span>
+                          )}
+                        </div>
                       </div>
                       <div className="flex items-center gap-2">
                         <span className="text-sm text-gray-500">Giá:</span>

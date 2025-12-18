@@ -31,6 +31,7 @@ class WarrantyService {
   static async createWarranty(warranty: { 
     name: string
     durationMonths: number
+    price?: number
     description?: string
     termsAndConditions?: string
     coverage?: string

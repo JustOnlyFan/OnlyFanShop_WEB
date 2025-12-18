@@ -7,36 +7,14 @@ html {
   scroll-behavior: smooth;
 }
 
-/* Animated gradient for admin header */
-@keyframes gradientShift {
-  0% { background-position: 0% 50%; }
-  50% { background-position: 100% 50%; }
-  100% { background-position: 0% 50%; }
-}
-
-.gradient-animated {
-  background-size: 200% 200%;
-  animation: gradientShift 10s ease infinite;
-}
-
 /* Floating animation */
 @keyframes float {
   0%, 100% { transform: translateY(0px); }
-  50% { transform: translateY(-20px); }
+  50% { transform: translateY(-10px); }
 }
 
 .animate-float {
   animation: float 3s ease-in-out infinite;
-}
-
-/* Glow effect */
-@keyframes glow {
-  0%, 100% { box-shadow: 0 0 20px rgba(59, 130, 246, 0.5); }
-  50% { box-shadow: 0 0 40px rgba(59, 130, 246, 0.8); }
-}
-
-.animate-glow {
-  animation: glow 2s ease-in-out infinite;
 }
 
 /* Custom Scrollbar Styles */
@@ -65,7 +43,7 @@ html {
   }
 }
 
-/* Smooth transitions and animations */
+/* Smooth transitions */
 @layer utilities {
   .transition-smooth {
     transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
@@ -74,106 +52,7 @@ html {
   .transition-fast {
     transition: all 0.15s ease-out;
   }
-  
-  .transition-bounce {
-    transition: all 0.3s cubic-bezier(0.68, -0.55, 0.265, 1.55);
-  }
-  
-  /* Hover animations */
-  .hover-lift {
-    transition: transform 0.2s ease-out;
-  }
-  
-  .hover-lift:hover {
-    transform: translateY(-2px);
-  }
-  
-  .hover-glow {
-    transition: box-shadow 0.3s ease-out;
-  }
-  
-  .hover-glow:hover {
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
-  }
-  
-  /* Pulse animation */
-  @keyframes pulse-subtle {
-    0%, 100% {
-      opacity: 1;
-    }
-    50% {
-      opacity: 0.7;
-    }
-  }
-  
-  .animate-pulse-subtle {
-    animation: pulse-subtle 2s ease-in-out infinite;
-  }
-  
-  /* Fade in animation */
-  @keyframes fadeIn {
-    from {
-      opacity: 0;
-      transform: translateY(10px);
-    }
-    to {
-      opacity: 1;
-      transform: translateY(0);
-    }
-  }
-  
-  .animate-fade-in {
-    animation: fadeIn 0.3s ease-out;
-  }
-  
-  /* Slide in animation */
-  @keyframes slideInRight {
-    from {
-      opacity: 0;
-      transform: translateX(20px);
-    }
-    to {
-      opacity: 1;
-      transform: translateX(0);
-    }
-  }
-  
-  .animate-slide-in-right {
-    animation: slideInRight 0.3s ease-out;
-  }
-  
-  /* Scale in animation */
-  @keyframes scaleIn {
-    from {
-      opacity: 0;
-      transform: scale(0.95);
-    }
-    to {
-      opacity: 1;
-      transform: scale(1);
-    }
-  }
-  
-  .animate-scale-in {
-    animation: scaleIn 0.2s ease-out;
-  }
-  
-  /* Bounce animation */
-  @keyframes bounce-smooth {
-    0%, 100% {
-      transform: translateY(0);
-    }
-    50% {
-      transform: translateY(-10px);
-    }
-  }
-  
-  .animate-bounce-smooth {
-    animation: bounce-smooth 1s ease-in-out infinite;
-  }
 }
-
-/* Fonts đã được load qua next/font/google trong layout.tsx - không cần @import */
 
 /* Hide native select dropdown arrow */
 select.appearance-none::-ms-expand {
@@ -186,6 +65,7 @@ select.appearance-none {
   appearance: none;
   background-image: none;
 }
+
 
 @layer base {
   html {
@@ -200,50 +80,61 @@ select.appearance-none {
     overflow-y: auto;
     max-width: 100vw;
     position: relative;
+    background-color: #fafafa;
   }
   
   h1, h2, h3, h4, h5, h6 {
     font-family: 'Poppins', system-ui, sans-serif;
   }
   
-  /* Prevent horizontal scroll */
   * {
     max-width: 100%;
   }
   
-  /* Allow specific elements to exceed */
   img, svg, video {
     max-width: none;
   }
 }
 
 @layer components {
+  /* Primary buttons - Ocean Blue */
   .btn-primary {
-    @apply bg-primary-600 hover:bg-primary-700 text-white font-medium py-2 px-4 rounded-lg transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2;
+    @apply bg-primary-500 hover:bg-primary-600 text-white font-medium py-2 px-4 rounded-lg transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-primary-400 focus:ring-offset-2;
   }
   
-  .btn-secondary {
-    @apply bg-secondary-600 hover:bg-secondary-700 text-white font-medium py-2 px-4 rounded-lg transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-secondary-500 focus:ring-offset-2;
+  /* Success buttons - Green */
+  .btn-success {
+    @apply bg-success-500 hover:bg-success-600 text-white font-medium py-2 px-4 rounded-lg transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-success-400 focus:ring-offset-2;
   }
   
+  /* Danger buttons - Red */
+  .btn-danger {
+    @apply bg-danger-500 hover:bg-danger-600 text-white font-medium py-2 px-4 rounded-lg transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-danger-400 focus:ring-offset-2;
+  }
+  
+  /* Warning buttons - Yellow/Orange */
+  .btn-warning {
+    @apply bg-warning-500 hover:bg-warning-600 text-white font-medium py-2 px-4 rounded-lg transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-warning-400 focus:ring-offset-2;
+  }
+  
+  /* Info buttons - Blue */
+  .btn-info {
+    @apply bg-info-500 hover:bg-info-600 text-white font-medium py-2 px-4 rounded-lg transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-info-400 focus:ring-offset-2;
+  }
+  
+  /* Outline button */
   .btn-outline {
-    @apply border border-primary-600 text-primary-600 hover:bg-primary-600 hover:text-white font-medium py-2 px-4 rounded-lg transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2;
+    @apply border border-primary-500 text-primary-600 hover:bg-primary-500 hover:text-white font-medium py-2 px-4 rounded-lg transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-primary-400 focus:ring-offset-2;
   }
   
+  /* Card component */
   .card {
-    @apply bg-white rounded-xl shadow-sm border border-neutral-200 p-6;
+    @apply bg-white rounded-xl shadow-sm border border-gray-100 p-6;
   }
   
+  /* Input field */
   .input-field {
-    @apply w-full px-3 py-2 border border-neutral-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent transition-colors duration-200;
-  }
-  
-  .gradient-bg {
-    @apply bg-gradient-to-br from-primary-50 via-white to-secondary-50;
-  }
-  
-  .text-gradient {
-    @apply bg-gradient-to-r from-primary-600 to-secondary-600 bg-clip-text text-transparent;
+    @apply w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-400 focus:border-transparent transition-colors duration-200;
   }
 }
 
@@ -265,21 +156,13 @@ select.appearance-none {
     animation: slideUp 0.3s ease-out;
   }
   
+  @keyframes fadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+  }
+  
   @keyframes slideUp {
-    from {
-      opacity: 0;
-      transform: translateY(20px);
-    }
-    to {
-      opacity: 1;
-      transform: translateY(0);
-    }
+    from { opacity: 0; transform: translateY(20px); }
+    to { opacity: 1; transform: translateY(0); }
   }
 }
-
-
-
-
-
-
-

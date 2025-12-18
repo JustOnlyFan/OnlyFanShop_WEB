@@ -15,16 +15,12 @@ export function middleware(request: NextRequest) {
       url.pathname = '/auth/admin-login'
       return NextResponse.redirect(url)
     }
-    // Nếu đang ở trang chủ, redirect về /admin
-    if (url.pathname === '/') {
-      url.pathname = '/admin'
-      return NextResponse.rewrite(url)
-    }
-    // Nếu không phải admin route, redirect về /admin
-    if (
-      !url.pathname.startsWith('/admin') &&
-      !url.pathname.startsWith('/auth') &&
-      !url.pathname.startsWith('/_next')
+    // Nếu đang ở trang chủ hoặc route không hợp lệ, redirect về /admin
+    if (url.pathname === '/' || 
+      (!url.pathname.startsWith('/admin') &&
+       !url.pathname.startsWith('/auth') &&
+       !url.pathname.startsWith('/_next') &&
+       !url.pathname.startsWith('/api'))
     ) {
       url.pathname = '/admin'
       return NextResponse.redirect(url)
@@ -38,13 +34,13 @@ export function middleware(request: NextRequest) {
       url.pathname = '/auth/staff-login'
       return NextResponse.redirect(url)
     }
-    // Nếu đang ở trang chủ, redirect về /staff
-    if (url.pathname === '/') {
-      url.pathname = '/staff'
-      return NextResponse.rewrite(url)
-    }
-    // Nếu không phải staff route, redirect về /staff
-    if (!url.pathname.startsWith('/staff') && !url.pathname.startsWith('/auth') && !url.pathname.startsWith('/_next')) {
+    // Nếu đang ở trang chủ hoặc route không hợp lệ, redirect về /staff
+    if (url.pathname === '/' ||
+      (!url.pathname.startsWith('/staff') &&
+       !url.pathname.startsWith('/auth') &&
+       !url.pathname.startsWith('/_next') &&
+       !url.pathname.startsWith('/api'))
+    ) {
       url.pathname = '/staff'
       return NextResponse.redirect(url)
     }

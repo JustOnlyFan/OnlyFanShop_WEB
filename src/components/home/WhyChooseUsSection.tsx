@@ -42,7 +42,7 @@ export function WhyChooseUsSection() {
           className="text-center mb-16"
         >
           <h2 className="text-4xl md:text-5xl font-bold text-gray-900 mb-4">
-            Vì sao khách hàng <span className="bg-gradient-to-r from-blue-600 to-cyan-600 bg-clip-text text-transparent">chọn chúng tôi?</span>
+            Vì sao khách hàng <span className="text-primary-600">chọn chúng tôi?</span>
           </h2>
           <p className="text-xl text-gray-600 max-w-3xl mx-auto">
             OnlyFan Shop không chỉ bán sản phẩm, chúng tôi mang đến giải pháp làm mát hoàn hảo cho ngôi nhà của bạn

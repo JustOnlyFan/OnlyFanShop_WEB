@@ -7,9 +7,11 @@ export function ConditionalHeader() {
   const pathname = usePathname();
   
   // Ẩn header trong các trang auth và admin/staff
-  const hideHeader = pathname?.startsWith('/auth/') || 
-                     pathname?.startsWith('/admin') || 
-                     pathname?.startsWith('/staff');
+  if (!pathname) return null;
+  
+  const hideHeader = pathname.startsWith('/auth') || 
+                     pathname.startsWith('/admin') || 
+                     pathname.startsWith('/staff');
   
   if (hideHeader) {
     return null;

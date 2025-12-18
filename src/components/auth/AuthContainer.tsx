@@ -294,16 +294,16 @@ export function AuthContainer() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-900 via-cyan-800 to-blue-700 p-4 overflow-hidden">
+    <div className="min-h-screen flex items-center justify-center bg-primary-600 p-4 overflow-hidden">
       {/* Background Effects */}
       <div className="absolute inset-0 overflow-hidden">
         <motion.div
-          className="absolute top-0 left-0 w-96 h-96 bg-blue-600 rounded-full mix-blend-multiply filter blur-3xl opacity-30"
+          className="absolute top-0 left-0 w-96 h-96 bg-primary-500 rounded-full mix-blend-multiply filter blur-3xl opacity-30"
           animate={{ x: [0, 100, 0], y: [0, 100, 0], scale: [1, 1.2, 1] }}
           transition={{ duration: 20, repeat: Infinity, ease: "easeInOut" }}
         />
         <motion.div
-          className="absolute bottom-0 right-0 w-96 h-96 bg-cyan-600 rounded-full mix-blend-multiply filter blur-3xl opacity-30"
+          className="absolute bottom-0 right-0 w-96 h-96 bg-accent-500 rounded-full mix-blend-multiply filter blur-3xl opacity-30"
           animate={{ x: [0, -100, 0], y: [0, -100, 0], scale: [1, 1.3, 1] }}
           transition={{ duration: 25, repeat: Infinity, ease: "easeInOut" }}
         />
@@ -423,7 +423,7 @@ function InfoPanel({ title, subtitle, description, buttonText, onButtonClick, ic
         initial={{ scale: 0 }}
         animate={{ scale: 1 }}
         transition={{ delay: 0.2, type: "spring" }}
-        className="inline-flex w-20 h-20 bg-gradient-to-br from-blue-500 to-cyan-500 rounded-2xl items-center justify-center mb-6 shadow-xl"
+        className="inline-flex w-20 h-20 bg-primary-500 rounded-2xl items-center justify-center mb-6 shadow-xl"
       >
         {icon}
       </motion.div>

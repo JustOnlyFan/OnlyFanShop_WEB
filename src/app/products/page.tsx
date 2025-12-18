@@ -3,11 +3,14 @@
 import { useState, useEffect, useMemo, useRef } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import { useQuery } from '@tanstack/react-query';
-import { Product, Category, Brand } from '@/types';
+import { Product, Category, Brand, CategoryDTO, CategoryType, TagDTO } from '@/types';
 import { ProductService } from '@/services/productService';
+import CategoryService from '@/services/categoryService';
+import TagService from '@/services/tagService';
 import { ProductCard } from '@/components/product/ProductCard';
 import { LoadingSpinner } from '@/components/ui/LoadingSpinner';
-import { Filter, ChevronDown, ShoppingBag, FileText, ArrowUpDown, Search, X, Wind, Clock, RotateCcw } from 'lucide-react';
+import { Filter, ChevronDown, ShoppingBag, FileText, ArrowUpDown, Search, X, Wind, Clock, RotateCcw, Tag } from 'lucide-react';
+import { useLanguageStore } from '@/store/languageStore';
 
 interface FilterState {
   brandId: string;
@@ -20,21 +23,25 @@ interface FilterState {
   timer: boolean;
   minPower: string;
   maxPower: string;
+  tagCodes: string[];
+  spaceId: string;
+  purposeId: string;
+  technologyId: string;
 }
 
 const PRICE_RANGES = [
-  { label: 'Dưới 500K', min: '0', max: '500000' },
-  { label: '500K - 1 triệu', min: '500000', max: '1000000' },
-  { label: '1 - 2 triệu', min: '1000000', max: '2000000' },
-  { label: '2 - 5 triệu', min: '2000000', max: '5000000' },
-  { label: 'Trên 5 triệu', min: '5000000', max: '' },
+  { labelKey: 'under500k', min: '0', max: '500000' },
+  { labelKey: 'range500kTo1m', min: '500000', max: '1000000' },
+  { labelKey: 'range1mTo2m', min: '1000000', max: '2000000' },
+  { labelKey: 'range2mTo5m', min: '2000000', max: '5000000' },
+  { labelKey: 'above5m', min: '5000000', max: '' },
 ];
 
 const POWER_RANGES = [
-  { label: 'Dưới 50W', min: '0', max: '50' },
-  { label: '50W - 70W', min: '50', max: '70' },
-  { label: '70W - 100W', min: '70', max: '100' },
-  { label: 'Trên 100W', min: '100', max: '' },
+  { labelKey: 'under50w', min: '0', max: '50' },
+  { labelKey: 'range50wTo70w', min: '50', max: '70' },
+  { labelKey: 'range70wTo100w', min: '70', max: '100' },
+  { labelKey: 'above100w', min: '100', max: '' },
 ];
 
 const BLADE_COUNTS = [3, 4, 5, 6, 7];
@@ -43,12 +50,17 @@ export default function ProductsPage() {
   const [products, setProducts] = useState<Product[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
   const [brands, setBrands] = useState<Brand[]>([]);
+  const [tags, setTags] = useState<TagDTO[]>([]);
+  const [spaceCategories, setSpaceCategories] = useState<CategoryDTO[]>([]);
+  const [purposeCategories, setPurposeCategories] = useState<CategoryDTO[]>([]);
+  const [technologyCategories, setTechnologyCategories] = useState<CategoryDTO[]>([]);
   const [loading, setLoading] = useState(true);
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const [totalProducts, setTotalProducts] = useState(0);
   const [showFilterPopup, setShowFilterPopup] = useState(false);
   const filterRef = useRef<HTMLDivElement>(null);
+  const { t } = useLanguageStore();
   
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -63,12 +75,17 @@ export default function ProductsPage() {
   const timer = searchParams.get('timer') === 'true';
   const minPower = searchParams.get('minPower');
   const maxPower = searchParams.get('maxPower');
+  const tagCodesParam = searchParams.get('tags');
+  const spaceId = searchParams.get('spaceId');
+  const purposeId = searchParams.get('purposeId');
+  const technologyId = searchParams.get('technologyId');
   const sortBy = searchParams.get('sortBy') || 'ProductID';
   const order = searchParams.get('order') || 'DESC';
   
   const [tempFilters, setTempFilters] = useState<FilterState>({
     brandId: '', minPrice: '', maxPrice: '', categoryId: '', bladeCount: '',
-    remoteControl: false, oscillation: false, timer: false, minPower: '', maxPower: ''
+    remoteControl: false, oscillation: false, timer: false, minPower: '', maxPower: '',
+    tagCodes: [], spaceId: '', purposeId: '', technologyId: ''
   });
 
   const { data: categoriesData } = useQuery({
@@ -80,6 +97,32 @@ export default function ProductsPage() {
   const { data: brandsData } = useQuery({
     queryKey: ['brands'],
     queryFn: () => ProductService.getBrands(),
+    staleTime: 10 * 60 * 1000,
+  });
+
+  // Fetch tags
+  const { data: tagsData } = useQuery({
+    queryKey: ['tags'],
+    queryFn: () => TagService.getAllTags(),
+    staleTime: 10 * 60 * 1000,
+  });
+
+  // Fetch category types for filters
+  const { data: spaceCategoriesData } = useQuery({
+    queryKey: ['categories', 'SPACE'],
+    queryFn: () => CategoryService.getCategoriesByType(CategoryType.SPACE),
+    staleTime: 10 * 60 * 1000,
+  });
+
+  const { data: purposeCategoriesData } = useQuery({
+    queryKey: ['categories', 'PURPOSE'],
+    queryFn: () => CategoryService.getCategoriesByType(CategoryType.PURPOSE),
+    staleTime: 10 * 60 * 1000,
+  });
+
+  const { data: technologyCategoriesData } = useQuery({
+    queryKey: ['categories', 'TECHNOLOGY'],
+    queryFn: () => CategoryService.getCategoriesByType(CategoryType.TECHNOLOGY),
     staleTime: 10 * 60 * 1000,
   });
 
@@ -107,6 +150,10 @@ export default function ProductsPage() {
 
   useEffect(() => { if (categoriesData?.data) setCategories(categoriesData.data); }, [categoriesData]);
   useEffect(() => { if (brandsData?.data) setBrands(brandsData.data); }, [brandsData]);
+  useEffect(() => { if (tagsData) setTags(tagsData); }, [tagsData]);
+  useEffect(() => { if (spaceCategoriesData) setSpaceCategories(spaceCategoriesData); }, [spaceCategoriesData]);
+  useEffect(() => { if (purposeCategoriesData) setPurposeCategories(purposeCategoriesData); }, [purposeCategoriesData]);
+  useEffect(() => { if (technologyCategoriesData) setTechnologyCategories(technologyCategoriesData); }, [technologyCategoriesData]);
   useEffect(() => {
     if (productsData?.data) {
       setProducts(productsData.data.products || []);
@@ -122,10 +169,12 @@ export default function ProductsPage() {
       setTempFilters({
         brandId: brandId || '', minPrice: minPrice || '', maxPrice: maxPrice || '',
         categoryId: categoryId || '', bladeCount: bladeCount || '',
-        remoteControl, oscillation, timer, minPower: minPower || '', maxPower: maxPower || ''
+        remoteControl, oscillation, timer, minPower: minPower || '', maxPower: maxPower || '',
+        tagCodes: tagCodesParam ? tagCodesParam.split(',') : [],
+        spaceId: spaceId || '', purposeId: purposeId || '', technologyId: technologyId || ''
       });
     }
-  }, [showFilterPopup, brandId, minPrice, maxPrice, categoryId, bladeCount, remoteControl, oscillation, timer, minPower, maxPower]);
+  }, [showFilterPopup, brandId, minPrice, maxPrice, categoryId, bladeCount, remoteControl, oscillation, timer, minPower, maxPower, tagCodesParam, spaceId, purposeId, technologyId]);
 
   // Close popup when clicking outside
   useEffect(() => {
@@ -156,6 +205,10 @@ export default function ProductsPage() {
       oscillation: tempFilters.oscillation ? 'true' : null,
       timer: tempFilters.timer ? 'true' : null,
       minPower: tempFilters.minPower || null, maxPower: tempFilters.maxPower || null,
+      tags: tempFilters.tagCodes.length > 0 ? tempFilters.tagCodes.join(',') : null,
+      spaceId: tempFilters.spaceId || null,
+      purposeId: tempFilters.purposeId || null,
+      technologyId: tempFilters.technologyId || null,
     });
     setShowFilterPopup(false);
     setCurrentPage(1);
@@ -164,7 +217,8 @@ export default function ProductsPage() {
   const clearTempFilters = () => {
     setTempFilters({
       brandId: '', minPrice: '', maxPrice: '', categoryId: '', bladeCount: '',
-      remoteControl: false, oscillation: false, timer: false, minPower: '', maxPower: ''
+      remoteControl: false, oscillation: false, timer: false, minPower: '', maxPower: '',
+      tagCodes: [], spaceId: '', purposeId: '', technologyId: ''
     });
   };
 
@@ -182,7 +236,32 @@ export default function ProductsPage() {
     if (oscillation) count++;
     if (timer) count++;
     if (minPower || maxPower) count++;
+    if (tagCodesParam) count++;
+    if (spaceId) count++;
+    if (purposeId) count++;
+    if (technologyId) count++;
     return count;
+  };
+
+  const handleTagToggle = (tagCode: string) => {
+    setTempFilters(prev => ({
+      ...prev,
+      tagCodes: prev.tagCodes.includes(tagCode)
+        ? prev.tagCodes.filter(c => c !== tagCode)
+        : [...prev.tagCodes, tagCode]
+    }));
+  };
+
+  const getTagBadgeColor = (tag: TagDTO) => {
+    const colorMap: Record<string, string> = {
+      'NEW': 'bg-blue-500',
+      'BESTSELLER': 'bg-red-500',
+      'SALE': 'bg-orange-500',
+      'PREMIUM': 'bg-purple-500',
+      'IMPORTED': 'bg-green-500',
+      'AUTHENTIC': 'bg-yellow-500',
+    };
+    return tag.badgeColor || colorMap[tag.code] || 'bg-gray-500';
   };
 
   const handlePriceSelect = (min: string, max: string) => {
@@ -222,7 +301,7 @@ export default function ProductsPage() {
               }`}
             >
               <Filter className="w-4 h-4" />
-              <span>Bộ lọc</span>
+              <span>{t('filter')}</span>
               {getActiveFilterCount() > 0 && (
                 <span className="bg-white text-blue-500 text-xs font-bold rounded-full w-5 h-5 flex items-center justify-center">
                   {getActiveFilterCount()}
@@ -236,7 +315,7 @@ export default function ProductsPage() {
             <div className="absolute top-full left-0 mt-2 bg-white rounded-xl shadow-2xl border border-gray-200 z-50 w-[calc(75vw-2rem)] max-w-[900px]">
               {/* Header */}
               <div className="flex items-center justify-between px-5 py-3 border-b border-gray-100">
-                <h3 className="text-base font-semibold text-gray-900">Bộ lọc sản phẩm</h3>
+                <h3 className="text-base font-semibold text-gray-900">{t('productFilter')}</h3>
                 <button onClick={() => setShowFilterPopup(false)} className="p-1.5 hover:bg-gray-100 rounded-full">
                   <X className="w-5 h-5 text-gray-500" />
                 </button>
@@ -248,7 +327,7 @@ export default function ProductsPage() {
                 <div>
                   <div className="flex items-center gap-2 mb-3">
                     <span className="w-1 h-4 bg-blue-500 rounded-full"></span>
-                    <span className="text-sm font-semibold text-gray-800">Thương hiệu</span>
+                    <span className="text-sm font-semibold text-gray-800">{t('brand')}</span>
                   </div>
                   <div className="flex flex-wrap gap-2">
                     {brands.map((brand) => (
@@ -278,7 +357,7 @@ export default function ProductsPage() {
                 <div>
                   <div className="flex items-center gap-2 mb-3">
                     <span className="w-1 h-4 bg-green-500 rounded-full"></span>
-                    <span className="text-sm font-semibold text-gray-800">Loại sản phẩm</span>
+                    <span className="text-sm font-semibold text-gray-800">{t('productType')}</span>
                   </div>
                   <div className="flex flex-wrap gap-2">
                     {categories.map((cat) => (
@@ -304,12 +383,12 @@ export default function ProductsPage() {
                 <div>
                   <div className="flex items-center gap-2 mb-3">
                     <span className="w-1 h-4 bg-orange-500 rounded-full"></span>
-                    <span className="text-sm font-semibold text-gray-800">Mức giá</span>
+                    <span className="text-sm font-semibold text-gray-800">{t('priceRange')}</span>
                   </div>
                   <div className="flex flex-wrap gap-2">
                     {PRICE_RANGES.map((range) => (
                       <button
-                        key={range.label}
+                        key={range.labelKey}
                         onClick={() => handlePriceSelect(range.min, range.max)}
                         className={`px-3 py-1.5 rounded-full text-sm font-medium transition-all border ${
                           tempFilters.minPrice === range.min && tempFilters.maxPrice === range.max
@@ -317,7 +396,7 @@ export default function ProductsPage() {
                             : 'bg-white text-gray-700 border-gray-300 hover:border-orange-400'
                         }`}
                       >
-                        {range.label}
+                        {t(range.labelKey as any)}
                       </button>
                     ))}
                   </div>
@@ -327,12 +406,12 @@ export default function ProductsPage() {
                 <div>
                   <div className="flex items-center gap-2 mb-3">
                     <span className="w-1 h-4 bg-yellow-500 rounded-full"></span>
-                    <span className="text-sm font-semibold text-gray-800">Công suất</span>
+                    <span className="text-sm font-semibold text-gray-800">{t('power')}</span>
                   </div>
                   <div className="flex flex-wrap gap-2">
                     {POWER_RANGES.map((range) => (
                       <button
-                        key={range.label}
+                        key={range.labelKey}
                         onClick={() => handlePowerSelect(range.min, range.max)}
                         className={`px-3 py-1.5 rounded-full text-sm font-medium transition-all border ${
                           tempFilters.minPower === range.min && tempFilters.maxPower === range.max
@@ -340,11 +419,120 @@ export default function ProductsPage() {
                             : 'bg-white text-gray-700 border-gray-300 hover:border-yellow-400'
                         }`}
                       >
-                        {range.label}
+                        {t(range.labelKey as any)}
                       </button>
                     ))}
                   </div>
                 </div>
+
+                {/* Không gian sử dụng (Space) */}
+                {spaceCategories.length > 0 && (
+                  <div>
+                    <div className="flex items-center gap-2 mb-3">
+                      <span className="w-1 h-4 bg-teal-500 rounded-full"></span>
+                      <span className="text-sm font-semibold text-gray-800">{t('categorySpace')}</span>
+                    </div>
+                    <div className="flex flex-wrap gap-2">
+                      {spaceCategories.map((cat) => (
+                        <button
+                          key={cat.id}
+                          onClick={() => setTempFilters(prev => ({ 
+                            ...prev, 
+                            spaceId: prev.spaceId === cat.id?.toString() ? '' : cat.id?.toString() || '' 
+                          }))}
+                          className={`px-3 py-1.5 rounded-full text-sm font-medium transition-all border ${
+                            tempFilters.spaceId === cat.id?.toString()
+                              ? 'bg-teal-500 text-white border-teal-500'
+                              : 'bg-white text-gray-700 border-gray-300 hover:border-teal-400'
+                          }`}
+                        >
+                          {cat.name}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Mục đích sử dụng (Purpose) */}
+                {purposeCategories.length > 0 && (
+                  <div>
+                    <div className="flex items-center gap-2 mb-3">
+                      <span className="w-1 h-4 bg-indigo-500 rounded-full"></span>
+                      <span className="text-sm font-semibold text-gray-800">{t('categoryPurpose')}</span>
+                    </div>
+                    <div className="flex flex-wrap gap-2">
+                      {purposeCategories.map((cat) => (
+                        <button
+                          key={cat.id}
+                          onClick={() => setTempFilters(prev => ({ 
+                            ...prev, 
+                            purposeId: prev.purposeId === cat.id?.toString() ? '' : cat.id?.toString() || '' 
+                          }))}
+                          className={`px-3 py-1.5 rounded-full text-sm font-medium transition-all border ${
+                            tempFilters.purposeId === cat.id?.toString()
+                              ? 'bg-indigo-500 text-white border-indigo-500'
+                              : 'bg-white text-gray-700 border-gray-300 hover:border-indigo-400'
+                          }`}
+                        >
+                          {cat.name}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Công nghệ (Technology) */}
+                {technologyCategories.length > 0 && (
+                  <div>
+                    <div className="flex items-center gap-2 mb-3">
+                      <span className="w-1 h-4 bg-pink-500 rounded-full"></span>
+                      <span className="text-sm font-semibold text-gray-800">{t('categoryTechnology')}</span>
+                    </div>
+                    <div className="flex flex-wrap gap-2">
+                      {technologyCategories.map((cat) => (
+                        <button
+                          key={cat.id}
+                          onClick={() => setTempFilters(prev => ({ 
+                            ...prev, 
+                            technologyId: prev.technologyId === cat.id?.toString() ? '' : cat.id?.toString() || '' 
+                          }))}
+                          className={`px-3 py-1.5 rounded-full text-sm font-medium transition-all border ${
+                            tempFilters.technologyId === cat.id?.toString()
+                              ? 'bg-pink-500 text-white border-pink-500'
+                              : 'bg-white text-gray-700 border-gray-300 hover:border-pink-400'
+                          }`}
+                        >
+                          {cat.name}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Tags */}
+                {tags.length > 0 && (
+                  <div>
+                    <div className="flex items-center gap-2 mb-3">
+                      <span className="w-1 h-4 bg-rose-500 rounded-full"></span>
+                      <span className="text-sm font-semibold text-gray-800">Tags</span>
+                    </div>
+                    <div className="flex flex-wrap gap-2">
+                      {tags.map((tag) => (
+                        <button
+                          key={tag.id}
+                          onClick={() => handleTagToggle(tag.code)}
+                          className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm font-medium transition-all border ${
+                            tempFilters.tagCodes.includes(tag.code)
+                              ? `${getTagBadgeColor(tag)} text-white border-transparent`
+                              : 'bg-white text-gray-700 border-gray-300 hover:border-rose-400'
+                          }`}
+                        >
+                          <Tag className="w-3.5 h-3.5" /> {tag.displayName}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
 
                 {/* Số cánh + Tính năng - 2 columns */}
                 <div className="grid grid-cols-2 gap-6">
@@ -352,7 +540,7 @@ export default function ProductsPage() {
                   <div>
                     <div className="flex items-center gap-2 mb-3">
                       <span className="w-1 h-4 bg-purple-500 rounded-full"></span>
-                      <span className="text-sm font-semibold text-gray-800">Số cánh quạt</span>
+                      <span className="text-sm font-semibold text-gray-800">{t('bladeCount')}</span>
                     </div>
                     <div className="flex flex-wrap gap-2">
                       {BLADE_COUNTS.map((count) => (
@@ -368,7 +556,7 @@ export default function ProductsPage() {
                               : 'bg-white text-gray-700 border-gray-300 hover:border-purple-400'
                           }`}
                         >
-                          {count} cánh
+                          {count} {t('blades')}
                         </button>
                       ))}
                     </div>
@@ -378,7 +566,7 @@ export default function ProductsPage() {
                   <div>
                     <div className="flex items-center gap-2 mb-3">
                       <span className="w-1 h-4 bg-cyan-500 rounded-full"></span>
-                      <span className="text-sm font-semibold text-gray-800">Tính năng</span>
+                      <span className="text-sm font-semibold text-gray-800">{t('features')}</span>
                     </div>
                     <div className="flex flex-wrap gap-2">
                       <button
@@ -389,7 +577,7 @@ export default function ProductsPage() {
                             : 'bg-white text-gray-700 border-gray-300 hover:border-blue-400'
                         }`}
                       >
-                        <Wind className="w-3.5 h-3.5" /> Remote
+                        <Wind className="w-3.5 h-3.5" /> {t('remote')}
                       </button>
                       <button
                         onClick={() => setTempFilters(prev => ({ ...prev, timer: !prev.timer }))}
@@ -399,7 +587,7 @@ export default function ProductsPage() {
                             : 'bg-white text-gray-700 border-gray-300 hover:border-orange-400'
                         }`}
                       >
-                        <Clock className="w-3.5 h-3.5" /> Hẹn giờ
+                        <Clock className="w-3.5 h-3.5" /> {t('timer')}
                       </button>
                       <button
                         onClick={() => setTempFilters(prev => ({ ...prev, oscillation: !prev.oscillation }))}
@@ -409,7 +597,7 @@ export default function ProductsPage() {
                             : 'bg-white text-gray-700 border-gray-300 hover:border-green-400'
                         }`}
                       >
-                        <RotateCcw className="w-3.5 h-3.5" /> Đảo chiều
+                        <RotateCcw className="w-3.5 h-3.5" /> {t('oscillation')}
                       </button>
                     </div>
                   </div>
@@ -419,10 +607,10 @@ export default function ProductsPage() {
               {/* Footer */}
               <div className="flex items-center justify-between px-5 py-3 border-t border-gray-100 bg-gray-50 rounded-b-xl">
                 <button onClick={clearTempFilters} className="px-4 py-2 text-gray-600 hover:text-gray-800 text-sm font-medium">
-                  Xóa bộ lọc
+                  {t('clearFilter')}
                 </button>
                 <button onClick={applyFilters} className="px-6 py-2 bg-blue-500 text-white rounded-lg text-sm font-semibold hover:bg-blue-600 transition-colors">
-                  Xem {totalProducts} kết quả
+                  {t('viewResults')} ({totalProducts})
                 </button>
               </div>
             </div>
@@ -438,7 +626,7 @@ export default function ProductsPage() {
                 brandId ? 'border-blue-500 bg-blue-50 text-blue-700' : 'border-gray-300 bg-white text-gray-700 hover:border-gray-400'
               }`}
             >
-              <option value="">Thương hiệu</option>
+              <option value="">{t('brand')}</option>
               {brands.map((b) => (
                 <option key={b.brandID} value={b.brandID}>{b.name}</option>
               ))}
@@ -461,9 +649,9 @@ export default function ProductsPage() {
                 minPrice || maxPrice ? 'border-orange-500 bg-orange-50 text-orange-700' : 'border-gray-300 bg-white text-gray-700 hover:border-gray-400'
               }`}
             >
-              <option value="">Mức giá</option>
+              <option value="">{t('priceRange')}</option>
               {PRICE_RANGES.map((r) => (
-                <option key={r.label} value={`${r.min}-${r.max}`}>{r.label}</option>
+                <option key={r.labelKey} value={`${r.min}-${r.max}`}>{t(r.labelKey as any)}</option>
               ))}
             </select>
             <ChevronDown className="absolute right-2 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" />
@@ -477,7 +665,7 @@ export default function ProductsPage() {
                 categoryId ? 'border-green-500 bg-green-50 text-green-700' : 'border-gray-300 bg-white text-gray-700 hover:border-gray-400'
               }`}
             >
-              <option value="">Loại sản phẩm</option>
+              <option value="">{t('productType')}</option>
               {categories.map((c) => (
                 <option key={c.id} value={c.id}>{c.name}</option>
               ))}
@@ -492,7 +680,7 @@ export default function ProductsPage() {
               remoteControl ? 'border-blue-500 bg-blue-50 text-blue-700' : 'border-gray-300 bg-white text-gray-700 hover:border-gray-400'
             }`}
           >
-            <Wind className="w-4 h-4" /> Remote
+            <Wind className="w-4 h-4" /> {t('remote')}
           </button>
 
           <button
@@ -501,14 +689,14 @@ export default function ProductsPage() {
               timer ? 'border-orange-500 bg-orange-50 text-orange-700' : 'border-gray-300 bg-white text-gray-700 hover:border-gray-400'
             }`}
           >
-            <Clock className="w-4 h-4" /> Hẹn giờ
+            <Clock className="w-4 h-4" /> {t('timer')}
           </button>
         </div>
 
         {/* Active Filter Tags */}
         {getActiveFilterCount() > 0 && (
           <div className="flex flex-wrap items-center gap-2 mb-4">
-            <span className="text-sm text-gray-500">Đang lọc:</span>
+            <span className="text-sm text-gray-500">{t('filtering')}:</span>
             {brandId && (
               <span className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-blue-100 text-blue-700 rounded-full text-sm">
                 {brands.find(b => b.brandID?.toString() === brandId)?.name}
@@ -523,43 +711,78 @@ export default function ProductsPage() {
             )}
             {(minPrice || maxPrice) && (
               <span className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-orange-100 text-orange-700 rounded-full text-sm">
-                {PRICE_RANGES.find(r => r.min === minPrice && r.max === maxPrice)?.label || 
-                  (minPrice && maxPrice ? `${(+minPrice/1000)}K - ${(+maxPrice/1000)}K` : minPrice ? `Từ ${(+minPrice/1000)}K` : `Đến ${(+maxPrice!/1000)}K`)}
+                {(() => {
+                  const found = PRICE_RANGES.find(r => r.min === minPrice && r.max === maxPrice);
+                  return found ? t(found.labelKey as any) : (minPrice && maxPrice ? `${(+minPrice/1000)}K - ${(+maxPrice/1000)}K` : minPrice ? `${(+minPrice/1000)}K+` : `< ${(+maxPrice!/1000)}K`);
+                })()}
                 <button onClick={() => updateURL({ minPrice: null, maxPrice: null })}><X className="w-3.5 h-3.5" /></button>
               </span>
             )}
             {(minPower || maxPower) && (
               <span className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-yellow-100 text-yellow-700 rounded-full text-sm">
-                {POWER_RANGES.find(r => r.min === minPower && r.max === maxPower)?.label || `${minPower || 0}W - ${maxPower || '∞'}W`}
+                {(() => {
+                  const found = POWER_RANGES.find(r => r.min === minPower && r.max === maxPower);
+                  return found ? t(found.labelKey as any) : `${minPower || 0}W - ${maxPower || '∞'}W`;
+                })()}
                 <button onClick={() => updateURL({ minPower: null, maxPower: null })}><X className="w-3.5 h-3.5" /></button>
               </span>
             )}
             {bladeCount && (
               <span className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-purple-100 text-purple-700 rounded-full text-sm">
-                {bladeCount} cánh
+                {bladeCount} {t('blades')}
                 <button onClick={() => updateURL({ bladeCount: null })}><X className="w-3.5 h-3.5" /></button>
               </span>
             )}
             {remoteControl && (
               <span className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-cyan-100 text-cyan-700 rounded-full text-sm">
-                <Wind className="w-3.5 h-3.5" /> Remote
+                <Wind className="w-3.5 h-3.5" /> {t('remote')}
                 <button onClick={() => updateURL({ remoteControl: null })}><X className="w-3.5 h-3.5" /></button>
               </span>
             )}
             {timer && (
               <span className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-amber-100 text-amber-700 rounded-full text-sm">
-                <Clock className="w-3.5 h-3.5" /> Hẹn giờ
+                <Clock className="w-3.5 h-3.5" /> {t('timer')}
                 <button onClick={() => updateURL({ timer: null })}><X className="w-3.5 h-3.5" /></button>
               </span>
             )}
             {oscillation && (
               <span className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-emerald-100 text-emerald-700 rounded-full text-sm">
-                <RotateCcw className="w-3.5 h-3.5" /> Đảo chiều
+                <RotateCcw className="w-3.5 h-3.5" /> {t('oscillation')}
                 <button onClick={() => updateURL({ oscillation: null })}><X className="w-3.5 h-3.5" /></button>
               </span>
             )}
+            {spaceId && (
+              <span className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-teal-100 text-teal-700 rounded-full text-sm">
+                {spaceCategories.find(c => c.id?.toString() === spaceId)?.name}
+                <button onClick={() => updateURL({ spaceId: null })}><X className="w-3.5 h-3.5" /></button>
+              </span>
+            )}
+            {purposeId && (
+              <span className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-indigo-100 text-indigo-700 rounded-full text-sm">
+                {purposeCategories.find(c => c.id?.toString() === purposeId)?.name}
+                <button onClick={() => updateURL({ purposeId: null })}><X className="w-3.5 h-3.5" /></button>
+              </span>
+            )}
+            {technologyId && (
+              <span className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-pink-100 text-pink-700 rounded-full text-sm">
+                {technologyCategories.find(c => c.id?.toString() === technologyId)?.name}
+                <button onClick={() => updateURL({ technologyId: null })}><X className="w-3.5 h-3.5" /></button>
+              </span>
+            )}
+            {tagCodesParam && tagCodesParam.split(',').map(tagCode => {
+              const tag = tags.find(t => t.code === tagCode);
+              return tag ? (
+                <span key={tagCode} className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-rose-100 text-rose-700 rounded-full text-sm">
+                  <Tag className="w-3.5 h-3.5" /> {tag.displayName}
+                  <button onClick={() => {
+                    const newTags = tagCodesParam.split(',').filter(c => c !== tagCode);
+                    updateURL({ tags: newTags.length > 0 ? newTags.join(',') : null });
+                  }}><X className="w-3.5 h-3.5" /></button>
+                </span>
+              ) : null;
+            })}
             <button onClick={clearURLFilters} className="text-red-500 hover:text-red-600 text-sm font-medium ml-2">
-              Xóa tất cả
+              {t('clearAll')}
             </button>
           </div>
         )}
@@ -567,18 +790,18 @@ export default function ProductsPage() {
         {/* Header + Sort */}
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-5">
           <h1 className="text-xl font-bold text-gray-900">
-            Quạt <span className="text-gray-400 font-normal text-base">({totalProducts} sản phẩm)</span>
+            {t('fan')} <span className="text-gray-400 font-normal text-base">({totalProducts} {t('productCount')})</span>
           </h1>
           
           <div className="flex items-center gap-2 overflow-x-auto">
             {[
-              { label: 'Nên mua', sort: 'recommended', icon: ShoppingBag },
-              { label: 'Bán chạy', sort: 'sold', icon: FileText },
-              { label: 'Giá thấp', sort: 'price', ord: 'ASC', icon: ArrowUpDown },
-              { label: 'Giá cao', sort: 'price', ord: 'DESC', icon: ArrowUpDown },
+              { labelKey: 'recommended', sort: 'recommended', icon: ShoppingBag },
+              { labelKey: 'bestSeller', sort: 'sold', icon: FileText },
+              { labelKey: 'priceLow', sort: 'price', ord: 'ASC', icon: ArrowUpDown },
+              { labelKey: 'priceHigh', sort: 'price', ord: 'DESC', icon: ArrowUpDown },
             ].map((item) => (
               <button
-                key={item.label}
+                key={item.labelKey}
                 onClick={() => handleSort(item.sort, item.ord || 'DESC')}
                 className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium whitespace-nowrap transition-all ${
                   sortBy === item.sort && (item.ord ? order === item.ord : true)
@@ -587,7 +810,7 @@ export default function ProductsPage() {
                 }`}
               >
                 <item.icon className="w-3.5 h-3.5" />
-                {item.label}
+                {t(item.labelKey as any)}
               </button>
             ))}
           </div>
@@ -606,7 +829,7 @@ export default function ProductsPage() {
               <div className="mt-10 flex justify-center">
                 <div className="inline-flex items-center gap-1 bg-white rounded-xl shadow-sm border border-gray-200 p-1">
                   <button onClick={() => handlePageChange(currentPage - 1)} disabled={currentPage === 1}
-                    className="px-3 py-2 rounded-lg text-sm font-medium disabled:opacity-40 hover:bg-gray-100">‹ Trước</button>
+                    className="px-3 py-2 rounded-lg text-sm font-medium disabled:opacity-40 hover:bg-gray-100">‹ {t('prev')}</button>
                   {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
                     let page = totalPages <= 5 ? i + 1 : currentPage <= 3 ? i + 1 : currentPage >= totalPages - 2 ? totalPages - 4 + i : currentPage - 2 + i;
                     return (
@@ -617,7 +840,7 @@ export default function ProductsPage() {
                     );
                   })}
                   <button onClick={() => handlePageChange(currentPage + 1)} disabled={currentPage === totalPages}
-                    className="px-3 py-2 rounded-lg text-sm font-medium disabled:opacity-40 hover:bg-gray-100">Sau ›</button>
+                    className="px-3 py-2 rounded-lg text-sm font-medium disabled:opacity-40 hover:bg-gray-100">{t('next')} ›</button>
                 </div>
               </div>
             )}
@@ -625,10 +848,10 @@ export default function ProductsPage() {
         ) : (
           <div className="text-center py-16 bg-white rounded-xl">
             <Search className="w-16 h-16 mx-auto text-gray-300 mb-4" />
-            <h3 className="text-lg font-semibold text-gray-900 mb-2">Không tìm thấy sản phẩm</h3>
-            <p className="text-gray-500 mb-6">Thử thay đổi bộ lọc hoặc từ khóa tìm kiếm</p>
+            <h3 className="text-lg font-semibold text-gray-900 mb-2">{t('noProductsFound')}</h3>
+            <p className="text-gray-500 mb-6">{t('tryChangeFilter')}</p>
             <button onClick={clearURLFilters} className="px-6 py-2.5 bg-blue-500 text-white rounded-xl font-medium hover:bg-blue-600">
-              Xóa bộ lọc
+              {t('clearFilter')}
             </button>
           </div>
         )}

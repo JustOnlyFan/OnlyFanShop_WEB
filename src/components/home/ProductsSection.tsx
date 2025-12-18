@@ -5,12 +5,15 @@ import { Product } from '@/types';
 import { Star, ShoppingCart, Heart, ArrowRight } from 'lucide-react';
 import Link from 'next/link';
 import Image from 'next/image';
+import { useLanguageStore } from '@/store/languageStore';
 
 interface ProductsSectionProps {
   products: Product[];
 }
 
 export function ProductsSection({ products }: ProductsSectionProps) {
+  const { t } = useLanguageStore();
+
   const formatPrice = (price: number) => {
     return new Intl.NumberFormat('vi-VN', {
       style: 'currency',
@@ -19,29 +22,29 @@ export function ProductsSection({ products }: ProductsSectionProps) {
   };
 
   return (
-    <section className="py-20 bg-white">
+    <section className="py-16 lg:py-20 bg-white">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true }}
           transition={{ duration: 0.6 }}
-          className="text-center mb-16"
+          className="text-center mb-12"
         >
-          <h2 className="text-4xl md:text-5xl font-bold text-gray-900 mb-4">
-            Sản phẩm <span className="bg-gradient-to-r from-blue-600 to-cyan-600 bg-clip-text text-transparent">nổi bật</span>
+          <h2 className="text-3xl sm:text-4xl lg:text-5xl font-bold text-gray-900 mb-4">
+            {t('featuredProducts')} <span className="text-primary-600">{t('featured')}</span>
           </h2>
-          <p className="text-xl text-gray-600 max-w-2xl mx-auto">
-            Khám phá bộ sưu tập quạt điện cao cấp được yêu thích nhất
+          <p className="text-lg text-gray-600 max-w-2xl mx-auto">
+            {t('featuredProductsDesc')}
           </p>
         </motion.div>
 
         {products.length === 0 ? (
           <div className="text-center py-12">
-            <p className="text-gray-500 text-lg">Đang cập nhật sản phẩm...</p>
+            <p className="text-gray-500 text-lg">{t('updatingProducts')}</p>
           </div>
         ) : (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-8">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
             {products.slice(0, 8).map((product, index) => (
               <motion.div
                 key={product.productID}
@@ -52,36 +55,36 @@ export function ProductsSection({ products }: ProductsSectionProps) {
                 className="group"
               >
                 <Link href={`/products/${product.productID}`}>
-                  <div className="relative bg-white rounded-2xl overflow-hidden shadow-lg hover:shadow-2xl transition-all duration-300 border border-gray-100">
+                  <div className="relative bg-white rounded-2xl overflow-hidden shadow-sm hover:shadow-lg transition-all duration-300 border border-gray-100">
                     {/* Image */}
-                    <div className="relative h-64 bg-gradient-to-br from-gray-100 to-gray-200 overflow-hidden">
+                    <div className="relative h-56 sm:h-64 bg-gray-100 overflow-hidden">
                       {product.imageURL ? (
                         <Image
                           src={product.imageURL}
                           alt={product.productName}
                           fill
-                          className="object-cover group-hover:scale-110 transition-transform duration-500"
+                          className="object-cover group-hover:scale-105 transition-transform duration-500"
                         />
                       ) : (
-                        <div className="w-full h-full flex items-center justify-center text-6xl">
+                        <div className="w-full h-full flex items-center justify-center text-6xl bg-primary-50">
                           🌀
                         </div>
                       )}
                       
                       {/* Wishlist button */}
-                      <button className="absolute top-4 right-4 w-10 h-10 bg-white/90 backdrop-blur-sm rounded-full flex items-center justify-center hover:bg-white transition-colors shadow-lg">
-                        <Heart className="w-5 h-5 text-gray-600 hover:text-red-500 transition-colors" />
+                      <button className="absolute top-3 right-3 w-9 h-9 bg-white/90 backdrop-blur-sm rounded-full flex items-center justify-center hover:bg-white transition-colors shadow-md">
+                        <Heart className="w-5 h-5 text-gray-500 hover:text-danger-500 transition-colors" />
                       </button>
 
                       {/* New badge */}
-                      <div className="absolute top-4 left-4 px-3 py-1 bg-gradient-to-r from-blue-500 to-cyan-500 text-white text-sm font-bold rounded-full">
-                        Mới
+                      <div className="absolute top-3 left-3 px-3 py-1 bg-primary-500 text-white text-xs font-bold rounded-full">
+                        {t('new')}
                       </div>
                     </div>
 
                     {/* Content */}
-                    <div className="p-6">
-                      <h3 className="text-lg font-bold text-gray-900 mb-2 line-clamp-2 group-hover:text-blue-600 transition-colors">
+                    <div className="p-5">
+                      <h3 className="text-base font-bold text-gray-900 mb-2 line-clamp-2 group-hover:text-primary-600 transition-colors min-h-[48px]">
                         {product.productName}
                       </h3>
 
@@ -92,29 +95,25 @@ export function ProductsSection({ products }: ProductsSectionProps) {
                             key={i}
                             className={`w-4 h-4 ${
                               i < 4
-                                ? 'text-yellow-400 fill-yellow-400'
+                                ? 'text-warning-400 fill-warning-400'
                                 : 'text-gray-300'
                             }`}
                           />
                         ))}
-                        <span className="text-sm text-gray-600 ml-1">
-                          (4.5)
-                        </span>
+                        <span className="text-sm text-gray-500 ml-1">(4.5)</span>
                       </div>
 
                       {/* Price */}
-                      <div className="flex items-center justify-between mb-4">
-                        <div>
-                          <p className="text-2xl font-bold text-blue-600">
-                            {formatPrice(product.price)}
-                          </p>
-                        </div>
+                      <div className="mb-4">
+                        <p className="text-xl font-bold text-primary-600">
+                          {formatPrice(product.price)}
+                        </p>
                       </div>
 
                       {/* Add to cart button */}
-                      <button className="w-full py-3 bg-gradient-to-r from-blue-600 to-cyan-600 text-white rounded-xl font-semibold hover:from-blue-700 hover:to-cyan-700 transition-all flex items-center justify-center gap-2 group-hover:shadow-lg">
-                        <ShoppingCart className="w-5 h-5" />
-                        Thêm vào giỏ
+                      <button className="w-full py-3 bg-primary-500 text-white rounded-xl font-semibold hover:bg-primary-600 transition-all flex items-center justify-center gap-2 text-sm">
+                        <ShoppingCart className="w-4 h-4" />
+                        {t('addToCart')}
                       </button>
                     </div>
                   </div>
@@ -130,15 +129,15 @@ export function ProductsSection({ products }: ProductsSectionProps) {
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true }}
           transition={{ duration: 0.6, delay: 0.3 }}
-          className="text-center mt-12"
+          className="text-center mt-10"
         >
           <Link href="/products">
             <motion.button
-              whileHover={{ scale: 1.05 }}
-              whileTap={{ scale: 0.95 }}
-              className="inline-flex items-center gap-2 px-8 py-4 bg-gradient-to-r from-blue-600 to-cyan-600 text-white rounded-full font-semibold text-lg shadow-lg hover:shadow-xl transition-all"
+              whileHover={{ scale: 1.02 }}
+              whileTap={{ scale: 0.98 }}
+              className="inline-flex items-center gap-2 px-8 py-4 bg-primary-500 text-white rounded-xl font-semibold text-base shadow-md hover:bg-primary-600 hover:shadow-lg transition-all"
             >
-              Xem tất cả sản phẩm
+              {t('viewAllProducts')}
               <ArrowRight className="w-5 h-5" />
             </motion.button>
           </Link>

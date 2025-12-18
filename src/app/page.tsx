@@ -7,7 +7,7 @@ import { Brand, Category, Product } from '@/types';
 import { LoadingSpinner } from '@/components/ui/LoadingSpinner';
 import { HeroSection } from '@/components/home/HeroSection';
 import { ProductsSection } from '@/components/home/ProductsSection';
-import { CategoriesSection } from '@/components/home/CategoriesSection';
+
 import { BrandsSection } from '@/components/home/BrandsSection';
 import { AlertCircle } from 'lucide-react';
 
@@ -90,7 +90,6 @@ export default function HomePage() {
 
       <HeroSection />
       <ProductsSection products={featuredProducts} />
-      <CategoriesSection categories={categories} />
       <BrandsSection brands={brands} />
     </div>
   );
