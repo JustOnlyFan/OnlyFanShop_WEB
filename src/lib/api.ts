@@ -1,4 +1,4 @@
-import axios, { AxiosInstance, AxiosResponse, InternalAxiosRequestConfig } from 'axios'
+import axios, { InternalAxiosRequestConfig } from 'axios'
 import { ApiResponse } from '@/types'
 import { tokenStorage } from '@/utils/tokenStorage'
 
@@ -159,54 +159,6 @@ const handleUnauthorizedRedirect = async (error: any) => {
     }
   }
 }
-
-class ApiClient {
-  private client: AxiosInstance
-
-  constructor() {
-    this.client = apiClient
-  }
-
-  // Generic methods
-  async get<T>(url: string): Promise<ApiResponse<T>> {
-    const response: AxiosResponse<ApiResponse<T>> = await this.client.get(url)
-    return response.data
-  }
-
-  async post<T>(url: string, data?: any): Promise<ApiResponse<T>> {
-    const response: AxiosResponse<ApiResponse<T>> = await this.client.post(url, data)
-    return response.data
-  }
-
-  async put<T>(url: string, data?: any): Promise<ApiResponse<T>> {
-    const response: AxiosResponse<ApiResponse<T>> = await this.client.put(url, data)
-    return response.data
-  }
-
-  async delete<T>(url: string): Promise<ApiResponse<T>> {
-    const response: AxiosResponse<ApiResponse<T>> = await this.client.delete(url)
-    return response.data
-  }
-
-  // File upload method
-  async uploadFile(file: File): Promise<ApiResponse<string>> {
-    const response = await this.client.post('/api/upload/image', (() => {
-      const formData = new FormData()
-      formData.append('file', file)
-      return formData
-    })(), {
-      headers: {
-        'Content-Type': 'multipart/form-data',
-      },
-    })
-
-    return response.data
-  }
-}
-
-export const apiClientInstance = new ApiClient()
-
-
 
 
 

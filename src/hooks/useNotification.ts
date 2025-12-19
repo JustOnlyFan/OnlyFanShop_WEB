@@ -1,7 +1,7 @@
 'use client';
 
-import { useState, useEffect } from 'react';
-import { notificationService, NotificationOptions, NotificationProps } from '@/services/notificationService';
+import { useState, useEffect, useCallback } from 'react';
+import { notificationService, NotificationProps } from '@/services/notificationService';
 
 export function useNotification() {
   const [notifications, setNotifications] = useState<NotificationProps[]>([]);
@@ -11,38 +11,13 @@ export function useNotification() {
     return unsubscribe;
   }, []);
 
-  const showSuccess = (title: string, message: string, options?: NotificationOptions) => {
-    return notificationService.success(title, message, options);
-  };
-
-  const showError = (title: string, message: string, options?: NotificationOptions) => {
-    return notificationService.error(title, message, options);
-  };
-
-  const showWarning = (title: string, message: string, options?: NotificationOptions) => {
-    return notificationService.warning(title, message, options);
-  };
-
-  const showInfo = (title: string, message: string, options?: NotificationOptions) => {
-    return notificationService.info(title, message, options);
-  };
-
-  const removeNotification = (id: string) => {
+  const removeNotification = useCallback((id: string) => {
     notificationService.remove(id);
-  };
+  }, []);
 
-  const clearAll = () => {
+  const clearAll = useCallback(() => {
     notificationService.clear();
-  };
+  }, []);
 
-  return {
-    notifications,
-    showSuccess,
-    showError,
-    showWarning,
-    showInfo,
-    removeNotification,
-    clearAll
-  };
+  return { notifications, removeNotification, clearAll };
 }
-
