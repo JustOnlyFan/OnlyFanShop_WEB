@@ -3,20 +3,12 @@
 import { useState, useEffect } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { useQuery } from '@tanstack/react-query';
+import { Search, Filter, Grid, List, SlidersHorizontal, X, ChevronDown } from 'lucide-react';
 import { ProductService } from '@/services/productService';
 import { Product, Brand, Category } from '@/types';
 import { ProductCard } from '@/components/product/ProductCard';
 import { LoadingSpinner } from '@/components/ui/LoadingSpinner';
 import { Button } from '@/components/ui/Button';
-import { 
-  Search, 
-  Filter, 
-  Grid, 
-  List, 
-  SlidersHorizontal,
-  X,
-  ChevronDown
-} from 'lucide-react';
 
 export default function SearchPage() {
   const searchParams = useSearchParams();

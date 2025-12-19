@@ -1,19 +1,8 @@
 'use client';
 
 import { useState } from 'react';
+import { MapPin, Phone, Mail, Clock, MessageCircle, Send, Facebook, Instagram, Youtube, Twitter } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
-import { 
-  MapPin, 
-  Phone, 
-  Mail, 
-  Clock, 
-  MessageCircle,
-  Send,
-  Facebook,
-  Instagram,
-  Youtube,
-  Twitter
-} from 'lucide-react';
 
 export default function ContactPage() {
   const [formData, setFormData] = useState({

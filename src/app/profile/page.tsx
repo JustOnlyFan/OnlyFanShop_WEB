@@ -2,11 +2,11 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
+import { User, Mail, Phone, MapPin, Edit, Save, X, Lock, ShoppingBag, Heart, Settings } from 'lucide-react';
 import { useAuthStore } from '@/store/authStore';
 import { UserService } from '@/services/userService';
 import { Button } from '@/components/ui/Button';
 import { LoadingSpinner } from '@/components/ui/LoadingSpinner';
-import { User, Mail, Phone, MapPin, Edit, Save, X, Lock, ShoppingBag, Heart, Settings } from 'lucide-react';
 
 export default function ProfilePage() {
   const [loading, setLoading] = useState(true);

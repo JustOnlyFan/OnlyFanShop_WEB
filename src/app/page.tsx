@@ -2,14 +2,13 @@
 
 import { useState, useEffect } from 'react';
 import { useQuery } from '@tanstack/react-query';
+import { AlertCircle } from 'lucide-react';
 import { ProductService } from '@/services/productService';
 import { Brand, Category, Product } from '@/types';
 import { LoadingSpinner } from '@/components/ui/LoadingSpinner';
 import { HeroSection } from '@/components/home/HeroSection';
 import { ProductsSection } from '@/components/home/ProductsSection';
-
 import { BrandsSection } from '@/components/home/BrandsSection';
-import { AlertCircle } from 'lucide-react';
 
 export default function HomePage() {
   const [featuredProducts, setFeaturedProducts] = useState<Product[]>([]);

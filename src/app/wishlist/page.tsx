@@ -1,22 +1,14 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import Link from 'next/link';
 import { useRouter } from 'next/navigation';
+import { Heart, ShoppingBag, Trash2, Grid, List, ArrowLeft, Plus } from 'lucide-react';
 import { useAuthStore } from '@/store/authStore';
 import { Product } from '@/types';
 import { ProductCard } from '@/components/product/ProductCard';
 import { LoadingSpinner } from '@/components/ui/LoadingSpinner';
 import { Button } from '@/components/ui/Button';
-import { 
-  Heart, 
-  ShoppingBag, 
-  Trash2, 
-  Grid, 
-  List,
-  ArrowLeft,
-  Plus
-} from 'lucide-react';
-import Link from 'next/link';
 
 export default function WishlistPage() {
   const [wishlistItems, setWishlistItems] = useState<Product[]>([]);

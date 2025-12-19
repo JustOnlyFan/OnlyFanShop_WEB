@@ -1,22 +1,16 @@
-'use client'
+'use client';
 
-import { useState, useEffect, useCallback } from 'react'
-import { useRouter, useParams } from 'next/navigation'
-import { useAuthStore } from '@/store/authStore'
-import { LoadingSpinner } from '@/components/ui/LoadingSpinner'
-import { ChatService, Message } from '@/services/chatService'
-import { websocketService, WebSocketMessage } from '@/services/websocketService'
-import { motion } from 'framer-motion'
-import { 
-  ArrowLeft,
-  Send,
-  MessageCircle,
-  User,
-  Package
-} from 'lucide-react'
-import toast from 'react-hot-toast'
-import { format } from 'date-fns'
-import Image from 'next/image'
+import { useState, useEffect, useCallback } from 'react';
+import Image from 'next/image';
+import { useRouter, useParams } from 'next/navigation';
+import { motion } from 'framer-motion';
+import { format } from 'date-fns';
+import toast from 'react-hot-toast';
+import { ArrowLeft, Send, MessageCircle, User, Package } from 'lucide-react';
+import { useAuthStore } from '@/store/authStore';
+import { ChatService, Message } from '@/services/chatService';
+import { websocketService, WebSocketMessage } from '@/services/websocketService';
+import { LoadingSpinner } from '@/components/ui/LoadingSpinner';
 
 export default function CustomerChatRoomPage() {
   const [loading, setLoading] = useState(true)

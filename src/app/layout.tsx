@@ -1,13 +1,13 @@
-import type { Metadata } from 'next'
-import { Inter, Poppins } from 'next/font/google'
-import './globals.css'
-import { Providers } from '@/components/providers/Providers'
-import { ConditionalHeader } from '@/components/layout/ConditionalHeader'
-import { ConditionalFooter } from '@/components/layout/ConditionalFooter'
-import { ErrorBoundary } from '@/components/ErrorBoundary'
-import { Toaster } from 'react-hot-toast'
-import { ChatButton } from '@/components/chat/ChatButton'
-import { RouteGuard } from '@/components/auth/RouteGuard'
+import type { Metadata } from 'next';
+import { Inter, Poppins } from 'next/font/google';
+import { Toaster } from 'react-hot-toast';
+import './globals.css';
+import { Providers } from '@/components/providers/Providers';
+import { ConditionalHeader } from '@/components/layout/ConditionalHeader';
+import { ConditionalFooter } from '@/components/layout/ConditionalFooter';
+import { ErrorBoundary } from '@/components/ErrorBoundary';
+import { ChatButton } from '@/components/chat/ChatButton';
+import { RouteGuard } from '@/components/auth/RouteGuard';
 
 const inter = Inter({ 
   subsets: ['latin'],

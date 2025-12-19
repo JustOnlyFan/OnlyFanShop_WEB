@@ -3,8 +3,8 @@
 import { ReactNode } from 'react';
 import { usePathname } from 'next/navigation';
 import { useAuthStore } from '@/store/authStore';
-import { LoadingSpinner } from '@/components/ui/LoadingSpinner';
 import { AdminSidebar } from '@/components/admin/AdminSidebar';
+import { LoadingSpinner } from '@/components/ui/LoadingSpinner';
 
 interface AdminLayoutProps {
   children: ReactNode;

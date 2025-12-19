@@ -1,8 +1,8 @@
-'use client'
+'use client';
 
-import { useAuthStore } from '@/store/authStore'
-import { AdminCard, AdminCardBody, AdminStats } from '@/components/admin/ui'
-import { Package, ShoppingCart, Users, TrendingUp } from 'lucide-react'
+import { Package, ShoppingCart, Users, TrendingUp } from 'lucide-react';
+import { useAuthStore } from '@/store/authStore';
+import { AdminCard, AdminCardBody, AdminStats } from '@/components/admin/ui';
 
 export default function StaffDashboardPage() {
   const { user } = useAuthStore()
