@@ -1,5 +1,6 @@
-import axios from 'axios';
-import { tokenStorage } from '@/utils/tokenStorage';
+import axios from 'axios'
+
+import { tokenStorage } from '@/utils/tokenStorage'
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080'
 

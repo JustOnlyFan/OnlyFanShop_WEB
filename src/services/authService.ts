@@ -1,7 +1,8 @@
 import axios from 'axios'
+
 import { apiClient } from '@/lib/api'
-import { tokenStorage } from '@/utils/tokenStorage'
 import { User } from '@/types'
+import { tokenStorage } from '@/utils/tokenStorage'
 
 // Respect empty string from next.config rewrites (same-origin proxy in dev)
 const API_URL = typeof process.env.NEXT_PUBLIC_API_URL !== 'undefined'

@@ -1,6 +1,6 @@
 import { Client, IMessage } from '@stomp/stompjs'
-// @ts-ignore - SockJS types may not be perfect
 import SockJS from 'sockjs-client'
+
 import { tokenStorage } from '@/utils/tokenStorage'
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080'
