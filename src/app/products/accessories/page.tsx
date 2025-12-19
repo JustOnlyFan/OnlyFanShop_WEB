@@ -3,13 +3,13 @@
 import { useState, useEffect, useRef } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import { useQuery } from '@tanstack/react-query';
+import { Filter, ChevronDown, X, Wrench, Settings } from 'lucide-react';
 import { Product, CategoryDTO, CategoryType, Brand } from '@/types';
 import { ProductService } from '@/services/productService';
 import CategoryService from '@/services/categoryService';
 import AccessoryCompatibilityService from '@/services/accessoryCompatibilityService';
 import { ProductCard } from '@/components/product/ProductCard';
 import { LoadingSpinner } from '@/components/ui/LoadingSpinner';
-import { Filter, ChevronDown, X, Wrench, Settings } from 'lucide-react';
 import { useLanguageStore } from '@/store/languageStore';
 
 interface FilterState {

@@ -1,9 +1,9 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import Link from 'next/link';
 import { useSearchParams, useRouter } from 'next/navigation';
 import { CheckCircle, XCircle, Package, ArrowRight, Home } from 'lucide-react';
-import Link from 'next/link';
 import { Button } from '@/components/ui/Button';
 
 export default function PaymentResultPage() {
