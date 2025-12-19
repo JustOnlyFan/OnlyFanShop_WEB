@@ -3,7 +3,6 @@
 import { motion, AnimatePresence } from 'framer-motion'
 import { X } from 'lucide-react'
 import Link from 'next/link'
-import { ReactNode } from 'react'
 
 interface FolderApp {
   title: string
@@ -59,12 +58,7 @@ export function FolderModal({ isOpen, onClose, folderName, apps }: FolderModalPr
               <div className="p-6 overflow-y-auto max-h-[calc(80vh-80px)]">
                 <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
                   {apps.map(({ title, href, Icon, accentClass }, index) => (
-                    <Link
-                      key={href}
-                      href={href}
-                      onClick={onClose}
-                      className="focus:outline-none"
-                    >
+                    <Link key={href} href={href} onClick={onClose} className="focus:outline-none">
                       <motion.div
                         className="group relative select-none cursor-pointer rounded-xl p-4 bg-gray-700/50 hover:bg-gray-700/70 border border-gray-600/50 hover:border-gray-500 transition overflow-hidden"
                         initial={{ opacity: 0, y: 20 }}
@@ -91,13 +85,3 @@ export function FolderModal({ isOpen, onClose, folderName, apps }: FolderModalPr
     </AnimatePresence>
   )
 }
-
-
-
-
-
-
-
-
-
-
