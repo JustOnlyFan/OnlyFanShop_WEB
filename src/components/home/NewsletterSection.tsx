@@ -1,9 +1,11 @@
 'use client';
 
+import { useState } from 'react';
+
 import { motion } from 'framer-motion';
 import { Mail, Send, Gift } from 'lucide-react';
-import { useState } from 'react';
 import toast from 'react-hot-toast';
+
 import { useLanguageStore } from '@/store/languageStore';
 
 export function NewsletterSection() {

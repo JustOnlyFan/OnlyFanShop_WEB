@@ -1,22 +1,15 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState } from 'react'
+
 import { motion } from 'framer-motion'
 import { useQuery } from '@tanstack/react-query'
+import { Search, Truck, Shield, RotateCcw } from 'lucide-react'
+
 import { ProductService } from '@/services/productService'
 import { ProductCardSimple } from '@/components/product/ProductCardSimple'
 import { LoadingSpinner } from '@/components/ui/LoadingSpinner'
 import { Button } from '@/components/ui/Button'
-import { 
-  Search, 
-  Filter, 
-  Grid, 
-  List,
-  Star,
-  Truck,
-  Shield,
-  RotateCcw
-} from 'lucide-react'
 
 interface Product {
   id: number

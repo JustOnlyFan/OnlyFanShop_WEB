@@ -1,8 +1,10 @@
 'use client';
 
 import { useState, useRef, useEffect } from 'react';
+
 import { motion, AnimatePresence } from 'framer-motion';
 import { ChevronDown } from 'lucide-react';
+
 import { useLanguageStore } from '@/store/languageStore';
 import { languages, Language } from '@/lib/i18n';
 

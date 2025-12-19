@@ -1,8 +1,12 @@
 'use client'
 
-import { motion, AnimatePresence } from 'framer-motion'
-import { Product, Brand, Category } from '@/types'
+import Link from 'next/link'
 import dynamic from 'next/dynamic'
+
+import { motion, AnimatePresence } from 'framer-motion'
+import { Star, ArrowRight, TrendingUp, Award, Package, Quote, Mail, ChevronLeft, ChevronRight } from 'lucide-react'
+
+import { Product, Brand, Category } from '@/types'
 
 // Dynamic import ProductCard3D (có three.js và framer-motion - rất nặng)
 const ProductCard3D = dynamic(
@@ -14,18 +18,6 @@ const ProductCard3D = dynamic(
     )
   }
 )
-import { 
-  Star, 
-  ArrowRight,
-  TrendingUp,
-  Award,
-  Package,
-  Quote,
-  Mail,
-  ChevronLeft,
-  ChevronRight
-} from 'lucide-react'
-import Link from 'next/link'
 
 interface AnimatedHomeContentProps {
   featuredProducts: Product[]

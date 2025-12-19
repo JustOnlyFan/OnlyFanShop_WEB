@@ -1,29 +1,16 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import Link from 'next/link'
+import Image from 'next/image'
+
 import { useQuery } from '@tanstack/react-query'
+import { Award, Star, TrendingUp, Users, Globe, Shield, Zap, Heart, ArrowRight, Search, Grid, List } from 'lucide-react'
+
 import { ProductService } from '@/services/productService'
 import { Brand, Product } from '@/types'
 import { LoadingSpinner } from '@/components/ui/LoadingSpinner'
 import { Button } from '@/components/ui/Button'
-import { 
-  Award, 
-  Star, 
-  TrendingUp, 
-  Users, 
-  Globe, 
-  Shield,
-  Zap,
-  Heart,
-  ArrowRight,
-  Search,
-  Filter,
-  Grid,
-  List,
-  ChevronDown
-} from 'lucide-react'
-import Link from 'next/link'
-import Image from 'next/image'
 
 export function BrandsPage() {
   const [brands, setBrands] = useState<Brand[]>([])

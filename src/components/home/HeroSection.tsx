@@ -1,9 +1,11 @@
 'use client';
 
+import { useState, useEffect } from 'react';
+import Link from 'next/link';
+
 import { motion } from 'framer-motion';
 import { ArrowRight, Sparkles } from 'lucide-react';
-import Link from 'next/link';
-import { useState, useEffect } from 'react';
+
 import { useLanguageStore } from '@/store/languageStore';
 
 export function HeroSection() {

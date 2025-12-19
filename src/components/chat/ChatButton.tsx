@@ -1,12 +1,14 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState } from 'react'
 import { useRouter } from 'next/navigation'
+
+import { MessageCircle } from 'lucide-react'
+import { motion } from 'framer-motion'
+import toast from 'react-hot-toast'
+
 import { useAuthStore } from '@/store/authStore'
 import { ChatService } from '@/services/chatService'
-import { MessageCircle, X } from 'lucide-react'
-import { motion, AnimatePresence } from 'framer-motion'
-import toast from 'react-hot-toast'
 
 export function ChatButton() {
   const [isOpen, setIsOpen] = useState(false)

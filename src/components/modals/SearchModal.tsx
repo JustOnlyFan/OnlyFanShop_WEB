@@ -1,8 +1,10 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+
 import { useQuery } from '@tanstack/react-query'
 import { XMarkIcon, MagnifyingGlassIcon } from '@heroicons/react/24/outline'
+
 import { ProductService } from '@/services/productService'
 import { ProductCard } from '@/components/product/ProductCard'
 import { LoadingSpinner } from '@/components/ui/LoadingSpinner'

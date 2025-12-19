@@ -2,11 +2,13 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter, useSearchParams, usePathname } from 'next/navigation';
+
 import { motion, AnimatePresence } from 'framer-motion';
+import { Eye, EyeOff, User, Lock, Mail, Wind, CheckCircle, AlertCircle, UserPlus, LogIn, KeyRound } from 'lucide-react';
+
 import { useAuthStore } from '@/store/authStore';
 import { AuthService } from '@/services/authService';
 import { LoadingSpinner } from '@/components/ui/LoadingSpinner';
-import { Eye, EyeOff, User, Lock, Mail, Wind, CheckCircle, AlertCircle, UserPlus, LogIn, KeyRound } from 'lucide-react';
 
 type AuthMode = 'login' | 'register';
 type RegisterStep = 'form' | 'otp';

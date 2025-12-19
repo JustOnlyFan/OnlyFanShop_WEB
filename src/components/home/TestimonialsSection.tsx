@@ -2,6 +2,7 @@
 
 import { motion } from 'framer-motion';
 import { Star, Quote } from 'lucide-react';
+
 import { useLanguageStore } from '@/store/languageStore';
 
 export function TestimonialsSection() {
