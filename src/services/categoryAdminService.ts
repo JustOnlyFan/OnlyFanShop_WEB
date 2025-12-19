@@ -1,6 +1,7 @@
 import axios from 'axios'
-import { tokenStorage } from '@/utils/tokenStorage'
+
 import { ApiResponse, CategoryManagement } from '@/types'
+import { tokenStorage } from '@/utils/tokenStorage'
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080'
 

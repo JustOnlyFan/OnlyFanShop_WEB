@@ -1,5 +1,6 @@
 import { apiClient } from '@/lib/api'
 import { tokenStorage } from '@/utils/tokenStorage'
+
 import type { StoreStatus } from './storeLocationService'
 
 const API_URL = typeof process.env.NEXT_PUBLIC_API_URL !== 'undefined'
