@@ -10,6 +10,16 @@ interface NotificationModalProps {
   onClose: () => void;
 }
 
+const NOTIFICATION_CONFIG: Record<string, { icon: typeof Bell; bg: string }> = {
+  comment: { icon: MessageCircle, bg: 'bg-purple-500' },
+  like: { icon: Heart, bg: 'bg-red-500' },
+  invite: { icon: Plus, bg: 'bg-green-500' },
+  generate: { icon: Zap, bg: 'bg-yellow-500' },
+  default: { icon: Bell, bg: 'bg-blue-500' },
+};
+
+const AVATAR_COLORS = ['bg-blue-500', 'bg-orange-500', 'bg-pink-500', 'bg-green-500', 'bg-purple-500'];
+
 export function NotificationModal({ isOpen, onClose }: NotificationModalProps) {
   const [readNotifications, setReadNotifications] = useState<Set<string>>(new Set());
   const [activeTab, setActiveTab] = useState<'all' | 'unread'>('all');
@@ -21,7 +31,6 @@ export function NotificationModal({ isOpen, onClose }: NotificationModalProps) {
     ? notifications.filter(n => !readNotifications.has(n.id))
     : notifications;
 
-  // Click outside to close
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       if (modalRef.current && !modalRef.current.contains(event.target as Node)) {
@@ -40,53 +49,9 @@ export function NotificationModal({ isOpen, onClose }: NotificationModalProps) {
     };
   }, [isOpen, onClose]);
 
-  const markAsRead = (notificationId: string) => {
-    setReadNotifications(prev => new Set([...prev, notificationId]));
-  };
-
-  const markAllAsRead = () => {
-    const allIds = notifications.map(n => n.id);
-    setReadNotifications(prev => new Set([...prev, ...allIds]));
-  };
-
-  const handleNotificationClick = (notification: any) => {
-    markAsRead(notification.id);
-  };
-
-  const getNotificationIcon = (type: string) => {
-    switch (type) {
-      case 'comment':
-        return <MessageCircle className="w-3 h-3 text-white" />;
-      case 'like':
-        return <Heart className="w-3 h-3 text-white" />;
-      case 'invite':
-        return <Plus className="w-3 h-3 text-white" />;
-      case 'generate':
-        return <Zap className="w-3 h-3 text-white" />;
-      default:
-        return <Bell className="w-3 h-3 text-white" />;
-    }
-  };
-
-  const getNotificationIconBg = (type: string) => {
-    switch (type) {
-      case 'comment':
-        return 'bg-purple-500';
-      case 'like':
-        return 'bg-red-500';
-      case 'invite':
-        return 'bg-green-500';
-      case 'generate':
-        return 'bg-yellow-500';
-      default:
-        return 'bg-blue-500';
-    }
-  };
-
-  const getAvatarColor = (index: number) => {
-    const colors = ['bg-blue-500', 'bg-orange-500', 'bg-pink-500', 'bg-green-500', 'bg-purple-500'];
-    return colors[index % colors.length];
-  };
+  const markAsRead = (id: string) => setReadNotifications(prev => new Set([...prev, id]));
+  const markAllAsRead = () => setReadNotifications(prev => new Set([...prev, ...notifications.map(n => n.id)]));
+  const getConfig = (type: string) => NOTIFICATION_CONFIG[type] || NOTIFICATION_CONFIG.default;
 
   return (
     <AnimatePresence>
@@ -203,7 +168,7 @@ export function NotificationModal({ isOpen, onClose }: NotificationModalProps) {
                         initial={{ opacity: 0, x: 20 }}
                         animate={{ opacity: 1, x: 0 }}
                         transition={{ delay: index * 0.05 }}
-                        onClick={() => handleNotificationClick(notification)}
+                        onClick={() => markAsRead(notification.id)}
                         className={`p-4 hover:bg-gray-50 transition-colors duration-200 cursor-pointer ${
                           isRead ? 'bg-gray-50/30' : 'bg-white'
                         }`}
@@ -211,12 +176,12 @@ export function NotificationModal({ isOpen, onClose }: NotificationModalProps) {
                         <div className="flex items-start space-x-3">
                           {/* Avatar */}
                           <div className="relative flex-shrink-0">
-                            <div className={`w-10 h-10 rounded-full ${getAvatarColor(index)} flex items-center justify-center text-white font-semibold text-sm`}>
+                            <div className={`w-10 h-10 rounded-full ${AVATAR_COLORS[index % AVATAR_COLORS.length]} flex items-center justify-center text-white font-semibold text-sm`}>
                               {userName.charAt(0).toUpperCase()}
                             </div>
                             {/* Notification Icon Overlay */}
-                            <div className={`absolute -bottom-1 -right-1 w-4 h-4 rounded-full ${getNotificationIconBg(notificationType)} flex items-center justify-center`}>
-                              {getNotificationIcon(notificationType)}
+                            <div className={`absolute -bottom-1 -right-1 w-4 h-4 rounded-full ${getConfig(notificationType).bg} flex items-center justify-center`}>
+                              {(() => { const Icon = getConfig(notificationType).icon; return <Icon className="w-3 h-3 text-white" />; })()}
                             </div>
                           </div>
                           

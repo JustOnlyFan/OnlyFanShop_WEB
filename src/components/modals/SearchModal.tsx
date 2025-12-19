@@ -25,31 +25,14 @@ export function SearchModal({ isOpen, onClose }: SearchModalProps) {
   })
 
   useEffect(() => {
-    if (isOpen) {
-      document.body.style.overflow = 'hidden'
-    } else {
-      document.body.style.overflow = 'unset'
-    }
-
-    return () => {
-      document.body.style.overflow = 'unset'
-    }
+    document.body.style.overflow = isOpen ? 'hidden' : 'unset'
+    return () => { document.body.style.overflow = 'unset' }
   }, [isOpen])
 
   useEffect(() => {
-    const handleEscape = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') {
-        onClose()
-      }
-    }
-
-    if (isOpen) {
-      document.addEventListener('keydown', handleEscape)
-    }
-
-    return () => {
-      document.removeEventListener('keydown', handleEscape)
-    }
+    const handleEscape = (e: KeyboardEvent) => e.key === 'Escape' && onClose()
+    if (isOpen) document.addEventListener('keydown', handleEscape)
+    return () => document.removeEventListener('keydown', handleEscape)
   }, [isOpen, onClose])
 
   if (!isOpen) return null
@@ -129,10 +112,3 @@ export function SearchModal({ isOpen, onClose }: SearchModalProps) {
     </div>
   )
 }
-
-
-
-
-
-
-
