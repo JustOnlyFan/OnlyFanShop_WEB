@@ -76,7 +76,8 @@ export class ProductService {
         return {
           statusCode: 200,
           message: 'Success',
-          data: response.data
+          data: response.data,
+          dateTime: new Date().toISOString()
         };
       }
       
@@ -136,7 +137,7 @@ export class ProductService {
         id: c.id ?? c.categoryID,
         name: c.name ?? c.categoryName
       }))
-      return { statusCode: 200, message: 'Success', data: mapped }
+      return { statusCode: 200, message: 'Success', data: mapped, dateTime: new Date().toISOString() }
     } catch (error: any) {
       throw new Error(error.response?.data?.message || 'Failed to load categories')
     }
@@ -154,7 +155,7 @@ export class ProductService {
         imageURL: b.imageURL ?? b.logoUrl ?? b.logo_url ?? b.image
       }));
       console.log('Brands mapped:', mapped);
-      return { statusCode: 200, message: 'Success', data: mapped }
+      return { statusCode: 200, message: 'Success', data: mapped, dateTime: new Date().toISOString() }
     } catch (error: any) {
       console.error('Error fetching brands:', error);
       throw new Error(error.response?.data?.message || 'Failed to load brands')

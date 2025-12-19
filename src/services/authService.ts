@@ -1,6 +1,7 @@
 import axios from 'axios'
 import { apiClient } from '@/lib/api'
 import { tokenStorage } from '@/utils/tokenStorage'
+import { User } from '@/types'
 
 // Respect empty string from next.config rewrites (same-origin proxy in dev)
 const API_URL = typeof process.env.NEXT_PUBLIC_API_URL !== 'undefined'
@@ -13,10 +14,12 @@ export interface LoginRequest {
 }
 
 export interface RegisterRequest {
-  fullName: string
+  username: string
   email: string
   password: string
   confirmPassword: string
+  phoneNumber?: string
+  address?: string
 }
 
 export interface UserDTO {
@@ -259,7 +262,7 @@ export class AuthService {
   }
 
   // Set user data
-  static setUser(user: UserDTO): void {
+  static setUser(user: User | UserDTO): void {
     if (typeof window !== 'undefined') {
       localStorage.setItem('user', JSON.stringify(user))
     }
@@ -327,5 +330,10 @@ export class AuthService {
     } catch (error: any) {
       throw new Error(error.response?.data?.message || 'Password change failed')
     }
+  }
+
+  // Update user (alias for updateProfile)
+  static async updateUser(userData: Partial<User>): Promise<ApiResponse<UserDTO>> {
+    return this.updateProfile(userData as Partial<UserDTO>)
   }
 }

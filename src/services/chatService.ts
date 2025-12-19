@@ -296,8 +296,8 @@ export class ChatService {
     return {
       isOwn: message.senderId === currentUserId,
       senderName: message.senderName,
-      timestamp: this.formatMessageTime(message.timestamp),
-      content: message.content
+      timestamp: this.formatMessageTime(message.timestamp || new Date().toISOString()),
+      content: message.content || message.message || ''
     }
   }
 

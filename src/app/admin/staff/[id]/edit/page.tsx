@@ -45,16 +45,17 @@ export default function EditStaffPage() {
       
       // Load staff
       const staffResp = await StaffService.getAllStaff()
-      const staffList = staffResp.data || []
+      const staffList = staffResp.data?.content || staffResp.data?.staff || []
       const found = staffList.find((s: any) => s.id === staffId || s.userID === staffId)
       if (found) {
         setStaff(found)
+        const staffData = found as any
         setFormData({
-          username: found.username || '',
-          email: found.email || '',
-          fullName: found.fullName || found.fullname || '',
-          phone: found.phone || '',
-          storeLocationId: found.storeLocationId?.toString() || ''
+          username: staffData.username || '',
+          email: staffData.email || '',
+          fullName: staffData.fullName || staffData.fullname || '',
+          phone: staffData.phone || staffData.phoneNumber || '',
+          storeLocationId: staffData.storeLocationId?.toString() || ''
         })
       }
     } catch (e: any) {
@@ -77,10 +78,9 @@ export default function EditStaffPage() {
       await StaffService.updateStaff(staffId, {
         username: formData.username,
         email: formData.email,
-        fullName: formData.fullName || undefined,
-        phone: formData.phone || undefined,
+        phoneNumber: formData.phone || undefined,
         storeLocationId: formData.storeLocationId ? Number(formData.storeLocationId) : undefined
-      })
+      } as any)
       toast.success('Đã cập nhật thông tin nhân viên')
       router.push('/admin/staff')
     } catch (e: any) {
@@ -93,7 +93,7 @@ export default function EditStaffPage() {
   const handleResetPassword = async () => {
     if (!confirm('Xác nhận reset mật khẩu cho nhân viên này?')) return
     try {
-      await StaffService.resetPassword(staffId)
+      await StaffService.resetStaffPassword(staffId)
       toast.success('Đã reset mật khẩu')
     } catch (e: any) {
       toast.error(e.response?.data?.message || 'Không thể reset mật khẩu')

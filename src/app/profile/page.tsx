@@ -39,11 +39,12 @@ export default function ProfilePage() {
       const response = await UserService.getProfile();
       console.log('Profile API response:', response);
       if (response.data) {
+        const data = response.data as any;
         const profileData = {
-          fullName: response.data.fullName || response.data.username || '',
-          email: response.data.email || '',
-          phoneNumber: response.data.phoneNumber || (response.data as any).phone || '',
-          address: response.data.address || ''
+          fullName: data.fullName || data.username || '',
+          email: data.email || '',
+          phoneNumber: data.phoneNumber || data.phone || '',
+          address: data.address || ''
         };
         console.log('Setting form data:', profileData);
         setFormData(profileData);
@@ -75,11 +76,12 @@ export default function ProfilePage() {
       });
       if (response.data) {
         // Update formData with response data
+        const data = response.data as any;
         setFormData({
-          fullName: response.data.fullName || response.data.username || formData.fullName,
-          email: response.data.email || formData.email,
-          phoneNumber: response.data.phoneNumber || response.data.phone || '',
-          address: response.data.address || ''
+          fullName: data.fullName || data.username || formData.fullName,
+          email: data.email || formData.email,
+          phoneNumber: data.phoneNumber || data.phone || '',
+          address: data.address || ''
         });
         setSuccess('Cập nhật thông tin thành công!');
         setEditing(false);

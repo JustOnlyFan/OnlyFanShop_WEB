@@ -16,7 +16,7 @@ interface AuthActions {
   setLoading: (loading: boolean) => void
   setError: (error: string | null) => void
   setHasHydrated: (hydrated: boolean) => void
-  login: (username: string, password: string) => Promise<void>
+  login: (email: string, password: string) => Promise<void>
   register: (userData: {
     username: string
     email: string
@@ -59,10 +59,10 @@ export const useAuthStore = create<AuthState & AuthActions>()(
 
       clearError: () => set({ error: null }),
 
-      login: async (username, password) => {
+      login: async (email, password) => {
         set({ isLoading: true, error: null })
         try {
-          const response = await AuthService.login({ username, password })
+          const response = await AuthService.login({ email, password })
           if (response.statusCode === 200 && response.data) {
             AuthService.setToken(response.data.token || '')
             AuthService.setUser(response.data)
@@ -100,14 +100,9 @@ export const useAuthStore = create<AuthState & AuthActions>()(
         set({ isLoading: true, error: null })
         try {
           const response = await AuthService.register(userData)
-          if (response.statusCode === 200 && response.data) {
-            AuthService.setToken(response.data.token || '')
-            AuthService.setUser(response.data)
-            set({ 
-              user: response.data, 
-              isAuthenticated: true, 
-              isLoading: false 
-            })
+          if (response.statusCode === 200) {
+            // Registration successful - user should login separately
+            set({ isLoading: false })
           } else {
             throw new Error(response.message || 'Đăng ký thất bại')
           }
