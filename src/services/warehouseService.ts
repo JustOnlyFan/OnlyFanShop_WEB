@@ -2,7 +2,7 @@ import { ApiResponse } from '@/types'
 import { StoreLocationService, StoreLocation } from '@/services/storeLocationService'
 import { StoreInventoryService, StoreInventoryRecord } from '@/services/storeInventoryService'
 
-export type WarehouseType = 'store'
+export type WarehouseType = 'store' | 'main'
 
 export interface Warehouse {
   id: number
@@ -157,12 +157,8 @@ export class WarehouseService {
       warehouseName: record.storeName || `Cửa hàng ${record.storeId}`,
       productId: record.productId,
       productName: record.productName || `Sản phẩm #${record.productId}`,
-      productVariantName: record.productVariantName || null,
-      quantityInStock: typeof record.quantityInStock === 'number'
-        ? record.quantityInStock
-        : typeof record.quantity === 'number'
-          ? record.quantity
-          : 0,
+      productVariantName: null,
+      quantityInStock: typeof record.quantity === 'number' ? record.quantity : 0,
       isAvailable: typeof record.isAvailable === 'boolean' ? record.isAvailable : undefined,
       updatedAt: record.updatedAt || record.createdAt || new Date().toISOString(),
       createdAt: record.createdAt,
@@ -193,14 +189,16 @@ export class WarehouseService {
 
   static getWarehouseTypeLabel(type: WarehouseType) {
     const labels: Record<WarehouseType, string> = {
-      store: 'Kho cửa hàng'
+      store: 'Kho cửa hàng',
+      main: 'Kho chính'
     }
     return labels[type] || type
   }
 
   static getWarehouseTypeColor(type: WarehouseType) {
     const colors: Record<WarehouseType, string> = {
-      store: 'bg-indigo-100 text-indigo-800'
+      store: 'bg-indigo-100 text-indigo-800',
+      main: 'bg-blue-100 text-blue-800'
     }
     return colors[type] || 'bg-gray-100 text-gray-700'
   }

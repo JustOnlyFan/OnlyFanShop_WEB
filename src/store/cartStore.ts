@@ -168,6 +168,15 @@ export const useCartStore = create<CartState & CartActions>()(
         }
       },
 
+      getSmartAnalysis: async () => {
+        // Placeholder for smart analysis feature
+      },
+
+      getOptimizationSuggestions: async () => {
+        // Placeholder for optimization suggestions feature
+        return null
+      },
+
     }),
     {
       name: 'cart-storage',

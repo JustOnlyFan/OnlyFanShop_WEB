@@ -270,7 +270,7 @@ export function AuthContainer() {
 
       // OTP verified, now register
       const response = await AuthService.register({
-        fullName: registerData.fullName.trim(),
+        username: registerData.fullName.trim(),
         email: registerData.email.trim().toLowerCase(),
         password: registerData.password,
         confirmPassword: registerData.confirmPassword

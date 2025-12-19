@@ -59,17 +59,10 @@ class CategoryAdminService {
   static async updateCategory(categoryID: number, category: Partial<CategoryManagement>): Promise<CategoryManagement> {
     try {
       // Backend nhận Category entity với field 'name', map từ categoryName
-      const requestData: { name?: string; description?: string; parentId?: number } = {}
+      const requestData: { name?: string } = {}
       
       if (category.categoryName !== undefined) {
         requestData.name = category.categoryName
-      }
-      if (category.description !== undefined) {
-        // Description removed from CategoryManagement interface
-        // requestData.description = category.description
-      }
-      if (category.parentId !== undefined) {
-        requestData.parentId = category.parentId
       }
       
       const response = await axios.put(`${API_URL}/category/${categoryID}`, requestData, {

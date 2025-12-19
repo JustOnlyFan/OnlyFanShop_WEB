@@ -60,8 +60,7 @@ export default function NewStaffPage() {
         username: formData.username,
         email: formData.email,
         password: formData.password,
-        fullName: formData.fullName || undefined,
-        phone: formData.phone || undefined,
+        phoneNumber: formData.phone || undefined,
         storeLocationId: formData.storeLocationId ? Number(formData.storeLocationId) : undefined
       })
       toast.success('Đã tạo nhân viên mới')
