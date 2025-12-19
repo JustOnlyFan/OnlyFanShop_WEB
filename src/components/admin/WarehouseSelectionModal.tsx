@@ -21,24 +21,18 @@ export function WarehouseSelectionModal({
   onConfirm
 }: WarehouseSelectionModalProps) {
   const [selectedIds, setSelectedIds] = useState<number[]>(selectedWarehouseIds)
-
   const mainWarehouses = warehouses.filter(w => w.type === 'main')
 
   const toggleWarehouse = (warehouseId: number) => {
-    setSelectedIds(prev => {
-      if (prev.includes(warehouseId)) {
-        return prev.filter(id => id !== warehouseId)
-      } else {
-        return [...prev, warehouseId]
-      }
-    })
+    setSelectedIds(prev => 
+      prev.includes(warehouseId) 
+        ? prev.filter(id => id !== warehouseId) 
+        : [...prev, warehouseId]
+    )
   }
 
   const handleConfirm = () => {
-    if (selectedIds.length === 0) {
-      return
-    }
-    onConfirm(selectedIds)
+    if (selectedIds.length > 0) onConfirm(selectedIds)
   }
 
   if (!isOpen) return null
@@ -70,10 +64,7 @@ export function WarehouseSelectionModal({
                 Chọn một hoặc nhiều kho tổng để thêm sản phẩm ({selectedIds.length} đã chọn)
               </p>
             </div>
-            <button
-              onClick={onClose}
-              className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
-            >
+            <button onClick={onClose} className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg transition-colors">
               <X className="w-5 h-5" />
             </button>
           </div>
@@ -96,35 +87,25 @@ export function WarehouseSelectionModal({
                       animate={{ opacity: 1, y: 0 }}
                       onClick={() => toggleWarehouse(warehouse.id)}
                       className={`p-4 border-2 rounded-lg cursor-pointer transition-all ${
-                        isSelected
-                          ? 'border-indigo-500 bg-indigo-50'
-                          : 'border-gray-200 hover:border-gray-300 hover:bg-gray-50'
+                        isSelected ? 'border-indigo-500 bg-indigo-50' : 'border-gray-200 hover:border-gray-300 hover:bg-gray-50'
                       }`}
                     >
                       <div className="flex items-center justify-between">
                         <div className="flex items-center gap-3">
-                          <div
-                            className={`w-6 h-6 rounded border-2 flex items-center justify-center ${
-                              isSelected
-                                ? 'border-indigo-500 bg-indigo-500'
-                                : 'border-gray-300 bg-white'
-                            }`}
-                          >
+                          <div className={`w-6 h-6 rounded border-2 flex items-center justify-center ${
+                            isSelected ? 'border-indigo-500 bg-indigo-500' : 'border-gray-300 bg-white'
+                          }`}>
                             {isSelected && <Check className="w-4 h-4 text-white" />}
                           </div>
                           <div>
                             <h3 className="font-semibold text-gray-900">{warehouse.name}</h3>
                             <p className="text-sm text-gray-600">Mã: {warehouse.code}</p>
                             {warehouse.addressLine1 && (
-                              <p className="text-xs text-gray-500 mt-1">
-                                {warehouse.addressLine1}, {warehouse.city}
-                              </p>
+                              <p className="text-xs text-gray-500 mt-1">{warehouse.addressLine1}, {warehouse.city}</p>
                             )}
                           </div>
                         </div>
-                        <span className="px-2 py-1 text-xs font-semibold rounded-full bg-blue-100 text-blue-800">
-                          Kho Tổng
-                        </span>
+                        <span className="px-2 py-1 text-xs font-semibold rounded-full bg-blue-100 text-blue-800">Kho Tổng</span>
                       </div>
                     </motion.div>
                   )
@@ -135,11 +116,7 @@ export function WarehouseSelectionModal({
 
           {/* Footer */}
           <div className="sticky bottom-0 bg-white border-t border-gray-200 px-6 py-4 flex gap-3">
-            <button
-              type="button"
-              onClick={onClose}
-              className="flex-1 px-4 py-3 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition-colors font-medium"
-            >
+            <button type="button" onClick={onClose} className="flex-1 px-4 py-3 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition-colors font-medium">
               Hủy
             </button>
             <button
@@ -156,13 +133,3 @@ export function WarehouseSelectionModal({
     </AnimatePresence>
   )
 }
-
-
-
-
-
-
-
-
-
-
