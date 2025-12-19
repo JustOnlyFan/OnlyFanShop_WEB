@@ -5,6 +5,7 @@ import { motion } from 'framer-motion'
 import { Product } from '@/types'
 import { Star, Heart, Eye } from 'lucide-react'
 import { ImageFallback } from '@/components/ui/ImageFallback'
+import { formatPrice } from '@/lib/utils'
 import Link from 'next/link'
 
 interface ProductCardSimpleProps {
@@ -15,10 +16,10 @@ interface ProductCardSimpleProps {
 export function ProductCardSimple({ product, className = '' }: ProductCardSimpleProps) {
   const [isLiked, setIsLiked] = useState(false)
 
-  const handleLike = (e: React.MouseEvent) => {
+  const handleClick = (e: React.MouseEvent, action: () => void) => {
     e.preventDefault()
     e.stopPropagation()
-    setIsLiked(!isLiked)
+    action()
   }
 
   return (
@@ -48,14 +49,11 @@ export function ProductCardSimple({ product, className = '' }: ProductCardSimple
             {/* Action buttons */}
             <div className="absolute top-2 right-2 flex flex-col space-y-1.5 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
               <button
-                onClick={handleLike}
+                onClick={(e) => handleClick(e, () => setIsLiked(!isLiked))}
                 className="w-7 h-7 bg-white/90 backdrop-blur-sm rounded-full flex items-center justify-center shadow-lg hover:bg-white transition-colors"
               >
-                <Heart 
-                  className={`w-3.5 h-3.5 ${isLiked ? 'text-red-500 fill-current' : 'text-gray-600'}`} 
-                />
+                <Heart className={`w-3.5 h-3.5 ${isLiked ? 'text-red-500 fill-current' : 'text-gray-600'}`} />
               </button>
-              
               <button className="w-7 h-7 bg-white/90 backdrop-blur-sm rounded-full flex items-center justify-center shadow-lg hover:bg-white transition-colors">
                 <Eye className="w-3.5 h-3.5 text-gray-600" />
               </button>
@@ -81,12 +79,7 @@ export function ProductCardSimple({ product, className = '' }: ProductCardSimple
             <div className="flex items-center mb-2">
               <div className="flex items-center">
                 {[...Array(5)].map((_, i) => (
-                  <Star
-                    key={i}
-                    className={`w-3 h-3 ${
-                      i < 4 ? 'text-yellow-400 fill-current' : 'text-gray-300'
-                    }`}
-                  />
+                  <Star key={i} className={`w-3 h-3 ${i < 4 ? 'text-yellow-400 fill-current' : 'text-gray-300'}`} />
                 ))}
               </div>
               <span className="text-xs text-gray-500 ml-1.5">(4.0)</span>
@@ -95,19 +88,9 @@ export function ProductCardSimple({ product, className = '' }: ProductCardSimple
             {/* Price */}
             <div className="flex items-center justify-between mt-auto">
               <div>
-                <span className="text-base font-bold text-blue-600">
-                  {new Intl.NumberFormat('vi-VN', {
-                    style: 'currency',
-                    currency: 'VND'
-                  }).format(product.price)}
-                </span>
+                <span className="text-base font-bold text-blue-600">{formatPrice(product.price)}</span>
                 {product.price > 1000000 && (
-                  <span className="text-xs text-gray-500 line-through ml-2">
-                    {new Intl.NumberFormat('vi-VN', {
-                      style: 'currency',
-                      currency: 'VND'
-                    }).format(product.price * 1.2)}
-                  </span>
+                  <span className="text-xs text-gray-500 line-through ml-2">{formatPrice(product.price * 1.2)}</span>
                 )}
               </div>
             </div>
