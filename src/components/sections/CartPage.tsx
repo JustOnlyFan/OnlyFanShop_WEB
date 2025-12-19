@@ -1,28 +1,18 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import Link from 'next/link'
+import Image from 'next/image'
+
 import { motion, AnimatePresence } from 'framer-motion'
-import { 
-  ShoppingCartIcon, 
-  TrashIcon,
-  PlusIcon,
-  MinusIcon,
-  HeartIcon,
-  ShareIcon,
-  TruckIcon,
-  ShieldCheckIcon,
-  SparklesIcon,
-  GiftIcon,
-  ArrowLeftIcon
-} from '@heroicons/react/24/outline'
+import { ShoppingCartIcon, TrashIcon, PlusIcon, MinusIcon, HeartIcon, ShareIcon, TruckIcon, ShieldCheckIcon, SparklesIcon, GiftIcon, ArrowLeftIcon } from '@heroicons/react/24/outline'
+import toast from 'react-hot-toast'
+
 import { useCartStore } from '@/store/cartStore'
 import { useAuthStore } from '@/store/authStore'
 import { formatPrice } from '@/lib/utils'
 import { Button } from '@/components/ui/Button'
 import { LoadingSpinner } from '@/components/ui/LoadingSpinner'
-import Link from 'next/link'
-import Image from 'next/image'
-import toast from 'react-hot-toast'
 
 export function CartPage() {
   const { items, totalPrice, totalItems, isLoading, removeItem, updateQuantity, clearCart, loadCart } = useCartStore()

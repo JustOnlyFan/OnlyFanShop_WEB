@@ -1,8 +1,10 @@
 'use client'
 
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { useState } from 'react'
 import dynamic from 'next/dynamic'
+
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+
 import { AuthProvider } from './AuthProvider'
 import { NotificationProvider } from './NotificationProvider'
 

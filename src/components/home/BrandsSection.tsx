@@ -1,9 +1,11 @@
 'use client';
 
-import { motion } from 'framer-motion';
-import { Brand } from '@/types';
 import Link from 'next/link';
 import Image from 'next/image';
+
+import { motion } from 'framer-motion';
+
+import { Brand } from '@/types';
 import { useLanguageStore } from '@/store/languageStore';
 
 interface BrandsSectionProps {

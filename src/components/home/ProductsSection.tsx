@@ -1,10 +1,12 @@
 'use client';
 
-import { motion } from 'framer-motion';
-import { Product } from '@/types';
-import { Star, ShoppingCart, Heart, ArrowRight } from 'lucide-react';
 import Link from 'next/link';
 import Image from 'next/image';
+
+import { motion } from 'framer-motion';
+import { Star, ShoppingCart, Heart, ArrowRight } from 'lucide-react';
+
+import { Product } from '@/types';
 import { useLanguageStore } from '@/store/languageStore';
 
 interface ProductsSectionProps {

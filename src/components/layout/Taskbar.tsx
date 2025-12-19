@@ -3,16 +3,9 @@
 import { useState } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
-import {
-  HomeIcon,
-  ShoppingBagIcon,
-  BuildingStorefrontIcon,
-  PhoneIcon,
-  UserIcon,
-  ShoppingCartIcon,
-  BellIcon,
-  MagnifyingGlassIcon
-} from '@heroicons/react/24/outline'
+
+import { HomeIcon, ShoppingBagIcon, BuildingStorefrontIcon, PhoneIcon, UserIcon, ShoppingCartIcon, BellIcon, MagnifyingGlassIcon } from '@heroicons/react/24/outline'
+
 import { AuthService } from '@/services/authService'
 import { useAuthStore } from '@/store/authStore'
 import { useCartStore } from '@/store/cartStore'

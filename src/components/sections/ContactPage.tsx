@@ -1,17 +1,10 @@
 'use client'
 
 import { useState } from 'react'
+
 import { motion } from 'framer-motion'
-import { 
-  Phone,
-  Mail,
-  MapPin,
-  Clock,
-  MessageCircle,
-  Send,
-  CheckCircle,
-  AlertCircle
-} from 'lucide-react'
+import { Phone, Mail, MapPin, Clock, MessageCircle, Send, CheckCircle, AlertCircle } from 'lucide-react'
+
 import { Button } from '@/components/ui/Button'
 
 export function ContactPage() {

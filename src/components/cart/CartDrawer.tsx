@@ -1,15 +1,17 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import Link from 'next/link'
+import Image from 'next/image'
+
 import { XMarkIcon, ShoppingCartIcon, TrashIcon } from '@heroicons/react/24/outline'
+import toast from 'react-hot-toast'
+
 import { useCartStore } from '@/store/cartStore'
 import { useAuthStore } from '@/store/authStore'
 import { formatPrice } from '@/lib/utils'
 import { Button } from '@/components/ui/Button'
 import { LoadingSpinner } from '@/components/ui/LoadingSpinner'
-import Link from 'next/link'
-import Image from 'next/image'
-import toast from 'react-hot-toast'
 
 interface CartDrawerProps {
   isOpen: boolean

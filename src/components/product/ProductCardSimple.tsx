@@ -1,12 +1,14 @@
 'use client'
 
 import { useState } from 'react'
+import Link from 'next/link'
+
 import { motion } from 'framer-motion'
-import { Product } from '@/types'
 import { Star, Heart, Eye } from 'lucide-react'
+
+import { Product } from '@/types'
 import { ImageFallback } from '@/components/ui/ImageFallback'
 import { formatPrice } from '@/lib/utils'
-import Link from 'next/link'
 
 interface ProductCardSimpleProps {
   product: Product

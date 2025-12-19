@@ -2,13 +2,15 @@
 
 import { useState, memo, useCallback, useMemo } from 'react'
 import Link from 'next/link'
+
 import { HeartIcon, StarIcon } from '@heroicons/react/24/outline'
 import { HeartIcon as HeartSolidIcon } from '@heroicons/react/24/solid'
+import toast from 'react-hot-toast'
+
 import { Product, TagDTO } from '@/types'
 import { formatPrice } from '@/lib/utils'
 import { useAuthStore } from '@/store/authStore'
 import { useLanguageStore } from '@/store/languageStore'
-import toast from 'react-hot-toast'
 
 // Extended Product type with tags support
 interface ProductWithTags extends Product {

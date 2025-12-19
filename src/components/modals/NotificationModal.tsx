@@ -1,8 +1,10 @@
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
+
 import { motion, AnimatePresence } from 'framer-motion';
 import { X, Bell, CheckCircle, MessageCircle, Heart, Plus, Zap, Eye } from 'lucide-react';
+
 import { useNotification } from '@/hooks/useNotification';
 
 interface NotificationModalProps {

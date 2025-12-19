@@ -1,8 +1,10 @@
 'use client';
 
 import { Component, ReactNode } from 'react';
-import { Button } from '@/components/ui/Button';
+
 import { AlertTriangle, RefreshCw } from 'lucide-react';
+
+import { Button } from '@/components/ui/Button';
 
 interface Props {
   children: ReactNode;

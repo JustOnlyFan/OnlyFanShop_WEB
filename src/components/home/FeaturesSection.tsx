@@ -2,6 +2,7 @@
 
 import { motion } from 'framer-motion';
 import { Truck, Shield, RotateCcw, Phone, Award, Zap } from 'lucide-react';
+
 import { useLanguageStore } from '@/store/languageStore';
 
 export function FeaturesSection() {
