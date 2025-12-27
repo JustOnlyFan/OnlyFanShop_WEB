@@ -212,6 +212,11 @@ export default function WarehouseInventoryRequestsPage() {
                           <span className="font-medium">{itemCount}</span> sản phẩm • 
                           Tổng SL: <span className="font-semibold text-gray-900">{totalQty}</span>
                         </p>
+                        {request.sourceWarehouseName && (
+                          <p className="text-xs text-indigo-600 mt-0.5">
+                            Từ kho: {request.sourceWarehouseName}
+                          </p>
+                        )}
                         <div className="flex items-center gap-2 text-xs text-gray-400 mt-1">
                           <span>Người tạo: {request.requesterName || 'N/A'}</span>
                           <span>•</span>

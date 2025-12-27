@@ -12,12 +12,14 @@ import Link from 'next/link'
 import Image from 'next/image'
 import toast from 'react-hot-toast'
 import { InventoryRequestService } from '@/services/inventoryRequestService'
+import { SourceWarehouseSelector } from '@/components/admin/SourceWarehouseSelector'
 
 interface RequestItem {
   productId: number
   productName: string
   productImageUrl?: string
   quantity: number
+  maxQuantity?: number // Available quantity from source warehouse
 }
 
 export default function NewInventoryRequestPage() {
@@ -30,9 +32,11 @@ export default function NewInventoryRequestPage() {
   const [submitting, setSubmitting] = useState(false)
   const [store, setStore] = useState<StoreLocation | null>(null)
   const [availableProducts, setAvailableProducts] = useState<StoreInventoryRecord[]>([])
+  const [sourceWarehouseInventory, setSourceWarehouseInventory] = useState<StoreInventoryRecord[]>([])
   const [requestItems, setRequestItems] = useState<RequestItem[]>([])
   const [searchTerm, setSearchTerm] = useState('')
   const [notes, setNotes] = useState('')
+  const [sourceWarehouseId, setSourceWarehouseId] = useState<number | null>(null)
 
   useEffect(() => {
     if (!hasHydrated || !isAuthenticated || user?.role !== 'ADMIN') return
@@ -64,8 +68,15 @@ export default function NewInventoryRequestPage() {
   }
 
   const filteredProducts = searchTerm.trim()
-    ? availableProducts.filter(p => p.productName?.toLowerCase().includes(searchTerm.toLowerCase()))
-    : availableProducts
+    ? sourceWarehouseInventory.filter(p => p.productName?.toLowerCase().includes(searchTerm.toLowerCase()))
+    : sourceWarehouseInventory
+
+  const handleSourceWarehouseChange = (warehouseId: number | null, inventory?: StoreInventoryRecord[]) => {
+    setSourceWarehouseId(warehouseId)
+    setSourceWarehouseInventory(inventory || [])
+    // Clear request items when source warehouse changes
+    setRequestItems([])
+  }
 
   const handleAddProduct = (product: StoreInventoryRecord) => {
     const exists = requestItems.find(item => item.productId === product.productId)
@@ -77,14 +88,16 @@ export default function NewInventoryRequestPage() {
       productId: product.productId,
       productName: product.productName || `Sản phẩm #${product.productId}`,
       productImageUrl: product.productImageUrl || undefined,
-      quantity: 1
+      quantity: 1,
+      maxQuantity: product.quantity || 0
     }])
   }
 
   const handleUpdateQuantity = (productId: number, delta: number) => {
     setRequestItems(prev => prev.map(item => {
       if (item.productId === productId) {
-        const newQty = Math.max(1, item.quantity + delta)
+        const maxQty = item.maxQuantity || 999
+        const newQty = Math.min(maxQty, Math.max(1, item.quantity + delta))
         return { ...item, quantity: newQty }
       }
       return item
@@ -96,6 +109,10 @@ export default function NewInventoryRequestPage() {
   }
 
   const handleSubmit = async () => {
+    if (!sourceWarehouseId) {
+      toast.error('Vui lòng chọn kho nguồn')
+      return
+    }
     if (requestItems.length === 0) {
       toast.error('Vui lòng chọn ít nhất một sản phẩm')
       return
@@ -103,9 +120,10 @@ export default function NewInventoryRequestPage() {
 
     try {
       setSubmitting(true)
-      // Create single inventory request with multiple items
+      // Create single inventory request with multiple items and source warehouse
       await InventoryRequestService.createRequest({
         storeId,
+        sourceWarehouseId,
         items: requestItems.map(item => ({
           productId: item.productId,
           quantity: item.quantity
@@ -159,74 +177,90 @@ export default function NewInventoryRequestPage() {
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Left: Product Selection */}
-        <div className="bg-white rounded-2xl border border-gray-200 overflow-hidden">
-          <div className="p-4 border-b border-gray-100">
-            <h3 className="font-semibold text-gray-900 mb-3">Chọn sản phẩm</h3>
-            <div className="relative">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 w-5 h-5" />
-              <input
-                type="text"
-                placeholder="Tìm kiếm sản phẩm..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="w-full pl-10 pr-4 py-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
-              />
+        {/* Left Column: Source Warehouse Selection + Product Selection */}
+        <div className="space-y-4">
+          {/* Source Warehouse Selector */}
+          <SourceWarehouseSelector
+            destinationWarehouseId={storeId}
+            selectedSourceWarehouseId={sourceWarehouseId}
+            onSourceWarehouseChange={handleSourceWarehouseChange}
+            required={true}
+            label="Chọn kho nguồn"
+            placeholder="-- Chọn kho cửa hàng nguồn --"
+          />
+
+          {/* Product Selection - Only show when source warehouse is selected */}
+          <div className="bg-white rounded-2xl border border-gray-200 overflow-hidden">
+            <div className="p-4 border-b border-gray-100">
+              <h3 className="font-semibold text-gray-900 mb-3">Chọn sản phẩm từ kho nguồn</h3>
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 w-5 h-5" />
+                <input
+                  type="text"
+                  placeholder="Tìm kiếm sản phẩm..."
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  disabled={!sourceWarehouseId}
+                  className="w-full pl-10 pr-4 py-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-transparent disabled:bg-gray-100"
+                />
+              </div>
             </div>
-          </div>
-          <div className="max-h-[500px] overflow-y-auto p-4">
-            {availableProducts.length === 0 ? (
-              <div className="py-12 text-center text-gray-500">
-                <Package className="w-12 h-12 mx-auto mb-3 text-gray-300" />
-                <p>Chưa có sản phẩm nào được kích hoạt</p>
-                <Link href={`/admin/stores/${storeId}/products`} className="text-indigo-600 hover:underline text-sm">
-                  Thêm sản phẩm cho cửa hàng
-                </Link>
-              </div>
-            ) : filteredProducts.length === 0 ? (
-              <div className="py-12 text-center text-gray-500">
-                <p>Không tìm thấy sản phẩm</p>
-              </div>
-            ) : (
-              <div className="space-y-2">
-                {filteredProducts.map(product => {
-                  const isAdded = requestItems.some(item => item.productId === product.productId)
-                  return (
-                    <div
-                      key={product.productId}
-                      className={`flex items-center gap-3 p-3 rounded-xl border transition-colors ${
-                        isAdded ? 'border-indigo-200 bg-indigo-50' : 'border-gray-200 hover:border-gray-300'
-                      }`}
-                    >
-                      <div className="w-12 h-12 rounded-lg bg-gray-100 overflow-hidden flex-shrink-0">
-                        {product.productImageUrl ? (
-                          <Image src={product.productImageUrl} alt="" width={48} height={48} className="w-full h-full object-cover" />
-                        ) : (
-                          <div className="w-full h-full flex items-center justify-center">
-                            <Package className="w-5 h-5 text-gray-300" />
-                          </div>
-                        )}
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <p className="font-medium text-gray-900 text-sm truncate">{product.productName}</p>
-                        <p className="text-xs text-gray-500">Tồn kho: {product.quantity || 0}</p>
-                      </div>
-                      <button
-                        onClick={() => handleAddProduct(product)}
-                        disabled={isAdded}
-                        className={`p-2 rounded-lg transition-colors ${
-                          isAdded 
-                            ? 'bg-gray-100 text-gray-400 cursor-not-allowed' 
-                            : 'bg-indigo-100 text-indigo-600 hover:bg-indigo-200'
+            <div className="max-h-[400px] overflow-y-auto p-4">
+              {!sourceWarehouseId ? (
+                <div className="py-12 text-center text-gray-500">
+                  <Package className="w-12 h-12 mx-auto mb-3 text-gray-300" />
+                  <p>Vui lòng chọn kho nguồn trước</p>
+                </div>
+              ) : sourceWarehouseInventory.length === 0 ? (
+                <div className="py-12 text-center text-gray-500">
+                  <Package className="w-12 h-12 mx-auto mb-3 text-gray-300" />
+                  <p>Kho nguồn không có sản phẩm khả dụng</p>
+                </div>
+              ) : filteredProducts.length === 0 ? (
+                <div className="py-12 text-center text-gray-500">
+                  <p>Không tìm thấy sản phẩm</p>
+                </div>
+              ) : (
+                <div className="space-y-2">
+                  {filteredProducts.map(product => {
+                    const isAdded = requestItems.some(item => item.productId === product.productId)
+                    return (
+                      <div
+                        key={product.productId}
+                        className={`flex items-center gap-3 p-3 rounded-xl border transition-colors ${
+                          isAdded ? 'border-indigo-200 bg-indigo-50' : 'border-gray-200 hover:border-gray-300'
                         }`}
                       >
-                        <Plus className="w-5 h-5" />
-                      </button>
-                    </div>
-                  )
-                })}
-              </div>
-            )}
+                        <div className="w-12 h-12 rounded-lg bg-gray-100 overflow-hidden flex-shrink-0">
+                          {product.productImageUrl ? (
+                            <Image src={product.productImageUrl} alt="" width={48} height={48} className="w-full h-full object-cover" />
+                          ) : (
+                            <div className="w-full h-full flex items-center justify-center">
+                              <Package className="w-5 h-5 text-gray-300" />
+                            </div>
+                          )}
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <p className="font-medium text-gray-900 text-sm truncate">{product.productName}</p>
+                          <p className="text-xs text-gray-500">Có sẵn: {product.quantity || 0}</p>
+                        </div>
+                        <button
+                          onClick={() => handleAddProduct(product)}
+                          disabled={isAdded || (product.quantity || 0) === 0}
+                          className={`p-2 rounded-lg transition-colors ${
+                            isAdded || (product.quantity || 0) === 0
+                              ? 'bg-gray-100 text-gray-400 cursor-not-allowed' 
+                              : 'bg-indigo-100 text-indigo-600 hover:bg-indigo-200'
+                          }`}
+                        >
+                          <Plus className="w-5 h-5" />
+                        </button>
+                      </div>
+                    )
+                  })}
+                </div>
+              )}
+            </div>
           </div>
         </div>
 
@@ -261,6 +295,9 @@ export default function NewInventoryRequestPage() {
                       </div>
                       <div className="flex-1 min-w-0">
                         <p className="font-medium text-gray-900 text-sm truncate">{item.productName}</p>
+                        {item.maxQuantity && (
+                          <p className="text-xs text-gray-500">Tối đa: {item.maxQuantity}</p>
+                        )}
                       </div>
                       <div className="flex items-center gap-2">
                         <button
@@ -305,7 +342,7 @@ export default function NewInventoryRequestPage() {
           {/* Submit Button */}
           <button
             onClick={handleSubmit}
-            disabled={requestItems.length === 0 || submitting}
+            disabled={!sourceWarehouseId || requestItems.length === 0 || submitting}
             className="w-full py-3 bg-indigo-600 text-white rounded-xl font-semibold hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors inline-flex items-center justify-center gap-2"
           >
             {submitting ? <LoadingSpinner /> : <Send className="w-5 h-5" />}

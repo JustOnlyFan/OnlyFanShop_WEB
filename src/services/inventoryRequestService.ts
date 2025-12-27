@@ -16,6 +16,15 @@ export interface InventoryRequest {
   id: number
   storeId: number
   storeName?: string
+  /**
+   * ID của kho nguồn - nơi hàng được chuyển đi
+   * Requirements: 3.1
+   */
+  sourceWarehouseId?: number
+  /**
+   * Tên kho nguồn
+   */
+  sourceWarehouseName?: string
   // New: list of items
   items?: InventoryRequestItem[]
   totalItems?: number
@@ -44,8 +53,17 @@ export interface CreateInventoryRequestItemDTO {
   quantity: number
 }
 
+/**
+ * DTO để tạo yêu cầu điều chuyển hàng
+ * Requirements: 3.1 - Yêu cầu phải chỉ định source warehouse
+ */
 export interface CreateInventoryRequestDTO {
   storeId: number
+  /**
+   * ID của kho nguồn - nơi hàng được chuyển đi
+   * Requirements: 3.1 - WHEN Store_Staff creates a Transfer_Request THEN the System SHALL require specifying a source Store_Warehouse
+   */
+  sourceWarehouseId: number
   items: CreateInventoryRequestItemDTO[]
   note?: string
   // Legacy fields
@@ -73,11 +91,35 @@ export class InventoryRequestService {
   }
 
   /**
-   * Tạo yêu cầu nhập hàng
+   * Tạo yêu cầu nhập hàng với source warehouse
+   * Requirements: 3.1 - WHEN Store_Staff creates a Transfer_Request THEN the System SHALL require specifying a source Store_Warehouse
    */
   static async createRequest(dto: CreateInventoryRequestDTO) {
+    // Validate sourceWarehouseId is provided
+    if (!dto.sourceWarehouseId) {
+      throw new Error('Source warehouse ID is required')
+    }
     const response = await apiClient.post('/inventory-requests', dto)
     return response.data as ApiResponse<InventoryRequest>
+  }
+
+  /**
+   * Tạo yêu cầu điều chuyển hàng (Transfer Request)
+   * Requirements: 3.1 - Yêu cầu phải chỉ định source warehouse
+   */
+  static async createTransferRequest(
+    destinationStoreId: number,
+    sourceWarehouseId: number,
+    items: CreateInventoryRequestItemDTO[],
+    note?: string
+  ) {
+    const dto: CreateInventoryRequestDTO = {
+      storeId: destinationStoreId,
+      sourceWarehouseId,
+      items,
+      note
+    }
+    return this.createRequest(dto)
   }
 
   /**

@@ -13,6 +13,10 @@ interface WarehouseSelectionModalProps {
   onConfirm: (warehouseIds: number[]) => void
 }
 
+/**
+ * Modal để chọn kho cửa hàng
+ * Note: Main warehouse đã bị loại bỏ theo Requirements 1.1
+ */
 export function WarehouseSelectionModal({
   isOpen,
   warehouses,
@@ -21,7 +25,8 @@ export function WarehouseSelectionModal({
   onConfirm
 }: WarehouseSelectionModalProps) {
   const [selectedIds, setSelectedIds] = useState<number[]>(selectedWarehouseIds)
-  const mainWarehouses = warehouses.filter(w => w.type === 'main')
+  // Only show active store warehouses - Requirements: 1.3, 7.4
+  const storeWarehouses = warehouses.filter(w => w.type === 'store' && w.isActive)
 
   const toggleWarehouse = (warehouseId: number) => {
     setSelectedIds(prev => 
@@ -58,10 +63,10 @@ export function WarehouseSelectionModal({
             <div>
               <h2 className="text-2xl font-bold text-gray-900 flex items-center">
                 <Building2 className="w-6 h-6 mr-2 text-indigo-600" />
-                Chọn kho tổng
+                Chọn kho cửa hàng
               </h2>
               <p className="text-sm text-gray-600 mt-1">
-                Chọn một hoặc nhiều kho tổng để thêm sản phẩm ({selectedIds.length} đã chọn)
+                Chọn một hoặc nhiều kho cửa hàng ({selectedIds.length} đã chọn)
               </p>
             </div>
             <button onClick={onClose} className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg transition-colors">
@@ -71,14 +76,14 @@ export function WarehouseSelectionModal({
 
           {/* Content */}
           <div className="flex-1 overflow-y-auto p-6">
-            {mainWarehouses.length === 0 ? (
+            {storeWarehouses.length === 0 ? (
               <div className="text-center py-12">
                 <Building2 className="w-16 h-16 mx-auto text-gray-400 mb-4" />
-                <p className="text-gray-600">Chưa có kho tổng nào</p>
+                <p className="text-gray-600">Chưa có kho cửa hàng nào</p>
               </div>
             ) : (
               <div className="space-y-2">
-                {mainWarehouses.map((warehouse) => {
+                {storeWarehouses.map((warehouse) => {
                   const isSelected = selectedIds.includes(warehouse.id)
                   return (
                     <motion.div
@@ -105,7 +110,7 @@ export function WarehouseSelectionModal({
                             )}
                           </div>
                         </div>
-                        <span className="px-2 py-1 text-xs font-semibold rounded-full bg-blue-100 text-blue-800">Kho Tổng</span>
+                        <span className="px-2 py-1 text-xs font-semibold rounded-full bg-indigo-100 text-indigo-800">Kho Cửa Hàng</span>
                       </div>
                     </motion.div>
                   )

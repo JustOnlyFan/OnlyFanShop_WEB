@@ -1,9 +1,14 @@
+import { apiClient } from '@/lib/api'
 import { ApiResponse } from '@/types'
 
 import { StoreLocationService, StoreLocation } from '@/services/storeLocationService'
 import { StoreInventoryService, StoreInventoryRecord } from '@/services/storeInventoryService'
 
-export type WarehouseType = 'store' | 'main'
+/**
+ * WarehouseType - Chỉ hỗ trợ 'store' (kho cửa hàng)
+ * Main warehouse đã được loại bỏ theo Requirements 1.1
+ */
+export type WarehouseType = 'store'
 
 export interface Warehouse {
   id: number
@@ -24,7 +29,6 @@ export interface CreateWarehouseRequest {
   name: string
   code: string
   type: WarehouseType
-  parentWarehouseId?: number
   storeLocationId?: number
   addressLine1?: string
   addressLine2?: string
@@ -80,6 +84,26 @@ export interface AddProductToWarehouseRequest {
   note?: string
 }
 
+/**
+ * Request để cập nhật số lượng tồn kho tại kho cửa hàng
+ * Requirements: 2.1
+ */
+export interface UpdateStoreWarehouseQuantityRequest {
+  quantity: number
+  reason?: string
+}
+
+/**
+ * Response từ API cập nhật tồn kho
+ */
+export interface InventoryItemResponse {
+  id: number
+  warehouseId: number
+  productId: number
+  quantity: number
+  updatedAt: string
+}
+
 export class WarehouseService {
   private static wrapResponse<T>(data: T, message = 'Success', statusCode = 200): ApiResponse<T> {
     return {
@@ -107,25 +131,45 @@ export class WarehouseService {
     }
   }
 
-  static async getAllWarehouses(): Promise<ApiResponse<Warehouse[]>> {
-    const storeResponse = await StoreLocationService.getStoreLocations()
-    const storesRaw = storeResponse?.data as any
-    const stores = Array.isArray(storesRaw)
-      ? storesRaw
-      : Array.isArray(storesRaw?.stores)
-        ? storesRaw.stores
-        : []
-    const warehouses = stores.map((store: StoreLocation) => this.mapStoreToWarehouse(store))
-    return this.wrapResponse(warehouses, 'Danh sách kho theo cửa hàng')
+  /**
+   * Lấy tất cả kho đang hoạt động (chỉ Store Warehouses)
+   * Requirements: 1.3, 2.4
+   */
+  static async getAllActiveWarehouses(): Promise<ApiResponse<Warehouse[]>> {
+    try {
+      // Gọi API backend để lấy danh sách kho active
+      const response = await apiClient.get('/warehouses')
+      const payload = response.data
+      if (payload && typeof payload === 'object' && 'data' in payload) {
+        return payload as ApiResponse<Warehouse[]>
+      }
+      return this.wrapResponse<Warehouse[]>(payload ?? [], 'Danh sách kho đang hoạt động')
+    } catch (error) {
+      // Fallback: lấy từ store locations nếu API không khả dụng
+      const storeResponse = await StoreLocationService.getStoreLocations()
+      const storesRaw = storeResponse?.data as any
+      const stores = Array.isArray(storesRaw)
+        ? storesRaw
+        : Array.isArray(storesRaw?.stores)
+          ? storesRaw.stores
+          : []
+      const warehouses = stores
+        .filter((store: any) => store.status === 'ACTIVE' || store.isActive !== false)
+        .map((store: StoreLocation) => this.mapStoreToWarehouse(store))
+      return this.wrapResponse(warehouses, 'Danh sách kho đang hoạt động')
+    }
   }
 
-  static async getMainWarehouses() {
-    return this.getAllWarehouses()
+  /**
+   * @deprecated Sử dụng getAllActiveWarehouses() thay thế
+   */
+  static async getAllWarehouses(): Promise<ApiResponse<Warehouse[]>> {
+    return this.getAllActiveWarehouses()
   }
 
   static async getWarehousesByType(type: WarehouseType) {
     if (type === 'store') {
-      return this.getAllWarehouses()
+      return this.getAllActiveWarehouses()
     }
     return this.wrapResponse<Warehouse[]>([], 'Không tồn tại loại kho khác ngoài cửa hàng')
   }
@@ -139,6 +183,24 @@ export class WarehouseService {
     return this.wrapResponse(this.mapStoreToWarehouse(store), 'Kho theo cửa hàng')
   }
 
+  /**
+   * Lấy kho của một cửa hàng cụ thể
+   * Requirements: 2.4
+   */
+  static async getStoreWarehouse(storeId: number): Promise<ApiResponse<Warehouse | null>> {
+    try {
+      const response = await apiClient.get(`/warehouses/stores/${storeId}`)
+      const payload = response.data
+      if (payload && typeof payload === 'object' && 'data' in payload) {
+        return payload as ApiResponse<Warehouse>
+      }
+      return this.wrapResponse<Warehouse | null>(payload ?? null, 'Kho cửa hàng')
+    } catch (error) {
+      // Fallback
+      return this.getWarehouseById(storeId)
+    }
+  }
+
   static async createWarehouse(_payload: CreateWarehouseRequest) {
     throw new Error('Tính năng tạo kho đã bị loại bỏ. Vui lòng sử dụng trang quản lý cửa hàng.')
   }
@@ -149,6 +211,19 @@ export class WarehouseService {
 
   static async deleteWarehouse(_warehouseId: number) {
     throw new Error('Tính năng xoá kho đã bị loại bỏ. Vui lòng xoá cửa hàng nếu cần.')
+  }
+
+  /**
+   * Vô hiệu hóa kho (soft delete)
+   * Requirements: 7.2, 7.3
+   */
+  static async deactivateWarehouse(warehouseId: number): Promise<ApiResponse<void>> {
+    const response = await apiClient.delete(`/warehouses/${warehouseId}`)
+    const payload = response.data
+    if (payload && typeof payload === 'object' && 'data' in payload) {
+      return payload as ApiResponse<void>
+    }
+    return this.wrapResponse<void>(undefined, 'Kho đã được vô hiệu hóa')
   }
 
   private static mapStoreInventoryToWarehouseInventory(record: StoreInventoryRecord): WarehouseInventory {
@@ -177,6 +252,47 @@ export class WarehouseService {
     return StoreInventoryService.toggleProductAvailability(payload.warehouseId, payload.productId, true)
   }
 
+  /**
+   * Cập nhật số lượng tồn kho tại kho cửa hàng
+   * Requirements: 2.1 - WHEN Admin updates inventory quantity THEN the System SHALL update the Inventory_Item
+   */
+  static async updateStoreWarehouseQuantity(
+    storeId: number,
+    productId: number,
+    quantity: number,
+    reason?: string
+  ): Promise<ApiResponse<InventoryItemResponse>> {
+    const response = await apiClient.put(
+      `/warehouses/stores/${storeId}/inventory/${productId}`,
+      { quantity, reason }
+    )
+    const payload = response.data
+    if (payload && typeof payload === 'object' && 'data' in payload) {
+      return payload as ApiResponse<InventoryItemResponse>
+    }
+    return this.wrapResponse<InventoryItemResponse>(payload, 'Cập nhật tồn kho thành công')
+  }
+
+  /**
+   * Thêm sản phẩm vào kho cửa hàng với số lượng chỉ định
+   * Requirements: 2.2 - WHEN Admin adds a product to a store THEN the System SHALL create an Inventory_Item
+   */
+  static async addProductToStoreWarehouse(
+    storeId: number,
+    productId: number,
+    quantity: number
+  ): Promise<ApiResponse<InventoryItemResponse>> {
+    const response = await apiClient.post(
+      `/warehouses/stores/${storeId}/products`,
+      { productId, quantity }
+    )
+    const payload = response.data
+    if (payload && typeof payload === 'object' && 'data' in payload) {
+      return payload as ApiResponse<InventoryItemResponse>
+    }
+    return this.wrapResponse<InventoryItemResponse>(payload, 'Thêm sản phẩm vào kho thành công')
+  }
+
   static async transferStock(_payload: TransferStockRequest) {
     throw new Error('Tính năng chuyển kho không còn được hỗ trợ. Vui lòng quản lý tồn kho tại từng cửa hàng.')
   }
@@ -188,18 +304,24 @@ export class WarehouseService {
     )
   }
 
+  /**
+   * Lấy nhãn hiển thị cho loại kho
+   * Chỉ hỗ trợ 'store' - Requirements: 1.1
+   */
   static getWarehouseTypeLabel(type: WarehouseType) {
     const labels: Record<WarehouseType, string> = {
-      store: 'Kho cửa hàng',
-      main: 'Kho chính'
+      store: 'Kho cửa hàng'
     }
     return labels[type] || type
   }
 
+  /**
+   * Lấy màu hiển thị cho loại kho
+   * Chỉ hỗ trợ 'store' - Requirements: 1.1
+   */
   static getWarehouseTypeColor(type: WarehouseType) {
     const colors: Record<WarehouseType, string> = {
-      store: 'bg-indigo-100 text-indigo-800',
-      main: 'bg-blue-100 text-blue-800'
+      store: 'bg-indigo-100 text-indigo-800'
     }
     return colors[type] || 'bg-gray-100 text-gray-700'
   }
