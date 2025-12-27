@@ -6,7 +6,7 @@ import { useAuthStore } from '@/store/authStore'
 import { LoadingSpinner } from '@/components/ui/LoadingSpinner'
 import { StoreLocationService, StoreLocation } from '@/services/storeLocationService'
 import { motion } from 'framer-motion'
-import { ArrowLeft, Package, Clock, CheckCircle, Truck, PackageCheck, XCircle, User } from 'lucide-react'
+import { ArrowLeft, Package, Clock, CheckCircle, Truck, PackageCheck, XCircle, User, Warehouse as WarehouseIcon, ArrowRight } from 'lucide-react'
 import Link from 'next/link'
 import Image from 'next/image'
 import toast from 'react-hot-toast'
@@ -192,6 +192,29 @@ export default function WarehouseInventoryRequestDetailPage() {
         <div className="space-y-4">
           <div className="bg-white rounded-2xl border border-gray-200 p-4 space-y-4">
             <h3 className="font-semibold text-gray-900">Thông tin</h3>
+            
+            {/* Source Warehouse Info - Requirements: 3.1 */}
+            {(request.sourceWarehouseId || request.sourceWarehouseName) && (
+              <div className="p-3 bg-indigo-50 rounded-lg border border-indigo-100">
+                <div className="flex items-center gap-2 mb-2">
+                  <WarehouseIcon className="w-4 h-4 text-indigo-600" />
+                  <span className="text-sm font-medium text-indigo-700">Kho nguồn</span>
+                </div>
+                <p className="text-sm font-semibold text-gray-900">
+                  {request.sourceWarehouseName || `Kho #${request.sourceWarehouseId}`}
+                </p>
+              </div>
+            )}
+
+            {/* Transfer Direction Indicator */}
+            {request.sourceWarehouseName && warehouse && (
+              <div className="flex items-center justify-center gap-2 py-2 text-sm text-gray-600">
+                <span className="font-medium">{request.sourceWarehouseName}</span>
+                <ArrowRight className="w-4 h-4 text-indigo-500" />
+                <span className="font-medium">{warehouse.name}</span>
+              </div>
+            )}
+
             <div className="space-y-3 text-sm">
               <div className="flex items-center gap-3"><User className="w-4 h-4 text-gray-400" /><div><p className="text-gray-500">Người tạo</p><p className="font-medium text-gray-900">{request.requesterName || 'N/A'}</p></div></div>
               <div className="flex items-center gap-3"><Clock className="w-4 h-4 text-gray-400" /><div><p className="text-gray-500">Ngày tạo</p><p className="font-medium text-gray-900">{new Date(request.createdAt).toLocaleString('vi-VN')}</p></div></div>

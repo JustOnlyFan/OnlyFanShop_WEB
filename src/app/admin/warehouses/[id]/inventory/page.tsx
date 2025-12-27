@@ -6,7 +6,7 @@ import { useAuthStore } from '@/store/authStore'
 import { LoadingSpinner } from '@/components/ui/LoadingSpinner'
 import { WarehouseService, Warehouse, WarehouseInventory } from '@/services/warehouseService'
 import { motion } from 'framer-motion'
-import { ArrowLeft, Package, TrendingUp, TrendingDown, Search, X, Maximize2 } from 'lucide-react'
+import { ArrowLeft, Package, TrendingUp, TrendingDown, Search, X, Maximize2, Edit2, Save } from 'lucide-react'
 import toast from 'react-hot-toast'
 import Link from 'next/link'
 import { ProductService, ProductFullDetails } from '@/services/productService'
@@ -25,6 +25,13 @@ export default function WarehouseInventoryPage() {
   const [productLoading, setProductLoading] = useState(false)
   const [productDetail, setProductDetail] = useState<ProductFullDetails | null>(null)
   const [showImagePreview, setShowImagePreview] = useState(false)
+  
+  // Edit inventory state - Requirements: 2.1
+  const [showEditModal, setShowEditModal] = useState(false)
+  const [editingItem, setEditingItem] = useState<WarehouseInventory | null>(null)
+  const [editQuantity, setEditQuantity] = useState<number>(0)
+  const [editReason, setEditReason] = useState<string>('')
+  const [saving, setSaving] = useState(false)
 
   const openProductModal = async (productId: number) => {
     try {
@@ -99,6 +106,49 @@ export default function WarehouseInventoryPage() {
 
   const totalItems = inventory.reduce((sum, item) => sum + item.quantityInStock, 0)
   const totalProducts = new Set(inventory.map(item => item.productId)).size
+
+  /**
+   * Open edit modal for inventory item
+   * Requirements: 2.1 - WHEN Admin updates inventory quantity
+   */
+  const openEditModal = (item: WarehouseInventory) => {
+    setEditingItem(item)
+    setEditQuantity(item.quantityInStock)
+    setEditReason('')
+    setShowEditModal(true)
+  }
+
+  /**
+   * Save inventory quantity update
+   * Requirements: 2.1 - THEN the System SHALL update the Inventory_Item in the specified Store_Warehouse
+   */
+  const handleSaveQuantity = async () => {
+    if (!editingItem) return
+    
+    if (editQuantity < 0) {
+      toast.error('Số lượng không được âm')
+      return
+    }
+
+    try {
+      setSaving(true)
+      await WarehouseService.updateStoreWarehouseQuantity(
+        warehouseId,
+        editingItem.productId,
+        editQuantity,
+        editReason || 'Cập nhật thủ công từ admin'
+      )
+      toast.success('Cập nhật số lượng thành công')
+      setShowEditModal(false)
+      setEditingItem(null)
+      // Reload data to reflect changes
+      loadData()
+    } catch (error: any) {
+      toast.error(error.response?.data?.message || error.message || 'Không thể cập nhật số lượng')
+    } finally {
+      setSaving(false)
+    }
+  }
 
   if (!hasHydrated || loading) {
     return (
@@ -200,6 +250,7 @@ export default function WarehouseInventoryPage() {
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Số lượng</th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Trạng thái</th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Cập nhật</th>
+                  <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Thao tác</th>
                 </tr>
               </thead>
               <tbody className="bg-white divide-y divide-gray-200">
@@ -239,6 +290,16 @@ export default function WarehouseInventoryPage() {
                       <div className="text-sm text-gray-500">
                         {new Date(item.updatedAt).toLocaleDateString('vi-VN')}
                       </div>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-center">
+                      <button
+                        onClick={() => openEditModal(item)}
+                        className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium text-indigo-600 bg-indigo-50 rounded-lg hover:bg-indigo-100 transition-colors"
+                        title="Cập nhật số lượng"
+                      >
+                        <Edit2 className="w-4 h-4" />
+                        Sửa
+                      </button>
                     </td>
                   </motion.tr>
                 ))}
@@ -355,6 +416,90 @@ export default function WarehouseInventoryPage() {
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img src={productDetail.imageURL} alt={productDetail.productName} className="w-full max-h-[80vh] object-contain" />
           </div>
+        </div>
+      )}
+
+      {/* Edit Inventory Modal - Requirements: 2.1 */}
+      {showEditModal && editingItem && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <div className="absolute inset-0 bg-black/50" onClick={() => setShowEditModal(false)} />
+          <motion.div
+            initial={{ opacity: 0, scale: 0.95 }}
+            animate={{ opacity: 1, scale: 1 }}
+            className="relative bg-white rounded-xl shadow-2xl w-full max-w-md overflow-hidden"
+          >
+            <div className="flex items-center justify-between px-5 py-4 border-b border-gray-200">
+              <h3 className="text-lg font-semibold text-gray-900">Cập nhật số lượng tồn kho</h3>
+              <button onClick={() => setShowEditModal(false)} className="p-2 text-gray-500 hover:text-gray-700">
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            <div className="p-5 space-y-4">
+              {/* Product Info */}
+              <div className="bg-gray-50 rounded-lg p-3">
+                <p className="text-sm text-gray-500">Sản phẩm</p>
+                <p className="font-medium text-gray-900">{editingItem.productName}</p>
+                <p className="text-xs text-gray-500 mt-1">Số lượng hiện tại: {editingItem.quantityInStock}</p>
+              </div>
+
+              {/* New Quantity Input */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Số lượng mới <span className="text-red-500">*</span>
+                </label>
+                <input
+                  type="number"
+                  min="0"
+                  value={editQuantity}
+                  onChange={(e) => setEditQuantity(parseInt(e.target.value) || 0)}
+                  className="w-full px-4 py-2.5 border border-gray-200 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                  placeholder="Nhập số lượng mới"
+                />
+              </div>
+
+              {/* Reason Input */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Lý do thay đổi
+                </label>
+                <textarea
+                  value={editReason}
+                  onChange={(e) => setEditReason(e.target.value)}
+                  rows={3}
+                  className="w-full px-4 py-2.5 border border-gray-200 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent resize-none"
+                  placeholder="Nhập lý do thay đổi số lượng (tùy chọn)"
+                />
+              </div>
+
+              {/* Change Summary */}
+              {editQuantity !== editingItem.quantityInStock && (
+                <div className={`p-3 rounded-lg ${editQuantity > editingItem.quantityInStock ? 'bg-green-50 text-green-700' : 'bg-red-50 text-red-700'}`}>
+                  <p className="text-sm font-medium">
+                    {editQuantity > editingItem.quantityInStock 
+                      ? `Tăng ${editQuantity - editingItem.quantityInStock} sản phẩm`
+                      : `Giảm ${editingItem.quantityInStock - editQuantity} sản phẩm`
+                    }
+                  </p>
+                </div>
+              )}
+            </div>
+            <div className="flex items-center justify-end gap-3 px-5 py-4 border-t border-gray-200 bg-gray-50">
+              <button
+                onClick={() => setShowEditModal(false)}
+                className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50"
+              >
+                Hủy
+              </button>
+              <button
+                onClick={handleSaveQuantity}
+                disabled={saving || editQuantity === editingItem.quantityInStock}
+                className="px-4 py-2 text-sm font-medium text-white bg-indigo-600 rounded-lg hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed inline-flex items-center gap-2"
+              >
+                {saving ? <LoadingSpinner /> : <Save className="w-4 h-4" />}
+                Lưu thay đổi
+              </button>
+            </div>
+          </motion.div>
         </div>
       )}
  
