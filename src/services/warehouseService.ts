@@ -51,6 +51,7 @@ export interface WarehouseInventory {
   productVariantName?: string | null
   quantityInStock: number
   isAvailable?: boolean
+  isEnabled?: boolean
   updatedAt: string
   createdAt?: string
   productImageUrl?: string | null
@@ -291,6 +292,30 @@ export class WarehouseService {
       return payload as ApiResponse<InventoryItemResponse>
     }
     return this.wrapResponse<InventoryItemResponse>(payload, 'Thêm sản phẩm vào kho thành công')
+  }
+
+  /**
+   * Bật/tắt trạng thái enabled của sản phẩm trong kho cửa hàng
+   * Admin có thể disable sản phẩm không cần bán tại cửa hàng đó
+   */
+  static async toggleProductEnabled(
+    storeId: number,
+    productId: number,
+    isEnabled: boolean
+  ): Promise<ApiResponse<InventoryItemResponse>> {
+    const response = await apiClient.patch(
+      `/warehouses/stores/${storeId}/inventory/${productId}/toggle`,
+      null,
+      { params: { isEnabled } }
+    )
+    const payload = response.data
+    if (payload && typeof payload === 'object' && 'data' in payload) {
+      return payload as ApiResponse<InventoryItemResponse>
+    }
+    return this.wrapResponse<InventoryItemResponse>(
+      payload, 
+      isEnabled ? 'Đã bật sản phẩm' : 'Đã tắt sản phẩm'
+    )
   }
 
   static async transferStock(_payload: TransferStockRequest) {
