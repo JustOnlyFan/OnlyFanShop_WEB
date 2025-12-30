@@ -311,11 +311,17 @@ export function ProductManagementModal({ product, brands, categories, onClose, o
       })
       
       // Load product categories and tags if editing
-      if (productDetail.productCategories) {
-        setSelectedCategoryIds(productDetail.productCategories.map((pc: any) => pc.categoryId || pc.category?.id))
+      if (productDetail.productCategories && productDetail.productCategories.length > 0) {
+        const categoryIds = productDetail.productCategories
+          .map((pc: any) => pc.categoryId || pc.category?.id)
+          .filter((id: number | undefined): id is number => id !== undefined && id !== null)
+        setSelectedCategoryIds(categoryIds)
       }
-      if (productDetail.productTags) {
-        setSelectedTagIds(productDetail.productTags.map((pt: any) => pt.tagId || pt.tag?.id))
+      if (productDetail.productTags && productDetail.productTags.length > 0) {
+        const tagIds = productDetail.productTags
+          .map((pt: any) => pt.tagId || pt.tag?.id)
+          .filter((id: number | undefined): id is number => id !== undefined && id !== null)
+        setSelectedTagIds(tagIds)
       }
       
       // Check if accessory product and load compatibilities
@@ -425,6 +431,8 @@ export function ProductManagementModal({ product, brands, categories, onClose, o
       
       const submitData: ProductRequest = {
         productName: formData.productName.trim(),
+        ...(displaySku && { sku: displaySku.trim() }),
+        ...(displaySlug && { slug: displaySlug.trim() }),
         briefDescription: formData.briefDescription.trim(),
         fullDescription: formData.fullDescription.trim() || formData.briefDescription.trim(),
         technicalSpecifications: formData.technicalSpecifications.trim() || '',
@@ -797,8 +805,8 @@ export function ProductManagementModal({ product, brands, categories, onClose, o
                 </div>
               </div>
 
-              {/* Grid: Power Watt, Blade Diameter, Quantity */}
-              <div className="grid md:grid-cols-3 gap-4 mb-4">
+              {/* Grid: Power Watt, Blade Diameter */}
+              <div className="grid md:grid-cols-2 gap-4 mb-4">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">Công suất (W)</label>
                   <input type="text" inputMode="numeric" value={formatVND(formData.powerWatt)} onChange={(e) => handleNumberChange('powerWatt', e.target.value)} placeholder="VD: 45" className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500" />
@@ -806,10 +814,6 @@ export function ProductManagementModal({ product, brands, categories, onClose, o
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">Đường kính cánh quạt (cm)</label>
                   <input type="number" step="0.01" value={formData.bladeDiameterCm || ''} onChange={(e) => setFormData(prev => ({ ...prev, bladeDiameterCm: e.target.value ? Number(e.target.value) : undefined }))} placeholder="VD: 40" min="0" className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500" />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Số lượng kho tổng</label>
-                  <input type="text" inputMode="numeric" value={formatVND(formData.quantity)} onChange={(e) => handleNumberChange('quantity', e.target.value)} placeholder="VD: 100" className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500" />
                 </div>
               </div>
 
@@ -882,7 +886,7 @@ export function ProductManagementModal({ product, brands, categories, onClose, o
             {/* Basic Info */}
             <div className="border-t border-gray-200 pt-6">
               <h3 className="text-lg font-semibold text-gray-900 mb-4">Thông tin cơ bản</h3>
-              <div className="grid md:grid-cols-3 gap-4">
+              <div className="grid md:grid-cols-2 gap-4">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">Giá (VNĐ) *</label>
                   <div className="relative">
@@ -896,14 +900,6 @@ export function ProductManagementModal({ product, brands, categories, onClose, o
                     <option value="">Chọn thương hiệu</option>
                     {brands.map((brand) => <option key={brand.brandID} value={brand.brandID}>{brand.name}</option>)}
                   </select>
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Danh mục chính</label>
-                  <select value={formData.categoryID} onChange={(e) => setFormData(prev => ({ ...prev, categoryID: Number(e.target.value) }))} className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500">
-                    <option value="">Chọn danh mục</option>
-                    {categories.map((category) => <option key={category.id} value={category.id}>{category.name}</option>)}
-                  </select>
-                  <p className="mt-1 text-xs text-gray-500">Danh mục chính (tương thích ngược). Sử dụng phần Đa danh mục ở trên để phân loại chi tiết.</p>
                 </div>
               </div>
             </div>

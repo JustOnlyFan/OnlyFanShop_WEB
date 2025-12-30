@@ -33,7 +33,12 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
   };
 
   // Pages that should hide the default layout header
-  const hideHeaderPages = ['/admin/stores/new', '/admin/stores/edit']
+  const hideHeaderPages = [
+    '/admin/stores/new',
+    '/admin/stores/edit',
+    '/admin/products',
+    '/admin/warehouses', // warehouse flows have their own page headers
+  ]
   const shouldHideHeader = hideHeaderPages.some(page => pathname?.startsWith(page))
 
   return (

@@ -256,7 +256,9 @@ export interface BrandDTO {
 
 export interface ProductRequest {
   productName: string
-  // SKU and Slug are auto-generated, not accepted from request
+  // Keep SKU/slug optional so update calls can preserve existing values
+  sku?: string
+  slug?: string
   briefDescription: string
   fullDescription: string
   technicalSpecifications: string

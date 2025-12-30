@@ -2,11 +2,11 @@ import axios, { InternalAxiosRequestConfig } from 'axios'
 import { ApiResponse } from '@/types'
 import { tokenStorage } from '@/utils/tokenStorage'
 
+const baseURL = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:8080'
+
 // Create a shared axios instance with interceptors
 export const apiClient = axios.create({
-  baseURL: typeof process.env.NEXT_PUBLIC_API_URL !== 'undefined'
-    ? process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080'
-    : 'http://localhost:8080',
+  baseURL,
   timeout: 30000,
   headers: {
     'Content-Type': 'application/json',
@@ -159,7 +159,6 @@ const handleUnauthorizedRedirect = async (error: any) => {
     }
   }
 }
-
 
 
 

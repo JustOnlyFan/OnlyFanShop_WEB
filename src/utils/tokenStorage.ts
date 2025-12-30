@@ -53,13 +53,17 @@ export const tokenStorage = {
 
   getAccessToken(): string | null {
     if (!isBrowser) return null
-    return localStorage.getItem(ACCESS_TOKEN_KEY)
+    const raw = localStorage.getItem(ACCESS_TOKEN_KEY)
+    if (!raw || raw === 'null' || raw === 'undefined' || raw.trim() === '') {
+      return null
+    }
+    return raw
   },
 
   getRefreshToken(): string | null {
     if (!isBrowser) return null
     const stored = localStorage.getItem(REFRESH_TOKEN_KEY)
-    if (stored) {
+    if (stored && stored !== 'null' && stored !== 'undefined' && stored.trim() !== '') {
       return stored
     }
     return getCookie(REFRESH_COOKIE_NAME)

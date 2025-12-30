@@ -98,6 +98,10 @@ const nextConfig = {
           source: '/store-locations/:path*',
           destination: 'http://localhost:8080/store-locations/:path*',
         },
+        {
+          source: '/store-inventory/:path*',
+          destination: 'http://localhost:8080/store-inventory/:path*',
+        },
       ]
     }
     return []
@@ -169,7 +173,6 @@ const nextConfig = {
 }
 
 module.exports = withBundleAnalyzer(nextConfig)
-
 
 
 

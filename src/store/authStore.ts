@@ -47,7 +47,7 @@ export const useAuthStore = create<AuthState & AuthActions>()(
         if (user) {
           AuthService.setUser(user)
         } else {
-          AuthService.removeToken()
+          AuthService.clearAuth()
         }
       },
 
@@ -172,16 +172,38 @@ export const useAuthStore = create<AuthState & AuthActions>()(
     }),
     {
       name: 'auth-storage',
-      partialize: (state) => ({ 
-        user: state.user, 
-        isAuthenticated: state.isAuthenticated 
+      version: 2,
+      migrate: (persistedState: any, version) => {
+        // Drop stale isAuthenticated flag; recompute from token + user
+        if (version < 2) {
+          const token = AuthService.getToken()
+          const user = persistedState.user || null
+          return {
+            user,
+            isAuthenticated: !!(token && user)
+          }
+        }
+        return persistedState
+      },
+      // Only persist user; derive isAuthenticated at runtime
+      partialize: (state) => ({
+        user: state.user
       }),
+      onRehydrateStorage: () => (state) => {
+        const token = AuthService.getToken()
+        const user = state?.user || null
+        if (!token || !user) {
+          AuthService.clearAuth()
+          state?.setUser(null)
+          state?.setHasHydrated?.(true)
+          return
+        }
+        state?.setUser(user)
+        state?.setHasHydrated?.(true)
+      }
     }
   )
 )
-
-
-
 
 
 

@@ -3,7 +3,7 @@ import axios from 'axios'
 import { Product } from '@/types'
 import { tokenStorage } from '@/utils/tokenStorage'
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080'
+const API_URL = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:8080'
 
 export interface CartItem {
   id: number
@@ -43,10 +43,15 @@ export interface ApiResponse<T> {
 export class CartService {
   private static getAuthHeaders() {
     const token = tokenStorage.getAccessToken()
-    return {
-      'Authorization': `Bearer ${token}`,
+    const headers: Record<string, string> = {
       'Content-Type': 'application/json'
     }
+
+    if (token) {
+      headers['Authorization'] = `Bearer ${token}`
+    }
+
+    return headers
   }
 
   // Get user's cart (legacy generic endpoint)

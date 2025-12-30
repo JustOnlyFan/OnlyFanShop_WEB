@@ -2,7 +2,7 @@ import axios from 'axios'
 
 import { tokenStorage } from '@/utils/tokenStorage'
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080'
+const API_URL = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:8080'
 
 export interface PaymentRequest {
   orderId: number
@@ -87,11 +87,14 @@ export interface ApiResponse<T> {
 
 export class PaymentService {
   private static getAuthHeaders() {
-    const token = tokenStorage.getAccessToken();
-    return {
-      'Authorization': `Bearer ${token}`,
-      'Content-Type': 'application/json'
+    const token = tokenStorage.getAccessToken()
+    const headers: Record<string, string> = { 'Content-Type': 'application/json' }
+
+    if (token) {
+      headers['Authorization'] = `Bearer ${token}`
     }
+
+    return headers
   }
 
   // Create VNPay payment (align with BE GET /payment/vn-pay)

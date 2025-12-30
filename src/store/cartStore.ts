@@ -146,7 +146,11 @@ export const useCartStore = create<CartState & CartActions>()(
           if (response.statusCode === 200 && response.data) {
             const items = (response.data.items || []) as any[]
             const totalItems = CartService.calculateTotalQuantity(items)
-            const totalPrice = items.reduce((sum, it: any) => sum + (it.price || 0), 0)
+            const totalPrice = items.reduce((sum, it: any) => {
+              const price = Number(it.price ?? 0)
+              const quantity = Number(it.quantity ?? 1)
+              return sum + price * quantity
+            }, 0)
             
             set({ 
               items, 
