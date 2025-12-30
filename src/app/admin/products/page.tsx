@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useMemo } from 'react'
+import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { useAuthStore } from '@/store/authStore'
 import { LoadingSpinner } from '@/components/ui/LoadingSpinner'
@@ -19,10 +19,9 @@ import {
   Search,
   Filter,
   Package,
-  TrendingUp,
-  AlertCircle,
-  BarChart3,
-  Eye
+  Eye,
+  ChevronLeft,
+  ChevronRight
 } from 'lucide-react'
 import toast from 'react-hot-toast'
 import Image from 'next/image'
@@ -34,8 +33,7 @@ import {
   AdminCardHeader, 
   AdminCardBody,
   AdminInput,
-  AdminBadge,
-  AdminStats
+  AdminBadge
 } from '@/components/admin/ui'
 
 export default function AdminProductsPage() {
@@ -52,6 +50,16 @@ export default function AdminProductsPage() {
   const [viewingProduct, setViewingProduct] = useState<ProductDTO | null>(null)
   const [productStats, setProductStats] = useState<Record<number, { total: number; sold: number }>>({})
   
+  // Pagination state
+  const [currentPage, setCurrentPage] = useState(1)
+  const [totalPages, setTotalPages] = useState(1)
+  const [totalElements, setTotalElements] = useState(0)
+  const [pageSize] = useState(12)
+  
+  // Stats state
+  const [totalActive, setTotalActive] = useState(0)
+  const [totalInactive, setTotalInactive] = useState(0)
+  
   const router = useRouter()
   const { user, isAuthenticated, hasHydrated } = useAuthStore()
 
@@ -67,18 +75,36 @@ export default function AdminProductsPage() {
   const loadInitialData = async () => {
     try {
       setLoading(true)
-      await Promise.all([loadBrands(), loadCategories()])
+      await Promise.all([loadBrands(), loadCategories(), loadProductCounts()])
       await loadProducts(true)
     } finally {
       setLoading(false)
     }
   }
 
-  const loadProducts = async (withStats = false) => {
+  const loadProductCounts = async () => {
     try {
+      // Load all products to count active/inactive
       const data = await ProductAdminService.getProductList({
         page: 1,
-        size: 24,
+        size: 1000, // Large enough to get all
+        sortBy: 'productID',
+        order: 'DESC'
+      })
+      const allProducts = data.products || []
+      const active = allProducts.filter(p => p.active).length
+      setTotalActive(active)
+      setTotalInactive(allProducts.length - active)
+    } catch (error) {
+      console.error('Failed to load product counts:', error)
+    }
+  }
+
+  const loadProducts = async (withStats = false, page = currentPage) => {
+    try {
+      const data = await ProductAdminService.getProductList({
+        page: page,
+        size: pageSize,
         sortBy: 'productID',
         order: 'DESC',
         keyword: searchTerm || undefined,
@@ -87,6 +113,14 @@ export default function AdminProductsPage() {
       })
       const list = data.products || []
       setProducts(list)
+      
+      // Update pagination info
+      if (data.pagination) {
+        setTotalPages(data.pagination.totalPages || 1)
+        setTotalElements(data.pagination.totalElements || list.length)
+        setCurrentPage(data.pagination.currentPage || page)
+      }
+      
       if (withStats) {
         await loadProductStats(list)
       }
@@ -215,7 +249,8 @@ export default function AdminProductsPage() {
   useEffect(() => {
     if (!hasHydrated) return
     const handler = setTimeout(() => {
-      loadProducts(true)
+      setCurrentPage(1) // Reset to page 1 when filters change
+      loadProducts(true, 1)
     }, 300)
     return () => clearTimeout(handler)
   }, [searchTerm, selectedBrand, selectedCategory, hasHydrated])
@@ -225,14 +260,48 @@ export default function AdminProductsPage() {
     setShowModal(true)
   }
 
-  const handleEditProduct = (product: ProductDTO) => {
-    setEditingProduct(product)
-    setShowModal(true)
+  const handleEditProduct = async (product: ProductDTO) => {
+    const productId = product.productID || product.id
+    if (!productId) {
+      toast.error('Không tìm thấy ID sản phẩm')
+      return
+    }
+    
+    try {
+      // Fetch full product details before opening modal
+      const response = await ProductService.getProductById(productId)
+      if (response.data) {
+        setEditingProduct(response.data as ProductDTO)
+        setShowModal(true)
+      } else {
+        toast.error('Không thể tải thông tin sản phẩm')
+      }
+    } catch (error: any) {
+      console.error('Error fetching product details:', error)
+      toast.error(error.message || 'Không thể tải thông tin sản phẩm')
+    }
   }
 
-  const handleViewProduct = (product: ProductDTO) => {
-    setViewingProduct(product)
-    setShowViewModal(true)
+  const handleViewProduct = async (product: ProductDTO) => {
+    const productId = product.productID || product.id
+    if (!productId) {
+      toast.error('Không tìm thấy ID sản phẩm')
+      return
+    }
+    
+    try {
+      // Fetch full product details before opening modal
+      const response = await ProductService.getProductById(productId)
+      if (response.data) {
+        setViewingProduct(response.data as ProductDTO)
+        setShowViewModal(true)
+      } else {
+        toast.error('Không thể tải thông tin sản phẩm')
+      }
+    } catch (error: any) {
+      console.error('Error fetching product details:', error)
+      toast.error(error.message || 'Không thể tải thông tin sản phẩm')
+    }
   }
 
   const handleToggleActive = async (product: ProductDTO) => {
@@ -242,7 +311,15 @@ export default function AdminProductsPage() {
     try {
       await ProductAdminService.toggleActive(productID, !product.active)
       toast.success(`Sản phẩm đã được ${!product.active ? 'kích hoạt' : 'vô hiệu hóa'}`)
-      loadProducts(true)
+      // Update stats
+      if (product.active) {
+        setTotalActive(prev => prev - 1)
+        setTotalInactive(prev => prev + 1)
+      } else {
+        setTotalActive(prev => prev + 1)
+        setTotalInactive(prev => prev - 1)
+      }
+      loadProducts(true, currentPage)
     } catch (error: any) {
       toast.error(error.message || 'Không thể thay đổi trạng thái')
     }
@@ -251,22 +328,18 @@ export default function AdminProductsPage() {
   const handleModalClose = () => {
     setShowModal(false)
     setEditingProduct(null)
-    loadProducts(true)
+    loadProducts(true, currentPage)
   }
 
   const handleSaved = (created: ProductDTO) => {
     setProducts(prev => [created, ...prev])
   }
 
-  const statistics = useMemo(() => {
-    const total = products.length
-    const active = products.filter(p => p.active).length
-    const inactive = total - active
-    const outOfStock = products.filter(p => !p.active || (p as any).quantity === 0).length
-    const totalQuantity = products.reduce((sum, p) => sum + ((p as any).quantity || 0), 0)
-    
-    return { total, active, inactive, outOfStock, totalQuantity }
-  }, [products])
+  const handlePageChange = (page: number) => {
+    if (page < 1 || page > totalPages) return
+    setCurrentPage(page)
+    loadProducts(true, page)
+  }
 
   if (!hasHydrated || loading) {
     return (
@@ -278,8 +351,25 @@ export default function AdminProductsPage() {
 
   return (
     <div className="space-y-6">
-      {/* Action Buttons */}
-      <div className="flex justify-end gap-3">
+      {/* Header with Stats and Action Button */}
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-6">
+          <div className="flex items-center gap-2">
+            <Package className="w-5 h-5 text-blue-600" />
+            <span className="text-gray-600">Tổng:</span>
+            <span className="font-semibold text-gray-900">{totalActive + totalInactive}</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <Power className="w-4 h-4 text-green-600" />
+            <span className="text-gray-600">Active:</span>
+            <span className="font-semibold text-green-600">{totalActive}</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <PowerOff className="w-4 h-4 text-red-500" />
+            <span className="text-gray-600">Inactive:</span>
+            <span className="font-semibold text-red-500">{totalInactive}</span>
+          </div>
+        </div>
         <AdminButton
           variant="success"
           icon={<Plus className="w-5 h-5" />}
@@ -287,42 +377,6 @@ export default function AdminProductsPage() {
         >
           Thêm sản phẩm
         </AdminButton>
-      </div>
-
-      {/* Statistics */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
-        <AdminStats
-          title="Tổng sản phẩm"
-          value={statistics.total}
-          icon={<Package className="w-6 h-6" />}
-          color="blue"
-        />
-        <AdminStats
-          title="Đang hoạt động"
-          value={statistics.active}
-          icon={<TrendingUp className="w-6 h-6" />}
-          color="green"
-          change={statistics.total > 0 ? `${Math.round((statistics.active / statistics.total) * 100)}%` : undefined}
-          trend={statistics.total > 0 ? 'up' : undefined}
-        />
-        <AdminStats
-          title="Tạm dừng"
-          value={statistics.inactive}
-          icon={<PowerOff className="w-6 h-6" />}
-          color="red"
-        />
-        <AdminStats
-          title="Hết hàng"
-          value={statistics.outOfStock}
-          icon={<AlertCircle className="w-6 h-6" />}
-          color="orange"
-        />
-        <AdminStats
-          title="Tổng số lượng"
-          value={statistics.totalQuantity.toLocaleString('vi-VN')}
-          icon={<BarChart3 className="w-6 h-6" />}
-          color="purple"
-        />
       </div>
 
       {/* Filters */}
@@ -375,7 +429,7 @@ export default function AdminProductsPage() {
       <AdminCard>
         <AdminCardHeader 
           title="Danh sách sản phẩm" 
-          subtitle={`${products.length} sản phẩm`}
+          subtitle={`${totalElements} sản phẩm`}
         />
         <AdminCardBody className="p-0">
           {products.length === 0 ? (
@@ -503,6 +557,64 @@ export default function AdminProductsPage() {
                   </motion.div>
                 )
               })}
+            </div>
+          )}
+          
+          {/* Pagination */}
+          {totalPages > 1 && (
+            <div className="flex items-center justify-between px-6 py-4 border-t border-gray-100">
+              <div className="text-sm text-gray-600">
+                Trang {currentPage} / {totalPages} ({totalElements} sản phẩm)
+              </div>
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => handlePageChange(currentPage - 1)}
+                  disabled={currentPage <= 1}
+                  className="p-2 rounded-lg border border-gray-200 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                >
+                  <ChevronLeft className="w-5 h-5" />
+                </button>
+                
+                {/* Page numbers */}
+                <div className="flex items-center gap-1">
+                  {Array.from({ length: totalPages }, (_, i) => i + 1)
+                    .filter(page => {
+                      // Show first, last, current, and pages around current
+                      return page === 1 || 
+                             page === totalPages || 
+                             Math.abs(page - currentPage) <= 1
+                    })
+                    .map((page, idx, arr) => {
+                      // Add ellipsis if there's a gap
+                      const showEllipsisBefore = idx > 0 && page - arr[idx - 1] > 1
+                      return (
+                        <div key={page} className="flex items-center gap-1">
+                          {showEllipsisBefore && (
+                            <span className="px-2 text-gray-400">...</span>
+                          )}
+                          <button
+                            onClick={() => handlePageChange(page)}
+                            className={`min-w-[40px] h-10 rounded-lg font-medium transition-colors ${
+                              page === currentPage
+                                ? 'bg-blue-600 text-white'
+                                : 'hover:bg-gray-100 text-gray-700'
+                            }`}
+                          >
+                            {page}
+                          </button>
+                        </div>
+                      )
+                    })}
+                </div>
+                
+                <button
+                  onClick={() => handlePageChange(currentPage + 1)}
+                  disabled={currentPage >= totalPages}
+                  className="p-2 rounded-lg border border-gray-200 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                >
+                  <ChevronRight className="w-5 h-5" />
+                </button>
+              </div>
             </div>
           )}
         </AdminCardBody>

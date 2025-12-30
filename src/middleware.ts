@@ -7,9 +7,29 @@ export function middleware(request: NextRequest) {
 
   // Lấy subdomain
   const subdomain = hostname.split('.')[0]
+  const backendProxyPrefixes = [
+    '/api',
+    '/login',
+    '/store-locations',
+    '/product',
+    '/category',
+    '/brands',
+    '/colors',
+    '/warranties',
+    '/order',
+    '/users',
+    '/warehouses',
+    '/payment',
+    '/cart',
+    '/store-inventory',
+  ]
 
   // Nếu là admin subdomain
   if (subdomain === 'admin') {
+    // Cho phép các route proxy về backend đi qua (tránh redirect vòng về /admin)
+    if (backendProxyPrefixes.some((prefix) => url.pathname.startsWith(prefix))) {
+      return NextResponse.next()
+    }
     // Redirect /auth/login sang /auth/admin-login cho admin
     if (url.pathname === '/auth/login') {
       url.pathname = '/auth/admin-login'
@@ -29,6 +49,10 @@ export function middleware(request: NextRequest) {
 
   // Nếu là staff subdomain
   if (subdomain === 'staff') {
+    // Cho phép các route proxy về backend đi qua (tránh redirect vòng về /staff)
+    if (backendProxyPrefixes.some((prefix) => url.pathname.startsWith(prefix))) {
+      return NextResponse.next()
+    }
     // Redirect /auth/login sang /auth/staff-login cho staff
     if (url.pathname === '/auth/login') {
       url.pathname = '/auth/staff-login'

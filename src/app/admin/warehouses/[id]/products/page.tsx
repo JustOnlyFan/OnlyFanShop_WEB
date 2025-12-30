@@ -24,6 +24,7 @@ export default function WarehouseProductsPage() {
   const [allProducts, setAllProducts] = useState<StoreInventoryRecord[]>([])
   const [selectedProductIds, setSelectedProductIds] = useState<Set<number>>(new Set())
   const [searchTerm, setSearchTerm] = useState('')
+  const [statusFilter, setStatusFilter] = useState<'all' | 'enabled' | 'disabled'>('all')
 
   useEffect(() => {
     if (!hasHydrated || !isAuthenticated || user?.role !== 'ADMIN') return
@@ -47,8 +48,16 @@ export default function WarehouseProductsPage() {
       const list = Array.isArray(productsResp.data) ? productsResp.data : []
       setAllProducts(list)
 
-      // Pre-select enabled products
-      const enabledIds = new Set(list.filter((p) => p.isAvailable).map((p) => p.productId))
+      // Pre-select enabled products; treat undefined as enabled so kho mới mặc định bật hết
+      let enabledIds = new Set(
+        list
+          .filter((p) => p.isAvailable !== false)
+          .map((p) => p.productId)
+      )
+      // If backend marks none as available (new kho), default bật toàn bộ
+      if (enabledIds.size === 0 && list.length > 0) {
+        enabledIds = new Set(list.map((p) => p.productId))
+      }
       setSelectedProductIds(enabledIds)
     } catch (e: any) {
       toast.error('Không thể tải dữ liệu')
@@ -58,10 +67,18 @@ export default function WarehouseProductsPage() {
   }
 
   const filteredProducts = useMemo(() => {
-    if (!searchTerm.trim()) return allProducts
-    const q = searchTerm.toLowerCase()
-    return allProducts.filter((p) => p.productName?.toLowerCase().includes(q))
-  }, [allProducts, searchTerm])
+    let list = allProducts
+    if (searchTerm.trim()) {
+      const q = searchTerm.toLowerCase()
+      list = list.filter((p) => p.productName?.toLowerCase().includes(q))
+    }
+    if (statusFilter === 'enabled') {
+      list = list.filter((p) => selectedProductIds.has(p.productId))
+    } else if (statusFilter === 'disabled') {
+      list = list.filter((p) => !selectedProductIds.has(p.productId))
+    }
+    return list
+  }, [allProducts, searchTerm, statusFilter, selectedProductIds])
 
   const handleToggleSelect = (productId: number) => {
     setSelectedProductIds((prev) => {
@@ -116,6 +133,9 @@ export default function WarehouseProductsPage() {
     return false
   }, [allProducts, selectedProductIds])
 
+  const enabledCount = selectedProductIds.size
+  const disabledCount = Math.max(allProducts.length - enabledCount, 0)
+
   if (!hasHydrated || loading) {
     return (
       <div className="min-h-[60vh] grid place-items-center">
@@ -138,29 +158,39 @@ export default function WarehouseProductsPage() {
       </div>
 
       {/* Header */}
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-4">
-          <button onClick={() => router.back()} className="p-2 rounded-lg border border-gray-200 hover:bg-gray-50 transition-colors">
+      <div className="flex flex-col gap-4">
+        <div className="flex flex-wrap items-center gap-4">
+          <button onClick={() => router.back()} className="p-2 rounded-lg border border-gray-200 hover:bg-gray-50 transition-colors" aria-label="Quay lại">
             <ArrowLeft className="w-5 h-5 text-gray-600" />
           </button>
-          <div>
-            <h1 className="text-2xl font-bold text-gray-900">Quản lý sản phẩm</h1>
-            <p className="text-sm text-gray-500">Chọn sản phẩm được phép bán tại kho {warehouse?.name}</p>
+          <div className="flex flex-col gap-1">
+            <p className="text-sm text-gray-500">Kho hàng: <span className="font-semibold text-gray-800">{warehouse?.name}</span></p>
+            <h1 className="text-2xl font-bold text-gray-900">Bật/tắt sản phẩm đang bán tại kho</h1>
+            <p className="text-sm text-gray-500">Mặc định kho mới sẽ có sẵn toàn bộ sản phẩm. Tắt sản phẩm để không bán tại kho này.</p>
           </div>
         </div>
-        <button
-          onClick={handleSave}
-          disabled={!hasChanges || saving}
-          className="px-6 py-2.5 bg-indigo-600 text-white rounded-xl font-medium hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors inline-flex items-center gap-2"
-        >
-          {saving ? <LoadingSpinner /> : <Check className="w-5 h-5" />}
-          Lưu thay đổi
-        </button>
+        <div className="flex flex-wrap items-center gap-3">
+          <div className="flex flex-wrap gap-2">
+            <span className="px-3 py-1 text-xs font-semibold rounded-full bg-indigo-50 text-indigo-700">Tổng: {allProducts.length}</span>
+            <span className="px-3 py-1 text-xs font-semibold rounded-full bg-green-50 text-green-700">Đang bán: {enabledCount}</span>
+            <span className="px-3 py-1 text-xs font-semibold rounded-full bg-gray-100 text-gray-700">Đã tắt: {disabledCount}</span>
+            {hasChanges && <span className="px-3 py-1 text-xs font-semibold rounded-full bg-amber-50 text-amber-700">Chưa lưu thay đổi</span>}
+          </div>
+          <div className="flex-1" />
+          <button
+            onClick={handleSave}
+            disabled={!hasChanges || saving}
+            className="px-6 py-2.5 bg-indigo-600 text-white rounded-xl font-medium hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors inline-flex items-center gap-2"
+          >
+            {saving ? <LoadingSpinner /> : <Check className="w-5 h-5" />}
+            Lưu thay đổi
+          </button>
+        </div>
       </div>
 
       {/* Search & Actions */}
       <div className="bg-white rounded-2xl border border-gray-200 p-4">
-        <div className="flex flex-col sm:flex-row gap-4">
+        <div className="flex flex-col lg:flex-row gap-4">
           <div className="relative flex-1">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 w-5 h-5" />
             <input
@@ -171,22 +201,41 @@ export default function WarehouseProductsPage() {
               className="w-full pl-10 pr-4 py-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
             />
           </div>
-          <div className="flex gap-2">
+          <div className="flex flex-wrap gap-2">
+            <button
+              onClick={() => setStatusFilter('all')}
+              className={`px-4 py-2.5 text-sm font-medium rounded-xl border ${
+                statusFilter === 'all' ? 'border-indigo-200 bg-indigo-50 text-indigo-700' : 'border-gray-200 text-gray-700 hover:bg-gray-50'
+              }`}
+            >
+              Tất cả
+            </button>
+            <button
+              onClick={() => setStatusFilter('enabled')}
+              className={`px-4 py-2.5 text-sm font-medium rounded-xl border ${
+                statusFilter === 'enabled' ? 'border-green-200 bg-green-50 text-green-700' : 'border-gray-200 text-gray-700 hover:bg-gray-50'
+              }`}
+            >
+              Đang bán
+            </button>
+            <button
+              onClick={() => setStatusFilter('disabled')}
+              className={`px-4 py-2.5 text-sm font-medium rounded-xl border ${
+                statusFilter === 'disabled' ? 'border-gray-300 bg-gray-100 text-gray-800' : 'border-gray-200 text-gray-700 hover:bg-gray-50'
+              }`}
+            >
+              Đã tắt
+            </button>
+            <div className="h-10 w-px bg-gray-200 hidden lg:block" />
             <button onClick={handleSelectAll} className="px-4 py-2.5 text-sm font-medium text-indigo-600 bg-indigo-50 rounded-xl hover:bg-indigo-100 transition-colors">
-              Chọn tất cả
+              Bật tất cả (đang lọc)
             </button>
             <button onClick={handleDeselectAll} className="px-4 py-2.5 text-sm font-medium text-gray-600 bg-gray-100 rounded-xl hover:bg-gray-200 transition-colors">
-              Bỏ chọn tất cả
+              Tắt tất cả (đang lọc)
             </button>
           </div>
         </div>
-        <div className="mt-4 flex items-center gap-6 text-sm">
-          <span className="text-gray-500">
-            Tổng: <span className="font-semibold text-gray-900">{allProducts.length}</span> sản phẩm
-          </span>
-          <span className="text-indigo-600 font-semibold">Đã chọn: {selectedProductIds.size} sản phẩm</span>
-          {hasChanges && <span className="text-orange-500 font-medium">• Có thay đổi chưa lưu</span>}
-        </div>
+        <p className="mt-3 text-sm text-gray-500">Chọn sản phẩm được phép bán; bỏ chọn để tắt bán tại kho này.</p>
       </div>
 
       {/* Product Grid */}
@@ -200,6 +249,7 @@ export default function WarehouseProductsPage() {
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
             {filteredProducts.map((product, idx) => {
               const isSelected = selectedProductIds.has(product.productId)
+              const isDisabled = !isSelected
               return (
                 <motion.div
                   key={product.productId}
@@ -207,7 +257,9 @@ export default function WarehouseProductsPage() {
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ delay: idx * 0.02 }}
                   onClick={() => handleToggleSelect(product.productId)}
-                  className={`relative p-4 rounded-xl border-2 cursor-pointer transition-all ${isSelected ? 'border-indigo-500 bg-indigo-50' : 'border-gray-200 hover:border-gray-300 hover:bg-gray-50'}`}
+                  className={`relative p-4 rounded-xl border-2 cursor-pointer transition-all ${
+                    isSelected ? 'border-indigo-500 bg-indigo-50' : 'border-gray-200 hover:border-gray-300 hover:bg-gray-50'
+                  }`}
                 >
                   {/* Checkbox */}
                   <div className={`absolute top-3 right-3 w-6 h-6 rounded-lg border-2 flex items-center justify-center ${isSelected ? 'border-indigo-500 bg-indigo-500' : 'border-gray-300 bg-white'}`}>
@@ -229,6 +281,10 @@ export default function WarehouseProductsPage() {
                   <h4 className="font-medium text-gray-900 text-sm line-clamp-2 mb-1">{product.productName}</h4>
                   <p className="text-sm text-indigo-600 font-semibold">{product.productPrice?.toLocaleString('vi-VN')}đ</p>
                   {product.quantity != null && product.quantity > 0 && <p className="text-xs text-gray-500 mt-1">Tồn kho: {product.quantity}</p>}
+                  <div className="mt-3 inline-flex items-center gap-2 px-2.5 py-1 rounded-full text-xs font-semibold border">
+                    <span className={`h-2 w-2 rounded-full ${isDisabled ? 'bg-gray-400' : 'bg-green-500'}`} />
+                    {isDisabled ? 'Đã tắt bán' : 'Đang bán tại kho'}
+                  </div>
                 </motion.div>
               )
             })}

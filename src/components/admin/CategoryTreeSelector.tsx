@@ -152,6 +152,71 @@ export function CategoryTreeSelector({
     loadCategoryTrees()
   }, [])
 
+  // Auto-expand parent categories when selectedIds change
+  useEffect(() => {
+    if (selectedIds.length > 0 && Object.keys(categoryTrees).length > 0) {
+      // Find all parent categories of selected items and expand them
+      const findAndExpandParents = (cats: CategoryDTO[], parentIds: number[] = []): number[] => {
+        let idsToExpand: number[] = []
+        cats.forEach(cat => {
+          if (selectedIds.includes(cat.id)) {
+            // Expand all parents
+            idsToExpand = [...idsToExpand, ...parentIds, cat.id]
+          }
+          if (cat.children && cat.children.length > 0) {
+            idsToExpand = [...idsToExpand, ...findAndExpandParents(cat.children, [...parentIds, cat.id])]
+          }
+        })
+        return idsToExpand
+      }
+      
+      const idsToExpand: number[] = []
+      Object.values(categoryTrees).forEach(tree => {
+        idsToExpand.push(...findAndExpandParents(tree))
+      })
+      
+      if (idsToExpand.length > 0) {
+        setExpandedIds(prev => {
+          const newSet = new Set(prev)
+          idsToExpand.forEach(id => newSet.add(id))
+          return newSet
+        })
+      }
+      
+      // Switch to tab that has selected items
+      const selectedCategories = getSelectedCategoriesFromTrees(categoryTrees, selectedIds)
+      if (selectedCategories.length > 0) {
+        const firstSelectedType = selectedCategories[0].type
+        if (firstSelectedType) {
+          setActiveTab(firstSelectedType)
+        }
+      }
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedIds, categoryTrees])
+
+  // Helper function to get selected categories from trees
+  const getSelectedCategoriesFromTrees = (trees: Record<CategoryType, CategoryDTO[]>, ids: number[]): { id: number; name: string; type: CategoryType }[] => {
+    const result: { id: number; name: string; type: CategoryType }[] = []
+    
+    const findCategory = (cats: CategoryDTO[], type: CategoryType) => {
+      cats.forEach(cat => {
+        if (ids.includes(cat.id)) {
+          result.push({ id: cat.id, name: cat.name, type })
+        }
+        if (cat.children) {
+          findCategory(cat.children, type)
+        }
+      })
+    }
+    
+    Object.entries(trees).forEach(([type, tree]) => {
+      findCategory(tree, type as CategoryType)
+    })
+    
+    return result
+  }
+
   const loadCategoryTrees = async () => {
     try {
       setLoading(true)
@@ -206,24 +271,7 @@ export function CategoryTreeSelector({
 
   // Get all selected categories with their names
   const getSelectedCategories = (): { id: number; name: string; type: CategoryType }[] => {
-    const result: { id: number; name: string; type: CategoryType }[] = []
-    
-    const findCategory = (cats: CategoryDTO[], type: CategoryType) => {
-      cats.forEach(cat => {
-        if (selectedIds.includes(cat.id)) {
-          result.push({ id: cat.id, name: cat.name, type })
-        }
-        if (cat.children) {
-          findCategory(cat.children, type)
-        }
-      })
-    }
-    
-    Object.entries(categoryTrees).forEach(([type, tree]) => {
-      findCategory(tree, type as CategoryType)
-    })
-    
-    return result
+    return getSelectedCategoriesFromTrees(categoryTrees, selectedIds)
   }
 
   // Check if has required category type

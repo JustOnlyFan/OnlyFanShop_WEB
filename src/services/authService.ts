@@ -155,8 +155,13 @@ export class AuthService {
   // Reset password
   static async resetPassword(email: string, newPassword: string): Promise<ApiResponse<void>> {
     try {
-      const response = await axios.post(`${API_URL}/login/reset-password`, 
-        { email, newPassword }, 
+      const params = new URLSearchParams()
+      params.append('email', email)
+      params.append('newPassword', newPassword)
+
+      const response = await axios.post(
+        `${API_URL}/login/reset-password`,
+        params,
         { headers: { 'Content-Type': 'application/x-www-form-urlencoded' } }
       )
       return response.data
