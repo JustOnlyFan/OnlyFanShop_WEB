@@ -41,6 +41,11 @@ export interface Product {
   active?: boolean
   createdAt?: string
   updatedAt?: string
+  colors?: Color[]
+  images?: ProductImage[]
+  warranty?: Warranty
+  productCategories?: ProductCategory[]
+  productTags?: ProductTag[]
 }
 
 export interface ProductDetail {
@@ -55,6 +60,9 @@ export interface ProductDetail {
   imageURL: string
   brand: Brand
   category: Category
+  colors?: Color[]
+  images?: ProductImage[]
+  warranty?: Warranty
   // New fields from updated Product entity
   powerWatt?: number // Công suất (W)
   bladeDiameterCm?: number // Đường kính cánh quạt (cm)
@@ -306,6 +314,7 @@ export interface ProductRequest {
   warrantyId?: number // Warranty ID
   // Quantity field
   quantity?: number // Số lượng sản phẩm
+  colorImages?: ProductImageInput[]
 }
 
 export interface Color {
@@ -313,6 +322,23 @@ export interface Color {
   name: string
   hexCode?: string
   description?: string
+}
+
+export interface ProductImage {
+  id?: number
+  productId?: number
+  imageUrl: string
+  isMain?: boolean
+  sortOrder?: number
+  colorId?: number
+  color?: Color
+}
+
+export interface ProductImageInput {
+  colorId?: number
+  imageUrl: string
+  isMain?: boolean
+  sortOrder?: number
 }
 
 export interface Warranty {

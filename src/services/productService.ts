@@ -1,6 +1,6 @@
 import axios from 'axios'
 
-import { Product, Brand, Category, ApiResponse, HomepageResponse } from '@/types'
+import { Product, ProductDetail, Brand, Category, ApiResponse, HomepageResponse } from '@/types'
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080'
 
@@ -119,7 +119,7 @@ export class ProductService {
   }
 
   // Get product by ID
-  static async getProductById(productId: number): Promise<ApiResponse<Product>> {
+  static async getProductById(productId: number): Promise<ApiResponse<ProductDetail>> {
     try {
       const response = await axios.get(`${API_URL}/product/public/detail/${productId}`)
       return response.data
