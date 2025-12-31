@@ -44,7 +44,7 @@ export default function ProductDetailPage() {
   const [product, setProduct] = useState<ProductDetail | null>(null);
   const [loading, setLoading] = useState(true);
   const [quantity, setQuantity] = useState(1);
-  const [selectedImage, setSelectedImage] = useState(0);
+  const [selectedColorId, setSelectedColorId] = useState<number | null>(null);
   const [isLiked, setIsLiked] = useState(false);
   const [isAddingToCart, setIsAddingToCart] = useState(false);
   const [activeTab, setActiveTab] = useState('description');
@@ -89,13 +89,51 @@ export default function ProductDetailPage() {
     gcTime: 10 * 60 * 1000, // 10 phút (renamed from cacheTime in v5)
   });
 
+  const colorImageMap = useMemo(() => {
+    const map: Record<number, string> = {};
+    if (product?.images) {
+      (product.images as any[]).forEach((img) => {
+        if (img?.colorId && img.imageUrl && !map[img.colorId]) {
+          map[img.colorId] = img.imageUrl;
+        }
+      });
+    }
+    return map;
+  }, [product]);
+
+  const fallbackImage = useMemo(() => {
+    if (product?.images && (product.images as any[]).length > 0) {
+      const prioritized =
+        (product.images as any[]).find((img) => img?.isMain && img?.colorId == null)?.imageUrl ||
+        (product.images as any[]).find((img) => img?.colorId == null)?.imageUrl ||
+        (product.images as any[])[0]?.imageUrl;
+      if (prioritized) return prioritized as string;
+    }
+    return undefined;
+  }, [product]);
+
+  const displayedImage = selectedColorId && colorImageMap[selectedColorId]
+    ? colorImageMap[selectedColorId]
+    : fallbackImage;
+
+  const selectedColorName = useMemo(() => {
+    return product?.colors?.find((c: any) => c.id === selectedColorId)?.name;
+  }, [product, selectedColorId]);
+
   // Update state từ React Query
   useEffect(() => {
     if (productData?.data) {
-      setProduct(productData.data as ProductDetail);
+      const detail = productData.data as ProductDetail;
+      setProduct(detail);
+      if (detail.colors && detail.colors.length > 0) {
+        const firstWithImage = detail.colors.find((c: any) => colorImageMap[c.id]);
+        setSelectedColorId(firstWithImage?.id || detail.colors[0].id);
+      } else {
+        setSelectedColorId(null);
+      }
     }
     setLoading(isLoadingProduct);
-  }, [productData, isLoadingProduct]);
+  }, [productData, isLoadingProduct, colorImageMap]);
 
   useEffect(() => {
     console.log('[ProductDetail] storesData:', storesData);
@@ -108,6 +146,15 @@ export default function ProductDetailPage() {
     }
     setLoadingStores(isLoadingStores);
   }, [storesData, isLoadingStores]);
+
+  useEffect(() => {
+    if (!product?.colors || product.colors.length === 0) {
+      return;
+    }
+    if (!selectedColorId || !product.colors.some((c: any) => c.id === selectedColorId)) {
+      setSelectedColorId(product.colors[0].id);
+    }
+  }, [product, selectedColorId]);
 
   const handleAddToCart = async () => {
     if (product) {
@@ -213,7 +260,7 @@ export default function ProductDetailPage() {
           <div className="flex justify-center">
             <div className="relative w-full max-w-md aspect-square overflow-hidden rounded-2xl bg-gray-100 shadow-lg">
               <Image
-                src={product.imageURL || '/images/placeholder.svg'}
+                src={displayedImage || '/images/placeholder.svg'}
                 alt={product.productName}
                 fill
                 className="object-contain p-6"
@@ -286,6 +333,40 @@ export default function ProductDetailPage() {
                 </div>
               </div>
             </div>
+
+            {product.colors && product.colors.length > 0 && (
+              <div className="space-y-3">
+                <div className="flex items-center justify-between">
+                  <span className="text-sm font-medium text-gray-700">Màu sắc</span>
+                  {selectedColorName && (
+                    <span className="text-xs text-gray-500">Đang xem: {selectedColorName}</span>
+                  )}
+                </div>
+                <div className="flex flex-wrap gap-3">
+                  {product.colors.map((color) => {
+                    const isActive = selectedColorId === color.id;
+                    return (
+                      <button
+                        key={color.id}
+                        onClick={() => setSelectedColorId(color.id)}
+                        className={`flex items-center gap-2 px-3 py-2 rounded-lg border transition ${
+                          isActive ? 'border-blue-500 bg-blue-50 shadow-sm' : 'border-gray-200 bg-white hover:border-blue-200'
+                        }`}
+                      >
+                        <span
+                          className="w-6 h-6 rounded-full border border-gray-300"
+                          style={{ backgroundColor: color.hexCode || '#f8fafc' }}
+                        />
+                        <span className="text-sm text-gray-800">{color.name}</span>
+                      </button>
+                    )
+                  })}
+                </div>
+                {selectedColorId && !colorImageMap[selectedColorId] && (
+                  <p className="text-xs text-gray-500">Màu này hiện dùng ảnh mặc định của sản phẩm.</p>
+                )}
+              </div>
+            )}
 
             {/* Quantity & Actions */}
             <div className="space-y-4">

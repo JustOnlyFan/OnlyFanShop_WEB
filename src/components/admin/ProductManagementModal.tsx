@@ -71,13 +71,14 @@ export function ProductManagementModal({ product, brands, categories, onClose, o
     accessories: undefined,
     energyRating: undefined
   })
-  const [uploadingImage, setUploadingImage] = useState(false)
   const [colors, setColors] = useState<Color[]>([])
   const [warranties, setWarranties] = useState<Warranty[]>([])
   const [displaySku, setDisplaySku] = useState<string>('')
   const [displaySlug, setDisplaySlug] = useState<string>('')
   const [showColorDropdown, setShowColorDropdown] = useState(false)
   const colorDropdownRef = useRef<HTMLDivElement>(null)
+  const [colorImages, setColorImages] = useState<Record<number, string>>({})
+  const [uploadingColorId, setUploadingColorId] = useState<number | null>(null)
 
   // New states for expanded category system
   const [categoriesByType, setCategoriesByType] = useState<Record<CategoryType, CategoryDTO[]>>({} as Record<CategoryType, CategoryDTO[]>)
@@ -143,6 +144,11 @@ export function ProductManagementModal({ product, brands, categories, onClose, o
         ...prev,
         colorIds: currentIds.filter(id => id !== colorId)
       }))
+      setColorImages(prev => {
+        const updated = { ...prev }
+        delete updated[colorId]
+        return updated
+      })
     } else {
       setFormData(prev => ({
         ...prev,
@@ -159,6 +165,11 @@ export function ProductManagementModal({ product, brands, categories, onClose, o
       ...prev,
       colorIds: currentIds.filter(id => id !== colorId)
     }))
+    setColorImages(prev => {
+      const updated = { ...prev }
+      delete updated[colorId]
+      return updated
+    })
   }
 
   // Get selected tags
@@ -283,7 +294,7 @@ export function ProductManagementModal({ product, brands, categories, onClose, o
         fullDescription: productDetail.fullDescription || product.briefDescription,
         technicalSpecifications: productDetail.technicalSpecifications || '',
         price: product.price,
-        imageURL: product.imageURL,
+        imageURL: '',
         brandID: product.brand?.brandID || 0,
         categoryID: product.category?.id || 0,
         powerWatt: productDetail.powerWatt || undefined,
@@ -309,6 +320,17 @@ export function ProductManagementModal({ product, brands, categories, onClose, o
         accessories: productDetail.accessories || undefined,
         energyRating: productDetail.energyRating || undefined
       })
+
+      const imageMap: Record<number, string> = {}
+      const productImages = productDetail.images || []
+
+      productImages.forEach((img: any) => {
+        if (img?.colorId) {
+          imageMap[img.colorId] = img.imageUrl
+        }
+      })
+
+      setColorImages(imageMap)
       
       // Load product categories and tags if editing
       if (productDetail.productCategories && productDetail.productCategories.length > 0) {
@@ -342,6 +364,7 @@ export function ProductManagementModal({ product, brands, categories, onClose, o
       setSelectedTagIds([])
       setCompatibilities([])
       setIsAccessoryProduct(false)
+      setColorImages({})
       setFormData({
         productName: '',
         briefDescription: '',
@@ -377,7 +400,11 @@ export function ProductManagementModal({ product, brands, categories, onClose, o
     }
   }, [product])
 
-  const handleImageChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleImageChange = async (e: React.ChangeEvent<HTMLInputElement>, colorId?: number) => {
+    if (!colorId) {
+      toast.error('Vui lòng chọn màu để tải ảnh')
+      return
+    }
     const file = e.target.files?.[0]
     if (!file) return
 
@@ -391,16 +418,16 @@ export function ProductManagementModal({ product, brands, categories, onClose, o
       return
     }
 
-    setUploadingImage(true)
+    setUploadingColorId(colorId)
     try {
       const imageUrl = await ProductAdminService.uploadImage(file)
-      setFormData(prev => ({ ...prev, imageURL: imageUrl }))
+      setColorImages(prev => ({ ...prev, [colorId]: imageUrl }))
       toast.success('Tải ảnh thành công!')
     } catch (error: any) {
       console.error('Upload image error:', error)
       toast.error(error.message || 'Không thể tải ảnh lên')
     } finally {
-      setUploadingImage(false)
+      setUploadingColorId(null)
     }
   }
 
@@ -428,6 +455,16 @@ export function ProductManagementModal({ product, brands, categories, onClose, o
       
       // Use first selected category as primary categoryID for backward compatibility
       const primaryCategoryId = selectedCategoryIds[0] || formData.categoryID
+      const colorImagesPayload = Object.entries(colorImages || {})
+        .filter(([, url]) => Boolean(url))
+        .sort((a, b) => Number(a[0]) - Number(b[0]))
+        .map(([colorId, imageUrl], idx) => ({
+          colorId: Number(colorId),
+          imageUrl,
+          isMain: false,
+          sortOrder: idx + 1
+        }))
+      const mergedColorIds = Array.from(new Set([...(formData.colorIds || []), ...colorImagesPayload.map(ci => ci.colorId).filter(Boolean)]))
       
       const submitData: ProductRequest = {
         productName: formData.productName.trim(),
@@ -437,14 +474,14 @@ export function ProductManagementModal({ product, brands, categories, onClose, o
         fullDescription: formData.fullDescription.trim() || formData.briefDescription.trim(),
         technicalSpecifications: formData.technicalSpecifications.trim() || '',
         price: formData.price,
-        imageURL: formData.imageURL || '',
+        imageURL: '',
         brandID: formData.brandID,
         categoryID: primaryCategoryId,
         ...(formData.powerWatt !== undefined && formData.powerWatt !== null && formData.powerWatt > 0 && { powerWatt: formData.powerWatt }),
         ...(formData.bladeDiameterCm !== undefined && formData.bladeDiameterCm !== null && formData.bladeDiameterCm > 0 && { bladeDiameterCm: formData.bladeDiameterCm }),
         ...(formData.colorDefault && formData.colorDefault.trim() && { colorDefault: formData.colorDefault.trim() }),
         ...(formData.warrantyMonths !== undefined && formData.warrantyMonths !== null && formData.warrantyMonths > 0 && { warrantyMonths: formData.warrantyMonths }),
-        ...(formData.colorIds && formData.colorIds.length > 0 && { colorIds: formData.colorIds }),
+        ...(mergedColorIds.length > 0 && { colorIds: mergedColorIds }),
         ...(formData.warrantyId && formData.warrantyId > 0 && { warrantyId: formData.warrantyId }),
         ...(formData.quantity !== undefined && formData.quantity !== null && formData.quantity >= 0 && { quantity: formData.quantity }),
         ...(formData.voltage && { voltage: formData.voltage }),
@@ -461,7 +498,8 @@ export function ProductManagementModal({ product, brands, categories, onClose, o
         ...(formData.safetyStandards && { safetyStandards: formData.safetyStandards }),
         ...(formData.manufacturingYear !== undefined && formData.manufacturingYear !== null && formData.manufacturingYear > 0 && { manufacturingYear: formData.manufacturingYear }),
         ...(formData.accessories && { accessories: formData.accessories }),
-        ...(formData.energyRating && { energyRating: formData.energyRating })
+        ...(formData.energyRating && { energyRating: formData.energyRating }),
+        colorImages: colorImagesPayload // luôn gửi để BE biết xoá khi rỗng
       }
       
       // Add category IDs and tag IDs to submit data
@@ -542,29 +580,6 @@ export function ProductManagementModal({ product, brands, categories, onClose, o
           {/* Form */}
           <div className="flex-1 overflow-y-auto">
             <form id="product-form" onSubmit={handleSubmit} className="p-6 space-y-6">
-
-            {/* Image Upload */}
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Hình ảnh</label>
-              <div className="flex items-start gap-4">
-                {formData.imageURL && (
-                  <div className="w-32 h-32 rounded-lg overflow-hidden border border-gray-300 flex-shrink-0">
-                    <img src={formData.imageURL} alt="Product" className="w-full h-full object-cover" />
-                  </div>
-                )}
-                <div className="flex-1">
-                  <label className="flex flex-col items-center justify-center w-full h-32 border-2 border-gray-300 border-dashed rounded-lg cursor-pointer bg-gray-50 hover:bg-gray-100 transition-colors">
-                    {uploadingImage ? (
-                      <Loader2 className="w-8 h-8 animate-spin text-gray-600" />
-                    ) : (
-                      <UploadIcon className="w-8 h-8 mb-2 text-gray-600" />
-                    )}
-                    <span className="text-sm text-gray-600">{uploadingImage ? 'Đang tải...' : 'Nhấp để tải ảnh'}</span>
-                    <input type="file" accept="image/*" onChange={handleImageChange} className="hidden" disabled={uploadingImage} />
-                  </label>
-                </div>
-              </div>
-            </div>
 
             {/* Product Name */}
             <div>
@@ -880,6 +895,68 @@ export function ProductManagementModal({ product, brands, categories, onClose, o
                     {warranties.map((warranty) => <option key={warranty.id} value={warranty.id}>{warranty.name} ({warranty.durationMonths} tháng)</option>)}
                   </select>
                 </div>
+              </div>
+
+              {/* Color specific images */}
+              <div className="mt-6">
+                <div className="flex items-center justify-between mb-3">
+                  <div>
+                    <h4 className="text-base font-semibold text-gray-900">Ảnh theo màu sắc</h4>
+                    <p className="text-sm text-gray-500">Mỗi màu có một hình đại diện riêng</p>
+                  </div>
+                  {getSelectedColors().length > 0 && (
+                    <span className="text-xs text-gray-500">Nhấn vào thùng rác để xoá ảnh của màu</span>
+                  )}
+                </div>
+                {getSelectedColors().length === 0 ? (
+                  <div className="p-4 border border-dashed border-gray-300 rounded-lg bg-gray-50 text-sm text-gray-500 text-center">
+                    Chọn màu sắc để tải ảnh đại diện cho từng màu.
+                  </div>
+                ) : (
+                  <div className="grid md:grid-cols-3 gap-4">
+                    {getSelectedColors().map((color) => (
+                      <div key={color.id} className="p-3 border border-gray-200 rounded-lg bg-gray-50">
+                        <div className="flex items-center justify-between mb-2">
+                          <div className="flex items-center gap-2">
+                            {color.hexCode && <span className="w-4 h-4 rounded border border-gray-300" style={{ backgroundColor: color.hexCode }} />}
+                            <span className="font-medium text-gray-900">{color.name}</span>
+                          </div>
+                          {colorImages[color.id] && (
+                            <button
+                              type="button"
+                              onClick={() => setColorImages(prev => {
+                                const updated = { ...prev }
+                                delete updated[color.id]
+                                return updated
+                              })}
+                              className="p-1 text-red-500 hover:bg-red-100 rounded transition-colors"
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </button>
+                          )}
+                        </div>
+                        <div className="w-full aspect-video rounded-lg overflow-hidden bg-white border border-gray-200 mb-2 flex items-center justify-center">
+                          {colorImages[color.id] ? (
+                            <img src={colorImages[color.id]} alt={`Ảnh ${color.name}`} className="w-full h-full object-contain" />
+                          ) : (
+                            <span className="text-xs text-gray-400">Chưa có ảnh</span>
+                          )}
+                        </div>
+                        <label className="flex flex-col items-center justify-center w-full border-2 border-gray-300 border-dashed rounded-lg cursor-pointer bg-white hover:bg-gray-100 transition-colors py-3">
+                          {uploadingColorId === color.id ? (
+                            <Loader2 className="w-6 h-6 animate-spin text-gray-600" />
+                          ) : (
+                            <UploadIcon className="w-6 h-6 mb-1 text-gray-600" />
+                          )}
+                          <span className="text-xs text-gray-600">
+                            {uploadingColorId === color.id ? 'Đang tải...' : 'Tải ảnh cho màu này'}
+                          </span>
+                          <input type="file" accept="image/*" onChange={(e) => handleImageChange(e, color.id)} className="hidden" disabled={uploadingColorId === color.id} />
+                        </label>
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
             </div>
 

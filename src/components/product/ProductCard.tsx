@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, memo, useCallback, useMemo } from 'react'
+import { useState, memo, useCallback, useMemo, useEffect } from 'react'
 import Link from 'next/link'
 
 import { HeartIcon, StarIcon } from '@heroicons/react/24/outline'
@@ -25,6 +25,7 @@ interface ProductCardProps {
 
 export const ProductCard = memo(function ProductCard({ product, className, viewMode = 'grid' }: ProductCardProps) {
     const [isLiked, setIsLiked] = useState(false)
+    const [currentImageIndex, setCurrentImageIndex] = useState(0)
     const { isAuthenticated } = useAuthStore()
     const { t } = useLanguageStore()
 
@@ -36,6 +37,26 @@ export const ProductCard = memo(function ProductCard({ product, className, viewM
         setIsLiked(!isLiked)
         toast.success(isLiked ? t('removedFromFavorite') : t('addedToFavorite'))
     }, [isAuthenticated, isLiked, t])
+
+    // Build image list: prefer color-linked images, fallback to product.imageURL, then placeholder
+    const imageList = useMemo(() => {
+        const imgs: string[] = []
+        const rawImages = (product as any).images
+        if (Array.isArray(rawImages)) {
+            rawImages.forEach((img: any) => {
+                if (img?.imageUrl && !imgs.includes(img.imageUrl)) {
+                    imgs.push(img.imageUrl)
+                }
+            })
+        }
+        if (!imgs.length && product.imageURL) {
+            imgs.push(product.imageURL)
+        }
+        if (!imgs.length) {
+            imgs.push('/images/placeholder.svg')
+        }
+        return imgs
+    }, [product])
 
     // Get tag badge color based on tag code
     const getTagBadgeColor = useCallback((tag: TagDTO) => {
@@ -84,13 +105,35 @@ export const ProductCard = memo(function ProductCard({ product, className, viewM
         ))
     }, [])
 
+    useEffect(() => {
+        if (imageList.length <= 1) {
+            setCurrentImageIndex(0)
+            return
+        }
+        const interval = setInterval(() => {
+            setCurrentImageIndex((prev) => (prev + 1) % imageList.length)
+        }, 3000)
+        return () => clearInterval(interval)
+    }, [imageList])
+
 
     if (viewMode === 'list') {
         return (
             <Link href={`/products/${product.id}`} className={`group relative bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden hover:shadow-md hover:border-primary-300 hover:-translate-y-0.5 transition-all duration-300 block ${className}`}>
                 <div className="flex">
                     <div className="relative w-36 h-36 sm:w-40 sm:h-40 flex-shrink-0 overflow-hidden bg-gray-50 flex items-center justify-center">
-                        <img src={product.imageURL || '/images/placeholder.svg'} alt={product.productName} className="max-w-full max-h-full object-contain p-2 group-hover:scale-105 transition-transform duration-300" loading="lazy" />
+                        <div className="absolute inset-0">
+                            {imageList.map((img, idx) => (
+                                <img
+                                    key={img}
+                                    src={img}
+                                    alt={product.productName}
+                                    className={`absolute inset-0 w-full h-full object-contain p-2 transition-all duration-700 ${idx === currentImageIndex ? 'translate-x-0 opacity-100' : idx < currentImageIndex ? '-translate-x-full opacity-0' : 'translate-x-full opacity-0'}`}
+                                    loading="lazy"
+                                    onError={(e: any) => { e.target.src = '/images/placeholder.svg' }}
+                                />
+                            ))}
+                        </div>
                         <div className="absolute top-2 left-2 flex flex-col gap-1 z-10">
                             {badges.slice(0, 3).map((badge, index) => (<span key={index} className={`${badge.color} text-white px-2 py-0.5 rounded-full text-[10px] font-semibold shadow-sm`}>{badge.text}</span>))}
                         </div>
@@ -126,7 +169,18 @@ export const ProductCard = memo(function ProductCard({ product, className, viewM
     return (
         <Link href={`/products/${product.id}`} className={`group relative bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden hover:shadow-md hover:border-primary-300 hover:-translate-y-0.5 transition-all duration-300 h-full flex flex-col cursor-pointer ${className}`}>
             <div className="relative aspect-square overflow-hidden bg-gray-50 flex items-center justify-center">
-                <img src={product.imageURL || '/images/placeholder.svg'} alt={product.productName} className="max-w-full max-h-full object-contain p-4 group-hover:scale-105 transition-transform duration-500" loading="lazy" onError={(e: any) => { e.target.src = '/images/placeholder.svg'; }} />
+                <div className="absolute inset-0">
+                    {imageList.map((img, idx) => (
+                        <img
+                            key={img}
+                            src={img}
+                            alt={product.productName}
+                            className={`absolute inset-0 w-full h-full object-contain p-4 transition-all duration-700 ${idx === currentImageIndex ? 'translate-x-0 opacity-100' : idx < currentImageIndex ? '-translate-x-full opacity-0' : 'translate-x-full opacity-0'}`}
+                            loading="lazy"
+                            onError={(e: any) => { e.target.src = '/images/placeholder.svg' }}
+                        />
+                    ))}
+                </div>
                 <div className="absolute top-2 left-2 flex flex-col gap-1 z-10">
                     {badges.slice(0, 3).map((badge, index) => (<span key={index} className={`${badge.color} text-white px-2 py-0.5 rounded-full text-[10px] font-semibold shadow-sm`}>{badge.text}</span>))}
                 </div>
