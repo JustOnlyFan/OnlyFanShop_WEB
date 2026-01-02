@@ -2,7 +2,8 @@ import axios from 'axios'
 
 import { Product, ProductDetail, Brand, Category, ApiResponse, HomepageResponse } from '@/types'
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080'
+// Use relative URL - Next.js rewrites will proxy to backend in dev, and in production should use same domain or reverse proxy
+const API_URL = ''
 
 export interface ProductFullDetails {
   id: number
@@ -47,7 +48,6 @@ export class ProductService {
   // Get homepage data with products, categories, and brands
   static async getHomepage(params: GetHomepageParams = {}): Promise<ApiResponse<HomepageResponse>> {
     try {
-      console.log('Fetching homepage data with params:', params);
       const response = await axios.post(`${API_URL}/product/public/homepage`, null, {
         params: {
           keyword: params.keyword,
@@ -67,7 +67,6 @@ export class ProductService {
           order: params.order ?? 'DESC'
         }
       })
-      console.log('Homepage API response:', response.data);
       
       // Ensure response has the correct structure
       if (response.data && response.data.data) {

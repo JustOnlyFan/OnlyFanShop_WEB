@@ -209,5 +209,11 @@ export const ProductCard = memo(function ProductCard({ product, className, viewM
         </Link>
     )
 }, (prevProps, nextProps) => {
-    return prevProps.product.id === nextProps.product.id && prevProps.product.price === nextProps.product.price && prevProps.viewMode === nextProps.viewMode && prevProps.className === nextProps.className
+    // OPTIMIZATION: More comprehensive comparison to prevent unnecessary re-renders
+    return prevProps.product.id === nextProps.product.id 
+        && prevProps.product.price === nextProps.product.price 
+        && prevProps.product.imageURL === nextProps.product.imageURL
+        && prevProps.product.productName === nextProps.product.productName
+        && prevProps.viewMode === nextProps.viewMode 
+        && prevProps.className === nextProps.className
 })

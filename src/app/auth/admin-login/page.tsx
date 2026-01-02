@@ -72,8 +72,6 @@ export default function AdminLoginPage() {
           return
         }
 
-        // Set tokens and user directly
-        AuthService.setToken(userData.token || '')
         const user = {
           userID: userData.userID,
           username: userData.username,

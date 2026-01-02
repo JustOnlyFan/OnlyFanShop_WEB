@@ -1,85 +1,59 @@
 const isBrowser = typeof window !== 'undefined'
 
-const ACCESS_TOKEN_KEY = 'token'
+// Store access token in localStorage to persist across page reloads
+const ACCESS_TOKEN_KEY = 'access_token'
+const LEGACY_TOKEN_KEY = 'token'
 const REFRESH_TOKEN_KEY = 'refreshToken'
-const REFRESH_COOKIE_NAME = 'refreshToken'
-const SEVEN_DAYS_IN_SECONDS = 7 * 24 * 60 * 60
 
-const setCookie = (name: string, value: string, maxAgeSeconds: number) => {
+const purgeLegacyTokenStorage = () => {
   if (!isBrowser) return
-  const secure = window.location.protocol === 'https:' ? '; Secure' : ''
-  document.cookie = `${name}=${value}; Path=/; Max-Age=${maxAgeSeconds}; SameSite=Lax${secure}`
-}
-
-const clearCookie = (name: string) => {
-  if (!isBrowser) return
-  document.cookie = `${name}=; Path=/; Max-Age=0; SameSite=Lax`
-}
-
-const getCookie = (name: string): string | null => {
-  if (!isBrowser) return null
-  const cookies = document.cookie ? document.cookie.split('; ') : []
-  for (const cookie of cookies) {
-    const [cookieName, ...rest] = cookie.split('=')
-    if (cookieName === name) {
-      return rest.join('=') || ''
-    }
+  try {
+    localStorage.removeItem(LEGACY_TOKEN_KEY)
+    localStorage.removeItem(REFRESH_TOKEN_KEY)
+  } catch (e) {
+    console.warn('Failed to purge legacy token storage', e)
   }
-  return null
+}
+
+// Purge any tokens that might have been persisted by older versions
+if (isBrowser) {
+  purgeLegacyTokenStorage()
 }
 
 export const tokenStorage = {
   setAccessToken(token: string | null) {
     if (!isBrowser) return
-    if (token) {
-      localStorage.setItem(ACCESS_TOKEN_KEY, token)
-    } else {
-      localStorage.removeItem(ACCESS_TOKEN_KEY)
-    }
-  },
-
-  setRefreshToken(refreshToken: string | null, persistCookie: boolean = true) {
-    if (!isBrowser) return
-    if (refreshToken) {
-      localStorage.setItem(REFRESH_TOKEN_KEY, refreshToken)
-      if (persistCookie) {
-        setCookie(REFRESH_COOKIE_NAME, refreshToken, SEVEN_DAYS_IN_SECONDS)
+    try {
+      if (token) {
+        localStorage.setItem(ACCESS_TOKEN_KEY, token)
+      } else {
+        localStorage.removeItem(ACCESS_TOKEN_KEY)
       }
-    } else {
-      localStorage.removeItem(REFRESH_TOKEN_KEY)
-      clearCookie(REFRESH_COOKIE_NAME)
+      // Ensure legacy keys stay cleared
+      purgeLegacyTokenStorage()
+    } catch (e) {
+      console.warn('Failed to save access token to localStorage', e)
     }
   },
 
   getAccessToken(): string | null {
     if (!isBrowser) return null
-    const raw = localStorage.getItem(ACCESS_TOKEN_KEY)
-    if (!raw || raw === 'null' || raw === 'undefined' || raw.trim() === '') {
+    try {
+      return localStorage.getItem(ACCESS_TOKEN_KEY)
+    } catch (e) {
+      console.warn('Failed to get access token from localStorage', e)
       return null
     }
-    return raw
-  },
-
-  getRefreshToken(): string | null {
-    if (!isBrowser) return null
-    const stored = localStorage.getItem(REFRESH_TOKEN_KEY)
-    if (stored && stored !== 'null' && stored !== 'undefined' && stored.trim() !== '') {
-      return stored
-    }
-    return getCookie(REFRESH_COOKIE_NAME)
   },
 
   clearAll() {
     if (!isBrowser) return
-    localStorage.removeItem(ACCESS_TOKEN_KEY)
-    localStorage.removeItem(REFRESH_TOKEN_KEY)
-    clearCookie(REFRESH_COOKIE_NAME)
+    try {
+      localStorage.removeItem(ACCESS_TOKEN_KEY)
+      purgeLegacyTokenStorage()
+    } catch (e) {
+      console.warn('Failed to clear token storage', e)
+    }
   }
 }
-
-
-
-
-
-
 

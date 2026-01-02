@@ -26,7 +26,7 @@ interface AuthActions {
     address?: string
   }) => Promise<void>
   googleLogin: (email: string, username: string) => Promise<void>
-  logout: () => void
+  logout: () => Promise<void>
   updateUser: (userData: Partial<User>) => Promise<void>
   clearError: () => void
 }
@@ -64,7 +64,6 @@ export const useAuthStore = create<AuthState & AuthActions>()(
         try {
           const response = await AuthService.login({ email, password })
           if (response.statusCode === 200 && response.data) {
-            AuthService.setToken(response.data.token || '')
             AuthService.setUser(response.data)
             set({ 
               user: response.data, 
@@ -120,7 +119,6 @@ export const useAuthStore = create<AuthState & AuthActions>()(
         try {
           const response = await AuthService.googleLogin(email, username)
           if (response.statusCode === 200 && response.data) {
-            AuthService.setToken(response.data.token || '')
             AuthService.setUser(response.data)
             set({ 
               user: response.data, 
@@ -139,8 +137,8 @@ export const useAuthStore = create<AuthState & AuthActions>()(
         }
       },
 
-      logout: () => {
-        AuthService.clearAuth()
+      logout: async () => {
+        await AuthService.logout(false)
         set({ 
           user: null, 
           isAuthenticated: false, 
@@ -172,15 +170,14 @@ export const useAuthStore = create<AuthState & AuthActions>()(
     }),
     {
       name: 'auth-storage',
-      version: 2,
+      version: 3,
       migrate: (persistedState: any, version) => {
-        // Drop stale isAuthenticated flag; recompute from token + user
-        if (version < 2) {
-          const token = AuthService.getToken()
+        // v3: stop relying on persisted tokens; just keep user data
+        if (version < 3) {
           const user = persistedState.user || null
           return {
             user,
-            isAuthenticated: !!(token && user)
+            isAuthenticated: !!user
           }
         }
         return persistedState
@@ -190,9 +187,8 @@ export const useAuthStore = create<AuthState & AuthActions>()(
         user: state.user
       }),
       onRehydrateStorage: () => (state) => {
-        const token = AuthService.getToken()
         const user = state?.user || null
-        if (!token || !user) {
+        if (!user) {
           AuthService.clearAuth()
           state?.setUser(null)
           state?.setHasHydrated?.(true)
@@ -204,8 +200,3 @@ export const useAuthStore = create<AuthState & AuthActions>()(
     }
   )
 )
-
-
-
-
-

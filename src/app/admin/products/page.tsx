@@ -84,12 +84,13 @@ export default function AdminProductsPage() {
 
   const loadProductCounts = async () => {
     try {
-      // Load all products to count active/inactive
+      // Load all products (including inactive) to count active/inactive
       const data = await ProductAdminService.getProductList({
         page: 1,
         size: 1000, // Large enough to get all
         sortBy: 'productID',
-        order: 'DESC'
+        order: 'DESC',
+        includeInactive: true // Include inactive products to get accurate counts
       })
       const allProducts = data.products || []
       const active = allProducts.filter(p => p.active).length
@@ -311,14 +312,8 @@ export default function AdminProductsPage() {
     try {
       await ProductAdminService.toggleActive(productID, !product.active)
       toast.success(`Sản phẩm đã được ${!product.active ? 'kích hoạt' : 'vô hiệu hóa'}`)
-      // Update stats
-      if (product.active) {
-        setTotalActive(prev => prev - 1)
-        setTotalInactive(prev => prev + 1)
-      } else {
-        setTotalActive(prev => prev + 1)
-        setTotalInactive(prev => prev - 1)
-      }
+      // Reload product counts to get accurate statistics
+      await loadProductCounts()
       loadProducts(true, currentPage)
     } catch (error: any) {
       toast.error(error.message || 'Không thể thay đổi trạng thái')

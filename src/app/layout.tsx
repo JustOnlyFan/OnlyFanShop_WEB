@@ -25,7 +25,8 @@ const poppins = Poppins({
 })
 
 export const metadata: Metadata = {
-  metadataBase: new URL(process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000'),
+  // Use relative URL - Next.js will handle base URL automatically
+  metadataBase: new URL('http://localhost:3000'), // Default for development, will be overridden in production
   title: 'OnlyFan Shop - Quạt điện cao cấp',
   description: 'Cửa hàng quạt điện cao cấp với đa dạng sản phẩm từ các thương hiệu uy tín. Quạt đứng, quạt trần, quạt hơi nước và nhiều hơn nữa.',
   keywords: 'quạt điện, quạt đứng, quạt trần, quạt hơi nước, quạt không cánh, OnlyFan',

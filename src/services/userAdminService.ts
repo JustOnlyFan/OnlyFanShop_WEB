@@ -3,9 +3,8 @@ import { tokenStorage } from '@/utils/tokenStorage'
 
 import type { StoreStatus } from './storeLocationService'
 
-const API_URL = typeof process.env.NEXT_PUBLIC_API_URL !== 'undefined'
-  ? process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080'
-  : 'http://localhost:8080'
+// Use relative URL - Next.js rewrites will proxy to backend in dev, and in production should use same domain or reverse proxy
+const API_URL = ''
 
 export interface UserDTO {
   userID: number

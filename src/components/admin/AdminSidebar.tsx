@@ -53,8 +53,8 @@ export function AdminSidebar() {
   const { user, logout } = useAuthStore()
   const { language } = useLanguageStore()
 
-  const handleLogout = () => {
-    logout()
+  const handleLogout = async () => {
+    await logout()
     toast.success(language === 'vi' ? 'Đã đăng xuất thành công' : 'Logged out successfully')
     router.push('/auth/admin-login')
   }

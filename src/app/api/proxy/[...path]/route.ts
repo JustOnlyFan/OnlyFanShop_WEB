@@ -1,6 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server'
 
-const BACKEND_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080'
+// In development, use localhost:8080 for direct backend access in server-side routes
+// In production, backend should be accessible via relative URL or reverse proxy
+const BACKEND_URL = process.env.NODE_ENV === 'production' 
+  ? '' // Use relative URL in production (backend should be same domain or reverse proxy)
+  : 'http://localhost:8080' // Direct access in development
 
 export async function GET(
   request: NextRequest,
@@ -8,7 +12,9 @@ export async function GET(
 ) {
   try {
     const path = params.path.join('/')
-    const url = new URL(`/api/${path}`, BACKEND_URL)
+    const url = BACKEND_URL 
+      ? new URL(`/api/${path}`, BACKEND_URL)
+      : new URL(`/api/${path}`, request.url)
     
     // Copy query parameters
     const searchParams = request.nextUrl.searchParams
@@ -48,7 +54,9 @@ export async function POST(
 ) {
   try {
     const path = params.path.join('/')
-    const url = new URL(`/api/${path}`, BACKEND_URL)
+    const url = BACKEND_URL 
+      ? new URL(`/api/${path}`, BACKEND_URL)
+      : new URL(`/api/${path}`, request.url)
     
     const body = await request.json()
 

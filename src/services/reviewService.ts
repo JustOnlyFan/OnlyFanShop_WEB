@@ -2,7 +2,8 @@ import axios from 'axios'
 
 import { tokenStorage } from '@/utils/tokenStorage'
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080'
+// Use relative URL - Next.js rewrites will proxy to backend in dev, and in production should use same domain or reverse proxy
+const API_URL = ''
 
 export interface ProductReview {
   id: number

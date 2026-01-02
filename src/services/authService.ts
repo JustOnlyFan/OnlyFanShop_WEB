@@ -4,10 +4,8 @@ import { apiClient } from '@/lib/api'
 import { User } from '@/types'
 import { tokenStorage } from '@/utils/tokenStorage'
 
-// Respect empty string from next.config rewrites (same-origin proxy in dev)
-const API_URL = typeof process.env.NEXT_PUBLIC_API_URL !== 'undefined'
-  ? process.env.NEXT_PUBLIC_API_URL as string
-  : 'http://localhost:8080'
+// Use relative URL - Next.js rewrites will proxy to backend in dev, and in production should use same domain or reverse proxy
+const API_URL = ''
 
 export interface LoginRequest {
   email: string
@@ -44,27 +42,29 @@ export interface ApiResponse<T> {
 }
 
 export class AuthService {
+  private static sanitizeUserForStorage(user: User | UserDTO): UserDTO {
+    const { token: _token, refreshToken: _refreshToken, ...rest } = user as any
+    return rest as UserDTO
+  }
 
   // Login
   static async login(credentials: LoginRequest): Promise<ApiResponse<UserDTO>> {
     try {
-      const response = await axios.post(`${API_URL}/login/signin`, credentials)
+      const response = await axios.post(`${API_URL}/login/signin`, credentials, { withCredentials: true })
       
-      // Only save to localStorage if login is successful
       if (response.data && response.data.statusCode === 200 && response.data.data) {
-        const { token, refreshToken } = response.data.data
+        const { token } = response.data.data
         if (token) {
           tokenStorage.setAccessToken(token)
         }
-        if (refreshToken) {
-          tokenStorage.setRefreshToken(refreshToken, true)
-        }
+        const sanitizedUser = this.sanitizeUserForStorage(response.data.data)
+        response.data.data = sanitizedUser
         if (typeof window !== 'undefined') {
-          localStorage.setItem('user', JSON.stringify(response.data.data))
+          localStorage.setItem('user', JSON.stringify(sanitizedUser))
         }
       }
       
-      return response.data
+      return response.data as ApiResponse<UserDTO>
     } catch (error: any) {
       // Clear any existing auth data on login failure
       tokenStorage.clearAll()
@@ -187,27 +187,27 @@ export class AuthService {
         const response = await axios.post(`${API_URL}/api/auth/google/login`, 
           { email: '' }, // Will be extracted from token
           { 
-            headers: { 
-              'X-Custom-Token': customToken,
-              'Content-Type': 'application/json'
-            } 
-          }
+          headers: { 
+            'X-Custom-Token': customToken,
+            'Content-Type': 'application/json'
+            },
+            withCredentials: true
+          } 
         )
         
         if (response.data.data) {
-          const { token, refreshToken } = response.data.data
+          const { token } = response.data.data
           if (token) {
             tokenStorage.setAccessToken(token)
           }
-          if (refreshToken) {
-            tokenStorage.setRefreshToken(refreshToken, true)
-          }
+          const sanitizedUser = this.sanitizeUserForStorage(response.data.data)
+          response.data.data = sanitizedUser
           if (typeof window !== 'undefined') {
-            localStorage.setItem('user', JSON.stringify(response.data.data))
+            localStorage.setItem('user', JSON.stringify(sanitizedUser))
           }
         }
         
-        return response.data
+        return response.data as ApiResponse<UserDTO>
       }
       
       // Otherwise, this is the Android version with raw token
@@ -217,24 +217,24 @@ export class AuthService {
           headers: { 
             'X-Custom-Token': emailOrToken,
             'Content-Type': 'application/json'
-          } 
+          },
+          withCredentials: true
         }
       )
       
       if (response.data.data) {
-        const { token, refreshToken } = response.data.data
+        const { token } = response.data.data
         if (token) {
           tokenStorage.setAccessToken(token)
         }
-        if (refreshToken) {
-          tokenStorage.setRefreshToken(refreshToken, true)
-        }
+        const sanitizedUser = this.sanitizeUserForStorage(response.data.data)
+        response.data.data = sanitizedUser
         if (typeof window !== 'undefined') {
-          localStorage.setItem('user', JSON.stringify(response.data.data))
+          localStorage.setItem('user', JSON.stringify(sanitizedUser))
         }
       }
       
-      return response.data
+      return response.data as ApiResponse<UserDTO>
     } catch (error: any) {
       throw new Error(error.response?.data?.message || 'Google login failed')
     }
@@ -245,8 +245,41 @@ export class AuthService {
     try {
       if (typeof window === 'undefined') return null
       const userStr = localStorage.getItem('user')
-      return userStr ? JSON.parse(userStr) : null
+      if (!userStr) return null
+      const parsed = JSON.parse(userStr)
+      const sanitized = this.sanitizeUserForStorage(parsed)
+      // Rewrite if legacy token fields exist
+      if (sanitized && JSON.stringify(sanitized) !== userStr) {
+        localStorage.setItem('user', JSON.stringify(sanitized))
+      }
+      return sanitized
     } catch {
+      return null
+    }
+  }
+
+  // Refresh token from cookie
+  static async refreshToken(): Promise<ApiResponse<UserDTO> | null> {
+    try {
+      const response = await axios.post(`${API_URL}/login/refresh`, {}, { withCredentials: true })
+      
+      if (response.data && response.data.statusCode === 200 && response.data.data) {
+        const { token } = response.data.data
+        if (token) {
+          tokenStorage.setAccessToken(token)
+        }
+        const sanitizedUser = this.sanitizeUserForStorage(response.data.data)
+        response.data.data = sanitizedUser
+        if (typeof window !== 'undefined') {
+          localStorage.setItem('user', JSON.stringify(sanitizedUser))
+        }
+        return response.data as ApiResponse<UserDTO>
+      }
+      
+      return null
+    } catch (error: any) {
+      // If refresh fails, clear auth data
+      this.clearAuth()
       return null
     }
   }
@@ -254,10 +287,6 @@ export class AuthService {
   // Get token
   static getToken(): string | null {
     return tokenStorage.getAccessToken()
-  }
-
-  static getRefreshToken(): string | null {
-    return tokenStorage.getRefreshToken()
   }
 
   // Check if user is authenticated
@@ -269,14 +298,9 @@ export class AuthService {
 
   // Set user data
   static setUser(user: User | UserDTO): void {
+    const sanitizedUser = this.sanitizeUserForStorage(user)
     if (typeof window !== 'undefined') {
-      localStorage.setItem('user', JSON.stringify(user))
-    }
-    if (user.token) {
-      tokenStorage.setAccessToken(user.token)
-    }
-    if (user.refreshToken) {
-      tokenStorage.setRefreshToken(user.refreshToken, true)
+      localStorage.setItem('user', JSON.stringify(sanitizedUser))
     }
   }
 
@@ -306,9 +330,17 @@ export class AuthService {
   }
 
   // Logout
-  static logout(): void {
-    this.clearAuth()
-    window.location.href = '/auth/login'
+  static async logout(redirect: boolean = true): Promise<void> {
+    try {
+      await axios.post(`${API_URL}/login/logout`, {}, { withCredentials: true })
+    } catch (error) {
+      console.warn('Logout request failed:', (error as any)?.message)
+    } finally {
+      this.clearAuth()
+      if (redirect && typeof window !== 'undefined') {
+        window.location.href = '/auth/login'
+      }
+    }
   }
 
   // Update profile
