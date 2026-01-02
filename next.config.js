@@ -42,10 +42,9 @@ const nextConfig = {
   httpAgentOptions: {
     keepAlive: true,
   },
-  env: {
-    // In development, use same-origin URLs and let rewrites proxy to backend to avoid CORS
-    NEXT_PUBLIC_API_URL: isDev ? '' : (process.env.NEXT_PUBLIC_API_URL || ''),
-  },
+  // Removed NEXT_PUBLIC_API_URL - frontend uses relative URLs
+  // In development: Next.js rewrites proxy to backend
+  // In production: Use same domain or reverse proxy
   async rewrites() {
     // Proxy API calls to backend at localhost:8080 in development to bypass CORS
     if (isDev) {

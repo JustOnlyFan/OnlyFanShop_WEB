@@ -173,8 +173,7 @@ export function AuthContainer() {
           email: response.data.email,
           phoneNumber: response.data.phoneNumber,
           role: 'CUSTOMER' as const,
-          authProvider: response.data.authProvider || 'LOCAL',
-          token: response.data.token
+          authProvider: response.data.authProvider || 'LOCAL'
         };
         setUser(userData);
         router.push('/');

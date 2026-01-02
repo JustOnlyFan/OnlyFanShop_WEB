@@ -2,7 +2,8 @@ import axios, { InternalAxiosRequestConfig } from 'axios'
 import { ApiResponse } from '@/types'
 import { tokenStorage } from '@/utils/tokenStorage'
 
-const baseURL = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:8080'
+// Use relative URL - Next.js rewrites will proxy to backend in dev, and in production should use same domain or reverse proxy
+const baseURL = ''
 
 // Create a shared axios instance with interceptors
 export const apiClient = axios.create({
@@ -11,6 +12,7 @@ export const apiClient = axios.create({
   headers: {
     'Content-Type': 'application/json',
   },
+  withCredentials: true,
 })
 
 // Request interceptor để thêm token
@@ -27,109 +29,21 @@ apiClient.interceptors.request.use(
   }
 )
 
-// Response interceptor để xử lý lỗi 401
-let isRefreshing = false
-let failedQueue: Array<{
-  resolve: (value?: any) => void
-  reject: (error?: any) => void
-}> = []
-
-const processQueue = (error: any, token: string | null = null) => {
-  failedQueue.forEach(prom => {
-    if (error) {
-      prom.reject(error)
-    } else {
-      prom.resolve(token)
-    }
-  })
-  
-  failedQueue = []
-}
-
+// Response interceptor để cập nhật token mới từ backend header
 apiClient.interceptors.response.use(
-  (response) => response,
-  async (error) => {
-    const originalRequest = error.config as InternalAxiosRequestConfig & { _retry?: boolean }
-
-    // If error is 401 and we haven't tried to refresh yet
-    if (error.response?.status === 401 && !originalRequest._retry) {
-      if (isRefreshing) {
-        return new Promise((resolve, reject) => {
-          failedQueue.push({ resolve, reject })
-        })
-          .then(token => {
-            if (token && originalRequest.headers) {
-              originalRequest.headers.Authorization = `Bearer ${token}`
-            }
-            return apiClient(originalRequest)
-          })
-          .catch(err => Promise.reject(err))
-      }
-
-      originalRequest._retry = true
-      isRefreshing = true
-
-      const refreshToken = tokenStorage.getRefreshToken()
-      if (!refreshToken) {
-        processQueue(error, null)
-        isRefreshing = false
-        await handleUnauthorizedRedirect(error)
-        return Promise.reject(error)
-      }
-
-      try {
-         const refreshResponse = await axios.post(
-           `${apiClient.defaults.baseURL || ''}/login/refresh`,
-           { refreshToken }
-         )
- 
-         const refreshData: ApiResponse<any> = refreshResponse.data
-         const refreshedUser = refreshData.data
-         const newAccessToken = refreshedUser?.token || null
-         const newRefreshToken = refreshedUser?.refreshToken || refreshToken
-
-         if (!newAccessToken) {
-           throw new Error('Invalid refresh response: missing access token')
-         }
-
-         tokenStorage.setAccessToken(newAccessToken)
-         if (newRefreshToken) {
-           tokenStorage.setRefreshToken(newRefreshToken, true)
-         }
-
-         if (typeof window !== 'undefined' && refreshedUser) {
-           localStorage.setItem('user', JSON.stringify(refreshedUser))
-         }
-
-         if (refreshedUser) {
-           try {
-             const { useAuthStore } = await import('@/store/authStore')
-             useAuthStore.getState().setUser(refreshedUser)
-           } catch (storeError) {
-             console.error('Failed to update auth store after refresh', storeError)
-           }
-         }
-
-         processQueue(null, newAccessToken)
-         if (originalRequest.headers) {
-           originalRequest.headers.Authorization = `Bearer ${newAccessToken}`
-         }
-
-         return apiClient(originalRequest)
-      } catch (refreshError) {
-        processQueue(refreshError, null)
-        await handleUnauthorizedRedirect(refreshError)
-        return Promise.reject(refreshError)
-      } finally {
-        isRefreshing = false
-      }
+  (response) => {
+    // Backend tự động refresh token và trả về trong header X-New-Access-Token
+    const newAccessToken = response.headers['x-new-access-token'] || response.headers['X-New-Access-Token']
+    if (newAccessToken) {
+      tokenStorage.setAccessToken(newAccessToken)
     }
-    
-    // If 401 after retry or no refresh token, handle immediately
+    return response
+  },
+  async (error) => {
+    // Nếu lỗi 401, redirect về login
     if (error.response?.status === 401) {
       await handleUnauthorizedRedirect(error)
     }
- 
     return Promise.reject(error)
   }
 )
@@ -144,7 +58,7 @@ const handleUnauthorizedRedirect = async (error: any) => {
 
   try {
     const { useAuthStore } = await import('@/store/authStore')
-    useAuthStore.getState().logout()
+    await useAuthStore.getState().logout()
   } catch (storeError) {
     console.error('Error clearing auth store:', storeError)
   }
@@ -159,8 +73,4 @@ const handleUnauthorizedRedirect = async (error: any) => {
     }
   }
 }
-
-
-
-
 

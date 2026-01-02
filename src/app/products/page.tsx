@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useMemo, useRef } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Product, Category, Brand, CategoryDTO, CategoryType, TagDTO } from '@/types';
 import { ProductService } from '@/services/productService';
 import CategoryService from '@/services/categoryService';
@@ -54,13 +54,14 @@ export default function ProductsPage() {
   const [spaceCategories, setSpaceCategories] = useState<CategoryDTO[]>([]);
   const [purposeCategories, setPurposeCategories] = useState<CategoryDTO[]>([]);
   const [technologyCategories, setTechnologyCategories] = useState<CategoryDTO[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const [totalProducts, setTotalProducts] = useState(0);
   const [showFilterPopup, setShowFilterPopup] = useState(false);
   const filterRef = useRef<HTMLDivElement>(null);
   const { t } = useLanguageStore();
+  const queryClient = useQueryClient();
   
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -88,42 +89,56 @@ export default function ProductsPage() {
     tagCodes: [], spaceId: '', purposeId: '', technologyId: ''
   });
 
+  // OPTIMIZATION: Load products first (most critical), extract categories/brands from response
+  // OPTIMIZATION: Lazy load filter data only when filter popup opens
   const { data: categoriesData } = useQuery({
     queryKey: ['categories'],
     queryFn: () => ProductService.getCategories(),
-    staleTime: 10 * 60 * 1000,
+    staleTime: 30 * 60 * 1000, // 30 minutes
+    gcTime: 60 * 60 * 1000, // 1 hour
+    enabled: showFilterPopup, // Only load when filter popup is open
   });
 
   const { data: brandsData } = useQuery({
     queryKey: ['brands'],
     queryFn: () => ProductService.getBrands(),
-    staleTime: 10 * 60 * 1000,
+    staleTime: 30 * 60 * 1000,
+    gcTime: 60 * 60 * 1000,
+    enabled: showFilterPopup, // Only load when filter popup is open
   });
 
-  // Fetch tags
+  // Fetch tags - lazy load
   const { data: tagsData } = useQuery({
     queryKey: ['tags'],
     queryFn: () => TagService.getAllTags(),
-    staleTime: 10 * 60 * 1000,
+    staleTime: 30 * 60 * 1000,
+    gcTime: 60 * 60 * 1000,
+    enabled: showFilterPopup, // Only load when filter popup is open
   });
 
-  // Fetch category types for filters
+  // Fetch category types for filters - lazy load
   const { data: spaceCategoriesData } = useQuery({
     queryKey: ['categories', 'SPACE'],
     queryFn: () => CategoryService.getCategoriesByType(CategoryType.SPACE),
-    staleTime: 10 * 60 * 1000,
+    staleTime: 30 * 60 * 1000,
+    gcTime: 60 * 60 * 1000,
+    enabled: showFilterPopup, // Only load when filter popup is open
   });
 
   const { data: purposeCategoriesData } = useQuery({
     queryKey: ['categories', 'PURPOSE'],
     queryFn: () => CategoryService.getCategoriesByType(CategoryType.PURPOSE),
-    staleTime: 10 * 60 * 1000,
+    staleTime: 30 * 60 * 1000,
+    gcTime: 60 * 60 * 1000,
+    enabled: showFilterPopup, // Only load when filter popup is open
   });
 
   const { data: technologyCategoriesData } = useQuery({
     queryKey: ['categories', 'TECHNOLOGY'],
     queryFn: () => CategoryService.getCategoriesByType(CategoryType.TECHNOLOGY),
-    staleTime: 10 * 60 * 1000,
+    staleTime: 30 * 60 * 1000,
+    gcTime: 60 * 60 * 1000,
+    enabled: showFilterPopup, // Only load when filter popup is open
   });
 
   const queryParams = useMemo(() => ({
@@ -141,27 +156,62 @@ export default function ProductsPage() {
     page: currentPage, size: 12, sortBy, order
   }), [keyword, categoryId, brandId, minPrice, maxPrice, bladeCount, remoteControl, oscillation, timer, minPower, maxPower, currentPage, sortBy, order]);
 
-  const { data: productsData, isLoading: isLoadingProducts } = useQuery({
+  // OPTIMIZATION: Products query with better caching and placeholder data
+  const { data: productsData, isLoading: isLoadingProducts, isFetching: isFetchingProducts } = useQuery({
     queryKey: ['products', queryParams],
     queryFn: () => ProductService.getHomepage(queryParams),
-    staleTime: 2 * 60 * 1000,
-    placeholderData: (prev) => prev,
+    staleTime: 2 * 60 * 1000, // 2 minutes (matches backend cache)
+    gcTime: 5 * 60 * 1000, // 5 minutes
+    placeholderData: (prev) => prev, // Show previous data while fetching
+    refetchOnWindowFocus: false, // Don't refetch on window focus
+    refetchOnMount: false, // Don't refetch on mount if data is fresh
   });
 
-  useEffect(() => { if (categoriesData?.data) setCategories(categoriesData.data); }, [categoriesData]);
-  useEffect(() => { if (brandsData?.data) setBrands(brandsData.data); }, [brandsData]);
-  useEffect(() => { if (tagsData) setTags(tagsData); }, [tagsData]);
-  useEffect(() => { if (spaceCategoriesData) setSpaceCategories(spaceCategoriesData); }, [spaceCategoriesData]);
-  useEffect(() => { if (purposeCategoriesData) setPurposeCategories(purposeCategoriesData); }, [purposeCategoriesData]);
-  useEffect(() => { if (technologyCategoriesData) setTechnologyCategories(technologyCategoriesData); }, [technologyCategoriesData]);
+  // OPTIMIZATION: Extract categories and brands from productsData first (backend returns them)
   useEffect(() => {
     if (productsData?.data) {
       setProducts(productsData.data.products || []);
       setTotalPages(productsData.data.pagination?.totalPages || 1);
       setTotalProducts(productsData.data.pagination?.totalElements || 0);
+      
+      // Extract categories and brands from productsData if available (faster than separate API calls)
+      if (productsData.data.categories && productsData.data.categories.length > 0) {
+        const mappedCategories = productsData.data.categories.map((c: any) => ({
+          id: c.id ?? c.categoryID,
+          name: c.name ?? c.categoryName
+        }));
+        setCategories(mappedCategories);
+      }
+      
+      if (productsData.data.brands && productsData.data.brands.length > 0) {
+        const mappedBrands = productsData.data.brands.map((b: any) => ({
+          brandID: b.brandID ?? b.id,
+          name: b.name ?? b.brandName,
+          imageURL: b.imageURL
+        }));
+        setBrands(mappedBrands);
+      }
     }
-    setLoading(isLoadingProducts);
+    setLoading(isLoadingProducts && !productsData); // Only show loading if no data at all
   }, [productsData, isLoadingProducts]);
+
+  // Fallback: Load categories/brands from separate API if not in productsData
+  useEffect(() => { 
+    if (categoriesData?.data && categories.length === 0) {
+      setCategories(categoriesData.data);
+    }
+  }, [categoriesData, categories.length]);
+  
+  useEffect(() => { 
+    if (brandsData?.data && brands.length === 0) {
+      setBrands(brandsData.data);
+    }
+  }, [brandsData, brands.length]);
+  
+  useEffect(() => { if (tagsData) setTags(tagsData); }, [tagsData]);
+  useEffect(() => { if (spaceCategoriesData) setSpaceCategories(spaceCategoriesData); }, [spaceCategoriesData]);
+  useEffect(() => { if (purposeCategoriesData) setPurposeCategories(purposeCategoriesData); }, [purposeCategoriesData]);
+  useEffect(() => { if (technologyCategoriesData) setTechnologyCategories(technologyCategoriesData); }, [technologyCategoriesData]);
 
   // Sync URL to temp filters when popup opens
   useEffect(() => {
@@ -224,7 +274,22 @@ export default function ProductsPage() {
 
   const clearURLFilters = () => { router.push('/products'); setCurrentPage(1); };
   const handleSort = (newSortBy: string, newOrder: string) => updateURL({ sortBy: newSortBy, order: newOrder });
-  const handlePageChange = (page: number) => { setCurrentPage(page); window.scrollTo({ top: 0, behavior: 'smooth' }); };
+  const handlePageChange = (page: number) => { 
+    setCurrentPage(page); 
+    window.scrollTo({ top: 0, behavior: 'smooth' }); 
+  };
+  
+  // OPTIMIZATION: Prefetch next page data when user is near bottom
+  useEffect(() => {
+    if (currentPage < totalPages && !isFetchingProducts) {
+      const nextPageParams = { ...queryParams, page: currentPage + 1 };
+      queryClient.prefetchQuery({
+        queryKey: ['products', nextPageParams],
+        queryFn: () => ProductService.getHomepage(nextPageParams),
+        staleTime: 2 * 60 * 1000,
+      });
+    }
+  }, [currentPage, totalPages, isFetchingProducts, queryParams, queryClient]);
 
   const getActiveFilterCount = () => {
     let count = 0;
@@ -280,9 +345,8 @@ export default function ProductsPage() {
     }
   };
 
-  if (loading || isLoadingProducts) {
-    return <div className="min-h-screen flex items-center justify-center"><LoadingSpinner /></div>;
-  }
+  // OPTIMIZATION: Show skeleton loading instead of full page spinner
+  const showSkeleton = isLoadingProducts && !productsData;
 
 
   return (
@@ -817,11 +881,28 @@ export default function ProductsPage() {
         </div>
 
         {/* Products Grid */}
-        {products.length > 0 ? (
+        {showSkeleton ? (
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
+            {Array.from({ length: 12 }).map((_, i) => (
+              <div key={i} className="bg-white rounded-lg overflow-hidden shadow-sm animate-pulse">
+                <div className="w-full aspect-square bg-gray-200"></div>
+                <div className="p-3 space-y-2">
+                  <div className="h-4 bg-gray-200 rounded w-3/4"></div>
+                  <div className="h-3 bg-gray-200 rounded w-1/2"></div>
+                  <div className="h-5 bg-gray-200 rounded w-2/3"></div>
+                </div>
+              </div>
+            ))}
+          </div>
+        ) : products.length > 0 ? (
           <>
             <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
               {products.map((product) => (
-                <ProductCard key={product.id || product.productID} product={product} viewMode="grid" />
+                <ProductCard 
+                  key={`product-${product.id || product.productID}`} 
+                  product={product} 
+                  viewMode="grid" 
+                />
               ))}
             </div>
 

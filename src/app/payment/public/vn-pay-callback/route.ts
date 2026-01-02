@@ -1,12 +1,18 @@
 import { NextRequest } from 'next/server'
 
-const BACKEND_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080'
+// In development, use localhost:8080 for direct backend access in server-side routes
+// In production, backend should be accessible via relative URL or reverse proxy
+const BACKEND_URL = process.env.NODE_ENV === 'production' 
+  ? '' // Use relative URL in production (backend should be same domain or reverse proxy)
+  : 'http://localhost:8080' // Direct access in development
 
 export async function GET(request: NextRequest) {
   try {
     // Forward all query parameters to backend
     const searchParams = request.nextUrl.searchParams
-    const backendUrl = new URL('/payment/public/vn-pay-callback', BACKEND_URL)
+    const backendUrl = BACKEND_URL 
+      ? new URL('/payment/public/vn-pay-callback', BACKEND_URL)
+      : new URL('/payment/public/vn-pay-callback', request.url)
     searchParams.forEach((value, key) => {
       backendUrl.searchParams.append(key, value)
     })

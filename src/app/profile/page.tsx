@@ -101,8 +101,8 @@ export default function ProfilePage() {
     setError('');
   };
 
-  const handleLogout = () => {
-    logout();
+  const handleLogout = async () => {
+    await logout();
     router.push('/');
   };
 

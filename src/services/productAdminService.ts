@@ -3,7 +3,8 @@ import axios from 'axios'
 import { ApiResponse, ProductRequest, ProductDTO, HomepageResponse } from '@/types'
 import { tokenStorage } from '@/utils/tokenStorage'
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080'
+// Use relative URL - Next.js rewrites will proxy to backend in dev, and in production should use same domain or reverse proxy
+const API_URL = ''
 
 export interface GetProductListParams {
   page?: number
@@ -13,6 +14,7 @@ export interface GetProductListParams {
   keyword?: string
   categoryId?: number | null
   brandId?: number | null
+  includeInactive?: boolean
 }
 
 class ProductAdminService {
@@ -43,7 +45,8 @@ class ProductAdminService {
             order: params.order ?? 'DESC',
             keyword: params.keyword,
             categoryId: params.categoryId,
-            brandId: params.brandId
+            brandId: params.brandId,
+            includeInactive: params.includeInactive
           },
           headers: this.getAuthHeaders()
         }

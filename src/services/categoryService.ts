@@ -1,7 +1,8 @@
 import { apiClient } from '@/lib/api'
 import { ApiResponse, CategoryDTO, CategoryType, Category } from '@/types'
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080'
+// Use relative URL - Next.js rewrites will proxy to backend in dev, and in production should use same domain or reverse proxy
+const API_URL = ''
 
 /**
  * Service for managing categories with the expanded category system.
