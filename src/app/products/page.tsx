@@ -153,7 +153,7 @@ export default function ProductsPage() {
     timer: timer || undefined,
     minPower: minPower ? parseInt(minPower) : undefined,
     maxPower: maxPower ? parseInt(maxPower) : undefined,
-    page: currentPage, size: 12, sortBy, order
+    page: currentPage, size: 15, sortBy, order
   }), [keyword, categoryId, brandId, minPrice, maxPrice, bladeCount, remoteControl, oscillation, timer, minPower, maxPower, currentPage, sortBy, order]);
 
   // OPTIMIZATION: Products query with better caching and placeholder data

@@ -8,7 +8,6 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { AuthProvider } from './AuthProvider'
 import { NotificationProvider } from './NotificationProvider'
 
-// Chỉ load React Query DevTools trong development
 const ReactQueryDevtools = dynamic(
   () => import('@tanstack/react-query-devtools').then(mod => ({ default: mod.ReactQueryDevtools })),
   { ssr: false }

@@ -10,7 +10,10 @@ export function ConditionalFooter() {
   if (!pathname) return null;
   
   const hideFooter = pathname.startsWith('/auth') || 
-                     pathname.startsWith('/admin') || 
+                     pathname.startsWith('/admin') ||
+                     pathname.startsWith('/profile') ||
+                     pathname.startsWith('/cart') ||
+                     pathname.startsWith('/orders') ||
                      pathname.startsWith('/staff');
   
   if (hideFooter) {

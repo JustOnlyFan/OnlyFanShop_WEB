@@ -300,8 +300,6 @@ export default function ProductDetailPage() {
                   {renderStars((product as any).rating || 0)}
                 </div>
                 <span className="text-sm text-gray-500">({(product as any).rating || 0})</span>
-                <span className="text-sm text-gray-500">•</span>
-                <span className="text-sm text-gray-500">Đã bán {Math.floor(Math.random() * 1000) + 100}</span>
               </div>
             </div>
 
@@ -484,8 +482,8 @@ export default function ProductDetailPage() {
                 </div>
               ) : stores.length > 0 ? (
                 <div className="relative">
-                  {/* Navigation Arrows */}
-                  {stores.length > 1 && (
+                  {/* Navigation Arrows - Chỉ hiển thị khi có từ 3 cửa hàng trở lên */}
+                  {stores.length > 2 && (
                     <>
                       <button
                         onClick={() => setCurrentStoreIndex((prev) => (prev > 0 ? prev - 1 : stores.length - 1))}

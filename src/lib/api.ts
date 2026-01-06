@@ -2,10 +2,8 @@ import axios, { InternalAxiosRequestConfig } from 'axios'
 import { ApiResponse } from '@/types'
 import { tokenStorage } from '@/utils/tokenStorage'
 
-// Use relative URL - Next.js rewrites will proxy to backend in dev, and in production should use same domain or reverse proxy
 const baseURL = ''
 
-// Create a shared axios instance with interceptors
 export const apiClient = axios.create({
   baseURL,
   timeout: 30000,
@@ -15,7 +13,6 @@ export const apiClient = axios.create({
   withCredentials: true,
 })
 
-// Request interceptor để thêm token
 apiClient.interceptors.request.use(
   (config: InternalAxiosRequestConfig) => {
     const token = tokenStorage.getAccessToken()

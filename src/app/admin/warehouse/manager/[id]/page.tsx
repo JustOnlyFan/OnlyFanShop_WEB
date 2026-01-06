@@ -43,7 +43,7 @@ export default function WarehouseProductsPage() {
         setWarehouse({ ...found, id: found.id ?? found.locationID })
       }
 
-      // Load all products with store status
+      // Load all products with store status (chỉ trả về active products)
       const productsResp = await StoreInventoryService.getAllProductsWithStoreStatus(warehouseId)
       const list = Array.isArray(productsResp.data) ? productsResp.data : []
       setAllProducts(list)
@@ -92,7 +92,6 @@ export default function WarehouseProductsPage() {
     })
   }
 
-
   const handleSave = async () => {
     try {
       setSaving(true)
@@ -116,13 +115,13 @@ export default function WarehouseProductsPage() {
     return false
   }, [allProducts, selectedProductIds])
 
-  // Statistics calculation:
-  // - Tổng: All active products (same for all stores)
+  // Statistics calculation theo yêu cầu:
+  // - Tổng: Tất cả sản phẩm active (allProducts.length - vì API chỉ trả về active)
   // - Đang bán: Active products that are allowed to sell at this store (isAvailable = true)
-  // - Đã tắt: Active products that are NOT allowed to sell at this store (isAvailable = false)
-  const totalActiveProducts = allProducts.length // All products returned are active
-  const enabledCount = selectedProductIds.size // Products allowed to sell at this store
-  const disabledCount = totalActiveProducts - enabledCount // Active products but not allowed at this store
+  // - Tắt: Active products that are NOT allowed to sell at this store (isAvailable = false)
+  const totalActiveProducts = allProducts.length // Tổng = active (tất cả sản phẩm active)
+  const enabledCount = selectedProductIds.size // Đang bán = active - tắt (isAvailable = true)
+  const disabledCount = totalActiveProducts - enabledCount // Tắt = không được phép bán tại cửa hàng (isAvailable = false)
 
   if (!hasHydrated || loading) {
     return (
@@ -156,26 +155,26 @@ export default function WarehouseProductsPage() {
           </div>
           <div className="flex items-center gap-2">
             <Link
-              href={`/admin/warehouses/${warehouseId}/inventory`}
+              href={`/admin/warehouse/manager/${warehouseId}/inventory`}
               className="px-6 py-2.5 bg-green-600 text-white rounded-xl font-medium hover:bg-green-700 transition-colors inline-flex items-center gap-2"
             >
               <PackageCheck className="w-5 h-5" />
               Cập nhật số lượng
             </Link>
-          <button
-            onClick={handleSave}
-            disabled={!hasChanges || saving}
-            className="px-6 py-2.5 bg-indigo-600 text-white rounded-xl font-medium hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors inline-flex items-center gap-2"
-          >
-            {saving ? <LoadingSpinner /> : <Check className="w-5 h-5" />}
-            Lưu thay đổi
-          </button>
+            <button
+              onClick={handleSave}
+              disabled={!hasChanges || saving}
+              className="px-6 py-2.5 bg-indigo-600 text-white rounded-xl font-medium hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors inline-flex items-center gap-2"
+            >
+              {saving ? <LoadingSpinner /> : <Check className="w-5 h-5" />}
+              Lưu thay đổi
+            </button>
           </div>
         </div>
         <div className="flex flex-wrap items-center gap-3">
-          <span className="px-3 py-1 text-xs font-semibold rounded-full bg-indigo-50 text-indigo-700">Tổng: {allProducts.length}</span>
+          <span className="px-3 py-1 text-xs font-semibold rounded-full bg-indigo-50 text-indigo-700">Tổng: {totalActiveProducts}</span>
           <span className="px-3 py-1 text-xs font-semibold rounded-full bg-green-50 text-green-700">Đang bán: {enabledCount}</span>
-          <span className="px-3 py-1 text-xs font-semibold rounded-full bg-gray-100 text-gray-700">Đã tắt: {disabledCount}</span>
+          <span className="px-3 py-1 text-xs font-semibold rounded-full bg-gray-100 text-gray-700">Tắt: {disabledCount}</span>
           {hasChanges && <span className="px-3 py-1 text-xs font-semibold rounded-full bg-amber-50 text-amber-700">Chưa lưu thay đổi</span>}
         </div>
       </div>
@@ -216,7 +215,7 @@ export default function WarehouseProductsPage() {
                 statusFilter === 'disabled' ? 'border-gray-300 bg-gray-100 text-gray-800' : 'border-gray-200 text-gray-700 hover:bg-gray-50'
               }`}
             >
-              Đã tắt
+              Tắt
             </button>
           </div>
         </div>
@@ -278,3 +277,7 @@ export default function WarehouseProductsPage() {
     </div>
   )
 }
+
+
+
+
