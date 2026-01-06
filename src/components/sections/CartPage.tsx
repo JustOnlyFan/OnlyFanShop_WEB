@@ -19,14 +19,50 @@ export function CartPage() {
   const { isAuthenticated, user } = useAuthStore()
   const [isUpdating, setIsUpdating] = useState<number | null>(null)
   const [savings, setSavings] = useState(0)
+  const [selectedItems, setSelectedItems] = useState<Set<number>>(new Set())
+
+  // Initialize selected items when cart loads and sync when items change
+  useEffect(() => {
+    if (items.length > 0) {
+      // Get all current item IDs
+      const currentItemIds = new Set(items.map(item => {
+        const productId = (item.product as any).productID || (item.product as any).id
+        return productId
+      }))
+
+      // If no items selected, auto-select all
+      setSelectedItems(prev => {
+        if (prev.size === 0) {
+          return currentItemIds
+        } else {
+          // Remove selected items that no longer exist in cart
+          const validSelectedItems = new Set(
+              Array.from(prev).filter(id => currentItemIds.has(id))
+          )
+          return validSelectedItems.size !== prev.size ? validSelectedItems : prev
+        }
+      })
+    } else {
+      // Clear selection if cart is empty
+      setSelectedItems(new Set())
+    }
+  }, [items])
 
   useEffect(() => {
     if (items.length > 0) {
-      const totalOriginalPrice = items.reduce((sum, item) => sum + (item.product.price * item.quantity), 0)
-      const calculatedSavings = Math.max(0, totalOriginalPrice - totalPrice)
+      // Calculate savings only for selected items
+      const selectedItemsList = items.filter(item => {
+        const itemId = item.cartItemID || (item.product as any).productID || (item.product as any).id
+        return selectedItems.has(itemId)
+      })
+      const totalOriginalPrice = selectedItemsList.reduce((sum, item) => sum + (item.product.price * item.quantity), 0)
+      const selectedTotalPrice = selectedItemsList.reduce((sum, item) => sum + (item.price * item.quantity), 0)
+      const calculatedSavings = Math.max(0, totalOriginalPrice - selectedTotalPrice)
       setSavings(calculatedSavings)
+    } else {
+      setSavings(0)
     }
-  }, [items, totalPrice])
+  }, [items, selectedItems])
 
   // Always sync cart from server on mount/auth change to avoid stale local data
   useEffect(() => {
@@ -38,6 +74,12 @@ export function CartPage() {
   const handleRemoveItem = async (productId: number) => {
     try {
       await removeItem(productId)
+      // Remove from selected items
+      setSelectedItems(prev => {
+        const newSet = new Set(prev)
+        newSet.delete(productId)
+        return newSet
+      })
       toast.success('Đã xóa sản phẩm khỏi giỏ hàng')
     } catch (error: any) {
       toast.error(error.message || 'Xóa sản phẩm thất bại')
@@ -63,262 +105,365 @@ export function CartPage() {
   const handleClearCart = async () => {
     try {
       await clearCart()
+      setSelectedItems(new Set())
       toast.success('Đã xóa toàn bộ giỏ hàng')
     } catch (error: any) {
       toast.error(error.message || 'Xóa giỏ hàng thất bại')
     }
   }
 
+  const handleToggleItem = (itemId: number) => {
+    setSelectedItems(prev => {
+      const newSet = new Set(prev)
+      if (newSet.has(itemId)) {
+        newSet.delete(itemId)
+      } else {
+        newSet.add(itemId)
+      }
+      return newSet
+    })
+  }
+
+  const handleSelectAll = () => {
+    if (selectedItems.size === items.length && items.length > 0) {
+      // Deselect all
+      setSelectedItems(new Set())
+    } else {
+      // Select all
+      const allItemIds = new Set(items.map(item => (item.product as any).productID || (item.product as any).id))
+      setSelectedItems(allItemIds)
+    }
+  }
+
+  // Calculate totals for selected items only
+  const selectedItemsList = items.filter(item => {
+    const itemId = (item.product as any).productID || (item.product as any).id
+    return selectedItems.has(itemId)
+  })
+
+  const selectedTotalPrice = selectedItemsList.reduce((sum, item) => {
+    return sum + (item.price * item.quantity)
+  }, 0)
+
+  const selectedTotalItems = selectedItemsList.length
+
   if (!isAuthenticated) {
     return (
-      <div className="w-full h-full bg-gray-50 flex items-center justify-center">
-        <div className="text-center max-w-md mx-auto px-6">
-          <div className="w-24 h-24 bg-gradient-to-br from-blue-100 to-purple-100 rounded-full flex items-center justify-center mx-auto mb-6">
-            <ShoppingCartIcon className="w-12 h-12 text-blue-600" />
+        <div className="w-full h-full bg-gray-50 flex items-center justify-center">
+          <div className="text-center max-w-md mx-auto px-6">
+            <div className="w-24 h-24 bg-gradient-to-br from-blue-100 to-purple-100 rounded-full flex items-center justify-center mx-auto mb-6">
+              <ShoppingCartIcon className="w-12 h-12 text-blue-600" />
+            </div>
+            <h2 className="text-2xl font-bold text-gray-900 mb-4">
+              Đăng nhập để xem giỏ hàng
+            </h2>
+            <p className="text-gray-600 mb-8">
+              Lưu giỏ hàng và đồng bộ trên mọi thiết bị
+            </p>
+            <Link href="/auth/login">
+              <Button className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700">
+                Đăng nhập ngay
+              </Button>
+            </Link>
           </div>
-          <h2 className="text-2xl font-bold text-gray-900 mb-4">
-            Đăng nhập để xem giỏ hàng
-          </h2>
-          <p className="text-gray-600 mb-8">
-            Lưu giỏ hàng và đồng bộ trên mọi thiết bị
-          </p>
-          <Link href="/auth/login">
-            <Button className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700">
-              Đăng nhập ngay
-            </Button>
-          </Link>
         </div>
-      </div>
     )
   }
 
   if (isLoading) {
     return (
-      <div className="w-full h-full bg-gray-50 flex items-center justify-center">
-        <div className="text-center">
-          <LoadingSpinner size="lg" />
-          <p className="mt-4 text-gray-600">Đang tải giỏ hàng...</p>
+        <div className="w-full h-full bg-gray-50 flex items-center justify-center">
+          <div className="text-center">
+            <LoadingSpinner size="lg" />
+            <p className="mt-4 text-gray-600">Đang tải giỏ hàng...</p>
+          </div>
         </div>
-      </div>
     )
   }
 
   if (items.length === 0) {
     return (
-      <div className="w-full h-full bg-gray-50 flex items-center justify-center">
-        <div className="text-center max-w-md mx-auto px-6">
-          <motion.div
-            initial={{ scale: 0.8, opacity: 0 }}
-            animate={{ scale: 1, opacity: 1 }}
-            transition={{ delay: 0.2 }}
-            className="w-24 h-24 bg-gradient-to-br from-gray-100 to-gray-200 rounded-full flex items-center justify-center mx-auto mb-6"
-          >
-            <ShoppingCartIcon className="w-12 h-12 text-gray-400" />
-          </motion.div>
-          <h2 className="text-2xl font-bold text-gray-900 mb-4">
-            Giỏ hàng trống
-          </h2>
-          <p className="text-gray-600 mb-8">
-            Hãy khám phá những sản phẩm tuyệt vời của chúng tôi
-          </p>
-          <Link href="/products">
-            <Button className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700">
-              <SparklesIcon className="w-5 h-5 mr-2" />
-              Khám phá sản phẩm
-            </Button>
-          </Link>
+        <div className="w-full h-full bg-gray-50 flex items-center justify-center">
+          <div className="text-center max-w-md mx-auto px-6">
+            <motion.div
+                initial={{ scale: 0.8, opacity: 0 }}
+                animate={{ scale: 1, opacity: 1 }}
+                transition={{ delay: 0.2 }}
+                className="w-24 h-24 bg-gradient-to-br from-gray-100 to-gray-200 rounded-full flex items-center justify-center mx-auto mb-6"
+            >
+              <ShoppingCartIcon className="w-12 h-12 text-gray-400" />
+            </motion.div>
+            <h2 className="text-2xl font-bold text-gray-900 mb-4">
+              Giỏ hàng trống
+            </h2>
+            <p className="text-gray-600 mb-8">
+              Hãy khám phá những sản phẩm tuyệt vời của chúng tôi
+            </p>
+            <Link href="/products">
+              <Button className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700">
+                <SparklesIcon className="w-5 h-5 mr-2" />
+                Khám phá sản phẩm
+              </Button>
+            </Link>
+          </div>
         </div>
-      </div>
     )
   }
 
   return (
-    <div className="w-full min-h-screen bg-gradient-to-br from-blue-900 via-blue-800 to-cyan-700">
-      {/* Header */}
-      <div className="bg-white shadow-sm border-b">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center space-x-4">
-              <Link href="/">
-                <Button variant="outline" size="sm">
-                  <ArrowLeftIcon className="w-4 h-4 mr-2" />
-                  Quay lại
-                </Button>
-              </Link>
-              <div>
-                <h1 className="text-2xl font-bold text-gray-900">
-                  Giỏ hàng của bạn
-                </h1>
-                <p className="text-gray-600">
-                  {totalItems} sản phẩm • {formatPrice(totalPrice)}
-                </p>
+      <div className="w-full min-h-screen bg-gradient-to-br from-blue-900 via-blue-800 to-cyan-700">
+        {/* Header */}
+        <div className="bg-white shadow-sm border-b">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center space-x-4">
+                <Link href="/">
+                  <Button variant="outline" size="sm">
+                    <ArrowLeftIcon className="w-4 h-4 mr-2" />
+                    Quay lại
+                  </Button>
+                </Link>
+                <div>
+                  <h1 className="text-2xl font-bold text-gray-900">
+                    Giỏ hàng của bạn
+                  </h1>
+                  <p className="text-gray-600">
+                    {selectedTotalItems > 0 ? `${selectedTotalItems}/${totalItems} sản phẩm đã chọn` : `${totalItems} sản phẩm`}
+                  </p>
+                </div>
               </div>
-            </div>
-            
-            {items.length > 0 && (
-              <Button
-                variant="outline"
-                onClick={handleClearCart}
-                className="text-red-600 border-red-200 hover:bg-red-50"
-              >
-                <TrashIcon className="w-4 h-4 mr-2" />
-                Xóa tất cả
-              </Button>
-            )}
-          </div>
-        </div>
-      </div>
 
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-          {/* Cart Items */}
-          <div className="lg:col-span-2">
-            <div className="space-y-4">
-              <AnimatePresence>
-                {items.map((item, index) => (
-                  <motion.div
-                    key={item.cartItemID}
-                    initial={{ opacity: 0, y: 20 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    exit={{ opacity: 0, y: -20 }}
-                    transition={{ delay: index * 0.1 }}
-                    className="bg-white rounded-xl shadow-sm border border-gray-200 p-6"
+              {items.length > 0 && (
+                  <Button
+                      variant="outline"
+                      onClick={handleClearCart}
+                      className="text-red-600 border-red-200 hover:bg-red-50"
                   >
-                    <div className="flex items-center space-x-4">
-                      <div className="relative w-20 h-20 flex-shrink-0">
-                        <Image
-                          src={item.product.imageURL || 'https://images.unsplash.com/photo-1581094794329-c8112a89af12?w=400&h=300&fit=crop&q=80&auto=format'}
-                          alt={item.product.productName}
-                          fill
-                          className="object-cover rounded-lg"
-                        />
-                        <div className="absolute -top-2 -right-2 bg-blue-600 text-white text-xs px-2 py-1 rounded-full">
-                          {item.quantity}
-                        </div>
-                      </div>
-                      
-                      <div className="flex-1 min-w-0">
-                        <h3 className="font-semibold text-gray-900 mb-1">
-                          {item.product.productName}
-                        </h3>
-                        <p className="text-sm text-gray-600 mb-2">
-                          {item.product.brand?.name || 'Thương hiệu'}
-                        </p>
-                        <div className="flex items-center space-x-4">
-                          <span className="text-lg font-bold text-blue-600">
-                            {formatPrice(item.price)}
-                          </span>
-                          {item.product.price > item.price && (
-                            <span className="text-sm text-green-600 bg-green-100 px-2 py-1 rounded">
-                              Tiết kiệm {formatPrice(item.product.price - item.price)}
-                            </span>
-                          )}
-                        </div>
-                      </div>
-
-                      <div className="flex items-center space-x-3">
-                        <div className="flex items-center space-x-2">
-                          <button
-                            onClick={() => handleUpdateQuantity((item.product as any).productID || (item.product as any).id, item.quantity - 1)}
-                            disabled={isUpdating === ((item.product as any).productID || (item.product as any).id)}
-                            className="w-8 h-8 rounded-full border border-gray-300 flex items-center justify-center hover:bg-blue-50 hover:border-blue-300 disabled:opacity-50 transition-all duration-200"
-                          >
-                            <MinusIcon className="w-4 h-4" />
-                          </button>
-                          <span className="w-8 text-center font-medium">{item.quantity}</span>
-                          <button
-                            onClick={() => handleUpdateQuantity((item.product as any).productID || (item.product as any).id, item.quantity + 1)}
-                            disabled={isUpdating === ((item.product as any).productID || (item.product as any).id)}
-                            className="w-8 h-8 rounded-full border border-gray-300 flex items-center justify-center hover:bg-blue-50 hover:border-blue-300 disabled:opacity-50 transition-all duration-200"
-                          >
-                            <PlusIcon className="w-4 h-4" />
-                          </button>
-                        </div>
-
-                        <div className="flex items-center space-x-1">
-                          <button className="p-2 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-all duration-200">
-                            <HeartIcon className="w-4 h-4" />
-                          </button>
-                          <button className="p-2 text-gray-400 hover:text-blue-500 hover:bg-blue-50 rounded-lg transition-all duration-200">
-                            <ShareIcon className="w-4 h-4" />
-                          </button>
-                          <button
-                            onClick={() => handleRemoveItem((item.product as any).productID || (item.product as any).id)}
-                            className="p-2 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-all duration-200"
-                          >
-                            <TrashIcon className="w-4 h-4" />
-                          </button>
-                        </div>
-                      </div>
-                    </div>
-                  </motion.div>
-                ))}
-              </AnimatePresence>
+                    <TrashIcon className="w-4 h-4 mr-2" />
+                    Xóa tất cả
+                  </Button>
+              )}
             </div>
           </div>
+        </div>
 
-          {/* Order Summary */}
-          <div className="lg:col-span-1">
-            <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 sticky top-8">
-              <h3 className="text-lg font-semibold text-gray-900 mb-4">
-                Tóm tắt đơn hàng
-              </h3>
-              
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+            {/* Cart Items */}
+            <div className="lg:col-span-2">
+              {/* Select All Checkbox */}
+              {items.length > 0 && (
+                  <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-4 mb-4">
+                    <label className="flex items-center space-x-3 cursor-pointer">
+                      <input
+                          type="checkbox"
+                          checked={selectedItems.size === items.length && items.length > 0}
+                          onChange={handleSelectAll}
+                          className="w-5 h-5 text-blue-600 border-gray-300 rounded focus:ring-blue-500 focus:ring-2"
+                      />
+                      <span className="text-sm font-medium text-gray-700">
+                    Chọn tất cả ({selectedTotalItems}/{totalItems})
+                  </span>
+                    </label>
+                  </div>
+              )}
+
               <div className="space-y-4">
-                <div className="flex justify-between">
-                  <span className="text-gray-600">Tạm tính:</span>
-                  <span className="font-medium">{formatPrice(totalPrice)}</span>
-                </div>
-                
-                {savings > 0 && (
-                  <div className="flex justify-between text-green-600">
-                    <span>Tiết kiệm:</span>
-                    <span className="font-medium">{formatPrice(savings)}</span>
-                  </div>
-                )}
-                
-                <div className="flex justify-between">
-                  <span className="text-gray-600">Phí vận chuyển:</span>
-                  <span className="font-medium text-green-600">Miễn phí</span>
-                </div>
-                
-                <div className="border-t pt-4">
-                  <div className="flex justify-between text-lg font-bold">
-                    <span>Tổng cộng:</span>
-                    <span className="text-blue-600">{formatPrice(totalPrice)}</span>
-                  </div>
-                </div>
-              </div>
+                <AnimatePresence>
+                  {items.map((item, index) => {
+                    const itemId = (item.product as any).productID || (item.product as any).id
+                    const isSelected = selectedItems.has(itemId)
 
-              <div className="mt-6 space-y-3">
-                <Link href="/checkout" className="block">
-                  <Button className="w-full bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700">
-                    <SparklesIcon className="w-5 h-5 mr-2" />
-                    Thanh toán
-                  </Button>
-                </Link>
-                
-                <Link href="/products" className="block">
-                  <Button variant="outline" className="w-full">
-                    Tiếp tục mua sắm
-                  </Button>
-                </Link>
-              </div>
+                    return (
+                        <motion.div
+                            key={item.cartItemID}
+                            initial={{ opacity: 0, y: 20 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            exit={{ opacity: 0, y: -20 }}
+                            transition={{ delay: index * 0.1 }}
+                             className={`bg-white rounded-xl shadow-sm border-2 p-6 transition-all ${
+                                 isSelected ? 'border-blue-500' : 'border-gray-200'
+                             }`}
+                        >
+                          <div className="flex items-center space-x-4">
+                            {/* Checkbox */}
+                            <label className="flex items-center cursor-pointer">
+                              <input
+                                  type="checkbox"
+                                  checked={isSelected}
+                                  onChange={() => handleToggleItem(itemId)}
+                                  className="w-5 h-5 text-blue-600 border-gray-300 rounded focus:ring-blue-500 focus:ring-2"
+                              />
+                            </label>
 
-              {/* Benefits */}
-              <div className="mt-6 pt-6 border-t">
-                <div className="space-y-3">
-                  <div className="flex items-center space-x-2 text-sm text-gray-600">
-                    <TruckIcon className="w-4 h-4" />
-                    <span>Miễn phí vận chuyển</span>
+                            <div className="relative w-20 h-20 flex-shrink-0">
+                              <Image
+                                  src={item.product.imageURL || 'https://images.unsplash.com/photo-1581094794329-c8112a89af12?w=400&h=300&fit=crop&q=80&auto=format'}
+                                  alt={item.product.productName}
+                                  fill
+                                  className="object-cover rounded-lg"
+                              />
+                              <div className="absolute -top-2 -right-2 bg-blue-600 text-white text-xs px-2 py-1 rounded-full">
+                                {item.quantity}
+                              </div>
+                            </div>
+
+                            <div className="flex-1 min-w-0">
+                              <h3 className="font-semibold text-gray-900 mb-1">
+                                {item.product.productName}
+                              </h3>
+                              <p className="text-sm text-gray-600 mb-2">
+                                {item.product.brand?.name || 'Thương hiệu'}
+                              </p>
+                              <div className="flex items-center space-x-4">
+                            <span className="text-lg font-bold text-blue-600">
+                              {formatPrice(item.price)}
+                            </span>
+                                {item.product.price > item.price && (
+                                    <span className="text-sm text-green-600 bg-green-100 px-2 py-1 rounded">
+                                Tiết kiệm {formatPrice(item.product.price - item.price)}
+                              </span>
+                                )}
+                              </div>
+                            </div>
+
+                            <div className="flex items-center space-x-3">
+                              <div className="flex items-center space-x-2">
+                                <button
+                                    onClick={() => handleUpdateQuantity((item.product as any).productID || (item.product as any).id, item.quantity - 1)}
+                                    disabled={isUpdating === ((item.product as any).productID || (item.product as any).id)}
+                                    className="w-8 h-8 rounded-full border border-gray-300 flex items-center justify-center hover:bg-blue-50 hover:border-blue-300 disabled:opacity-50 transition-all duration-200"
+                                >
+                                  <MinusIcon className="w-4 h-4" />
+                                </button>
+                                <span className="w-8 text-center font-medium">{item.quantity}</span>
+                                <button
+                                    onClick={() => handleUpdateQuantity((item.product as any).productID || (item.product as any).id, item.quantity + 1)}
+                                    disabled={isUpdating === ((item.product as any).productID || (item.product as any).id)}
+                                    className="w-8 h-8 rounded-full border border-gray-300 flex items-center justify-center hover:bg-blue-50 hover:border-blue-300 disabled:opacity-50 transition-all duration-200"
+                                >
+                                  <PlusIcon className="w-4 h-4" />
+                                </button>
+                              </div>
+
+                              <div className="flex items-center space-x-1">
+                                <button className="p-2 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-all duration-200">
+                                  <HeartIcon className="w-4 h-4" />
+                                </button>
+                                <button className="p-2 text-gray-400 hover:text-blue-500 hover:bg-blue-50 rounded-lg transition-all duration-200">
+                                  <ShareIcon className="w-4 h-4" />
+                                </button>
+                                <button
+                                    onClick={() => handleRemoveItem((item.product as any).productID || (item.product as any).id)}
+                                    className="p-2 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-all duration-200"
+                                >
+                                  <TrashIcon className="w-4 h-4" />
+                                </button>
+                              </div>
+                            </div>
+                          </div>
+                        </motion.div>
+                    )
+                  })}
+                </AnimatePresence>
+              </div>
+            </div>
+
+            {/* Order Summary */}
+            <div className="lg:col-span-1">
+              <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 sticky top-8">
+                <h3 className="text-lg font-semibold text-gray-900 mb-4">
+                  Tóm tắt đơn hàng
+                </h3>
+
+                <div className="space-y-4">
+                  <div className="flex justify-between">
+                    <span className="text-gray-600">Tạm tính:</span>
+                    <span className="font-medium">{formatPrice(selectedTotalPrice)}</span>
                   </div>
-                  <div className="flex items-center space-x-2 text-sm text-gray-600">
-                    <ShieldCheckIcon className="w-4 h-4" />
-                    <span>Bảo hành 2 năm</span>
+
+                  {savings > 0 && (
+                      <div className="flex justify-between text-green-600">
+                        <span>Tiết kiệm:</span>
+                        <span className="font-medium">{formatPrice(savings)}</span>
+                      </div>
+                  )}
+
+                  <div className="flex justify-between">
+                    <span className="text-gray-600">Phí vận chuyển:</span>
+                    <span className="font-medium text-green-600">Miễn phí</span>
                   </div>
-                  <div className="flex items-center space-x-2 text-sm text-gray-600">
-                    <GiftIcon className="w-4 h-4" />
-                    <span>Tích điểm thưởng</span>
+
+                  <div className="border-t pt-4">
+                    <div className="flex justify-between text-lg font-bold">
+                      <span>Tổng cộng:</span>
+                      <span className="text-blue-600">{formatPrice(selectedTotalPrice)}</span>
+                    </div>
+                  </div>
+
+                  {selectedTotalItems === 0 && (
+                      <div className="mt-4 p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
+                        <p className="text-sm text-yellow-800">
+                          Vui lòng chọn ít nhất một sản phẩm để thanh toán
+                        </p>
+                      </div>
+                  )}
+                </div>
+
+                <div className="mt-6 space-y-3">
+                  <Link
+                      href={selectedTotalItems > 0 ? "/checkout" : "#"}
+                      className="block"
+                      onClick={(e) => {
+                        if (selectedTotalItems === 0) {
+                          e.preventDefault()
+                          toast.error('Vui lòng chọn ít nhất một sản phẩm để thanh toán')
+                        } else {
+                          // Store selected items for checkout
+                          const selectedItemsData = items.filter(item => {
+                            const itemId = (item.product as any).productID || (item.product as any).id
+                            return selectedItems.has(itemId)
+                          })
+                          localStorage.setItem('selectedCartItems', JSON.stringify(selectedItemsData.map(item => ({
+                            cartItemID: item.cartItemID,
+                            productId: (item.product as any).productID || (item.product as any).id,
+                            quantity: item.quantity,
+                            price: item.price
+                          }))))
+                        }
+                      }}
+                  >
+                    <Button
+                        className="w-full bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                        disabled={selectedTotalItems === 0}
+                    >
+                      <SparklesIcon className="w-5 h-5 mr-2" />
+                      Thanh toán ({selectedTotalItems})
+                    </Button>
+                  </Link>
+
+                  <Link href="/products" className="block">
+                    <Button variant="outline" className="w-full">
+                      Tiếp tục mua sắm
+                    </Button>
+                  </Link>
+                </div>
+
+                {/* Benefits */}
+                <div className="mt-6 pt-6 border-t">
+                  <div className="space-y-3">
+                    <div className="flex items-center space-x-2 text-sm text-gray-600">
+                      <TruckIcon className="w-4 h-4" />
+                      <span>Miễn phí vận chuyển</span>
+                    </div>
+                    <div className="flex items-center space-x-2 text-sm text-gray-600">
+                      <ShieldCheckIcon className="w-4 h-4" />
+                      <span>Bảo hành 2 năm</span>
+                    </div>
+                    <div className="flex items-center space-x-2 text-sm text-gray-600">
+                      <GiftIcon className="w-4 h-4" />
+                      <span>Tích điểm thưởng</span>
+                    </div>
                   </div>
                 </div>
               </div>
@@ -326,6 +471,5 @@ export function CartPage() {
           </div>
         </div>
       </div>
-    </div>
   )
 }

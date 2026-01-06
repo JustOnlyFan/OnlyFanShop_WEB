@@ -23,21 +23,24 @@ export default function BrandsPage() {
     queryKey: ['brands'],
     queryFn: () => ProductService.getBrands()
   });
-  const { data: productsData } = useQuery({
-    queryKey: ['featured-products'],
-    queryFn: () => ProductService.getHomepage({ size: 12 })
+  
+  // Fetch all products to count by brand
+  const { data: allProductsData } = useQuery({
+    queryKey: ['all-products-for-brands'],
+    queryFn: () => ProductService.getHomepage({ size: 10000 }) // Get all products
   });
 
   useEffect(() => {
     if (brandsData?.data) setBrands(brandsData.data);
-    if (productsData?.data) setFeaturedProducts(productsData.data.products || []);
+    if (allProductsData?.data) setFeaturedProducts(allProductsData.data.products || []);
     setLoading(false);
-  }, [brandsData, productsData]);
+  }, [brandsData, allProductsData]);
 
   const filteredBrands = brands.filter(brand => 
     brand.name.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
+  // Get brand stats - count products by brand ID
   const getBrandStats = (brandId: number) => {
     const brandProducts = featuredProducts.filter(product => product.brand?.brandID === brandId);
     return {
@@ -159,7 +162,7 @@ export default function BrandsPage() {
               return (
                 <div
                   key={brand.brandID}
-                  className="group bg-white rounded-2xl shadow-lg hover:shadow-2xl transition-all duration-500 overflow-hidden"
+                  className="group bg-white rounded-2xl shadow-lg hover:shadow-2xl transition-all duration-500 overflow-hidden flex flex-col"
                 >
                   {/* Brand Header */}
                   <div className="relative h-48 bg-gradient-to-br from-blue-500 to-purple-600 p-6">
@@ -180,7 +183,7 @@ export default function BrandsPage() {
                   </div>
 
                   {/* Brand Content */}
-                  <div className="p-6">
+                  <div className="p-6 flex flex-col h-full">
                     {/* Stats */}
                     <div className="mb-6">
                       <div className="text-center">
@@ -218,8 +221,8 @@ export default function BrandsPage() {
                       </div>
                     </div>
 
-                    {/* Action Buttons */}
-                    <div className="flex gap-2">
+                    {/* Action Buttons - Always at bottom */}
+                    <div className="flex gap-2 mt-auto">
                       <Link href={`/products?brand=${brand.brandID}`} className="flex-1">
                         <Button className="w-full">
                           <TrendingUp className="w-4 h-4 mr-2" />

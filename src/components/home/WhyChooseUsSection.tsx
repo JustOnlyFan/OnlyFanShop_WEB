@@ -75,7 +75,6 @@ export function WhyChooseUsSection() {
                   </div>
                 </div>
 
-                {/* Decorative gradient */}
                 <div className={`absolute -right-8 -bottom-8 w-32 h-32 bg-gradient-to-br ${reason.color} opacity-5 rounded-full blur-2xl group-hover:opacity-10 transition-opacity duration-300`} />
               </div>
             </motion.div>
