@@ -55,10 +55,16 @@ export const useCartStore = create<CartState & CartActions>()(
             return
           }
 
+          // Get productId from either id or productID field
+          const productId = product.id || (product as any).productID
+          if (!productId) {
+            throw new Error('Không tìm thấy ID sản phẩm')
+          }
+
           await CartService.addToCart({
-            productId: product.id,
-            quantity,
-            userName: user.username
+            productId: Number(productId),
+            quantity: Number(quantity) || 1,
+            userName: user.username || user.email
           })
 
           // Reload cart after adding item
@@ -145,7 +151,8 @@ export const useCartStore = create<CartState & CartActions>()(
           
           if (response.statusCode === 200 && response.data) {
             const items = (response.data.items || []) as any[]
-            const totalItems = CartService.calculateTotalQuantity(items)
+            // totalItems = số lượng loại sản phẩm (số items), không phải tổng quantity
+            const totalItems = items.length
             const totalPrice = items.reduce((sum, it: any) => {
               const price = Number(it.price ?? 0)
               const quantity = Number(it.quantity ?? 1)

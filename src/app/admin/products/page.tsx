@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { useAuthStore } from '@/store/authStore'
+import { useCartStore } from '@/store/cartStore'
 import { LoadingSpinner } from '@/components/ui/LoadingSpinner'
 import ProductAdminService from '@/services/productAdminService'
 import { ProductService } from '@/services/productService'
@@ -21,7 +22,8 @@ import {
   Package,
   Eye,
   ChevronLeft,
-  ChevronRight
+  ChevronRight,
+  ShoppingCart
 } from 'lucide-react'
 import toast from 'react-hot-toast'
 import Image from 'next/image'
@@ -65,6 +67,7 @@ export default function AdminProductsPage() {
   
   const router = useRouter()
   const { user, isAuthenticated, hasHydrated } = useAuthStore()
+  const { addItem, isLoading: isCartLoading } = useCartStore()
 
   useEffect(() => {
     if (!hasHydrated) return
@@ -376,6 +379,45 @@ export default function AdminProductsPage() {
     }
   }
 
+  const handleAddToCart = async (product: ProductDTO) => {
+    if (!isAuthenticated || !user) {
+      toast.error('Vui lòng đăng nhập để thêm sản phẩm vào giỏ hàng')
+      return
+    }
+
+    if (!product.active) {
+      toast.error('Sản phẩm này đang bị vô hiệu hóa')
+      return
+    }
+
+    const productId = product.productID || product.id
+    if (!productId) {
+      toast.error('Không tìm thấy ID sản phẩm')
+      return
+    }
+
+    try {
+      // Convert ProductDTO to Product format for cart
+      const productForCart: any = {
+        id: productId, // Ensure id is set for cartStore
+        productID: productId,
+        productName: product.productName,
+        price: product.price,
+        imageURL: product.imageURL,
+        briefDescription: product.briefDescription,
+        brand: product.brand,
+        category: product.category,
+        active: product.active
+      }
+
+      await addItem(productForCart, 1)
+      toast.success('Đã thêm sản phẩm vào giỏ hàng')
+    } catch (error: any) {
+      console.error('Error adding to cart:', error)
+      toast.error(error.message || 'Không thể thêm sản phẩm vào giỏ hàng')
+    }
+  }
+
   const handleModalClose = () => {
     setShowModal(false)
     setEditingProduct(null)
@@ -640,6 +682,16 @@ export default function AdminProductsPage() {
                         >
                           <Edit2 className="w-4 h-4" />
                         </button>
+                        {product.active && (
+                          <button
+                            onClick={() => handleAddToCart(product)}
+                            disabled={isCartLoading}
+                            className="p-2 rounded-lg text-purple-600 bg-purple-50 hover:bg-purple-100 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                            title="Thêm vào giỏ hàng"
+                          >
+                            <ShoppingCart className="w-4 h-4" />
+                          </button>
+                        )}
                       </div>
 
                       {/* Mobile Stats */}

@@ -80,7 +80,7 @@ export default function ProductsPage() {
   const spaceId = searchParams.get('spaceId');
   const purposeId = searchParams.get('purposeId');
   const technologyId = searchParams.get('technologyId');
-  const sortBy = searchParams.get('sortBy') || 'ProductID';
+  const sortBy = searchParams.get('sortBy') || 'recommended';
   const order = searchParams.get('order') || 'DESC';
   
   const [tempFilters, setTempFilters] = useState<FilterState>({
@@ -240,10 +240,30 @@ export default function ProductsPage() {
   const updateURL = (params: Record<string, string | null>) => {
     const newParams = new URLSearchParams(searchParams.toString());
     Object.entries(params).forEach(([key, value]) => {
-      if (value) newParams.set(key, value);
-      else newParams.delete(key);
+      if (value) {
+        // Don't add sortBy and order to URL if they are default values
+        if (key === 'sortBy' && value === 'recommended') {
+          newParams.delete('sortBy');
+        } else if (key === 'order' && value === 'DESC') {
+          newParams.delete('order');
+        } else {
+          newParams.set(key, value);
+        }
+      } else {
+        newParams.delete(key);
+      }
     });
-    router.push(`/products?${newParams.toString()}`);
+    
+    // Also clean up default values if they exist
+    if (newParams.get('sortBy') === 'recommended') {
+      newParams.delete('sortBy');
+    }
+    if (newParams.get('order') === 'DESC') {
+      newParams.delete('order');
+    }
+    
+    const queryString = newParams.toString();
+    router.push(queryString ? `/products?${queryString}` : '/products');
   };
 
   const applyFilters = () => {
@@ -273,11 +293,39 @@ export default function ProductsPage() {
   };
 
   const clearURLFilters = () => { router.push('/products'); setCurrentPage(1); };
-  const handleSort = (newSortBy: string, newOrder: string) => updateURL({ sortBy: newSortBy, order: newOrder });
+  const handleSort = (newSortBy: string, newOrder: string) => {
+    // If setting to default values, remove from URL instead
+    if (newSortBy === 'recommended' && newOrder === 'DESC') {
+      const newParams = new URLSearchParams(searchParams.toString());
+      newParams.delete('sortBy');
+      newParams.delete('order');
+      const queryString = newParams.toString();
+      router.push(queryString ? `/products?${queryString}` : '/products');
+    } else {
+      updateURL({ sortBy: newSortBy, order: newOrder });
+    }
+  };
+  
+  // Clean up default sortBy/order from URL on mount if they exist
+  useEffect(() => {
+    const currentSortBy = searchParams.get('sortBy');
+    const currentOrder = searchParams.get('order');
+    if (currentSortBy === 'recommended' || (currentSortBy === null && currentOrder === 'DESC')) {
+      const newParams = new URLSearchParams(searchParams.toString());
+      if (currentSortBy === 'recommended') newParams.delete('sortBy');
+      if (currentOrder === 'DESC') newParams.delete('order');
+      const queryString = newParams.toString();
+      if (queryString !== searchParams.toString()) {
+        router.replace(queryString ? `/products?${queryString}` : '/products', { scroll: false });
+      }
+    }
+  }, []); // Only run once on mount
   const handlePageChange = (page: number) => { 
     setCurrentPage(page); 
     window.scrollTo({ top: 0, behavior: 'smooth' }); 
   };
+  
+  // No need to update URL for default values - they're handled in updateURL function
   
   // OPTIMIZATION: Prefetch next page data when user is near bottom
   useEffect(() => {
@@ -345,6 +393,12 @@ export default function ProductsPage() {
     }
   };
 
+  // Filter: Only show top-level categories (no parentId) to reduce clutter
+  // Increased limit to show more product types
+  const topLevelCategories = useMemo(() => {
+    return categories.filter(cat => !cat.parentId || cat.parentId === null).slice(0, 18);
+  }, [categories]);
+
   // OPTIMIZATION: Show skeleton loading instead of full page spinner
   const showSkeleton = isLoadingProducts && !productsData;
 
@@ -376,7 +430,7 @@ export default function ProductsPage() {
 
           {/* Filter Popup - Dropdown style */}
           {showFilterPopup && (
-            <div className="absolute top-full left-0 mt-2 bg-white rounded-xl shadow-2xl border border-gray-200 z-50 w-[calc(75vw-2rem)] max-w-[900px]">
+            <div className="absolute top-full left-0 mt-2 bg-white rounded-xl shadow-2xl border border-gray-200 z-50 w-[calc(90vw-2rem)] max-w-[1040px]">
               {/* Header */}
               <div className="flex items-center justify-between px-5 py-3 border-b border-gray-100">
                 <h3 className="text-base font-semibold text-gray-900">{t('productFilter')}</h3>
@@ -424,7 +478,7 @@ export default function ProductsPage() {
                     <span className="text-sm font-semibold text-gray-800">{t('productType')}</span>
                   </div>
                   <div className="flex flex-wrap gap-2">
-                    {categories.map((cat) => (
+                    {topLevelCategories.map((cat) => (
                       <button
                         key={cat.id}
                         onClick={() => setTempFilters(prev => ({ 
@@ -730,7 +784,7 @@ export default function ProductsPage() {
               }`}
             >
               <option value="">{t('productType')}</option>
-              {categories.map((c) => (
+              {topLevelCategories.map((c) => (
                 <option key={c.id} value={c.id}>{c.name}</option>
               ))}
             </select>
@@ -859,7 +913,6 @@ export default function ProductsPage() {
           
           <div className="flex items-center gap-2 overflow-x-auto">
             {[
-              { labelKey: 'recommended', sort: 'recommended', icon: ShoppingBag },
               { labelKey: 'bestSeller', sort: 'sold', icon: FileText },
               { labelKey: 'priceLow', sort: 'price', ord: 'ASC', icon: ArrowUpDown },
               { labelKey: 'priceHigh', sort: 'price', ord: 'DESC', icon: ArrowUpDown },

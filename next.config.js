@@ -105,6 +105,14 @@ const nextConfig = {
           source: '/tags/:path*',
           destination: 'http://localhost:8080/tags/:path*',
         },
+        {
+          source: '/cart/:path*',
+          destination: 'http://localhost:8080/cart/:path*',
+        },
+        {
+          source: '/cartItem/:path*',
+          destination: 'http://localhost:8080/cartItem/:path*',
+        },
       ]
     }
     return []

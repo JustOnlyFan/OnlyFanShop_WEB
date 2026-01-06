@@ -160,4 +160,41 @@ export class ProductService {
       throw new Error(error.response?.data?.message || 'Failed to load brands')
     }
   }
+
+  // Get products by brand ID
+  static async getProductsByBrand(brandId: number, params: {
+    page?: number
+    size?: number
+    sortBy?: string
+    order?: string
+  } = {}): Promise<ApiResponse<HomepageResponse>> {
+    try {
+      const response = await axios.post(`${API_URL}/product/public/homepage`, null, {
+        params: {
+          brandId: brandId,
+          page: params.page ?? 1,
+          size: params.size ?? 1000, // Get all products by default
+          sortBy: params.sortBy ?? 'id',
+          order: params.order ?? 'DESC'
+        }
+      })
+      
+      // Ensure response has the correct structure
+      if (response.data && response.data.data) {
+        return response.data;
+      } else if (response.data) {
+        return {
+          statusCode: 200,
+          message: 'Success',
+          data: response.data,
+          dateTime: new Date().toISOString()
+        };
+      }
+      
+      throw new Error('Invalid response format from API');
+    } catch (error: any) {
+      console.error('Error fetching products by brand:', error);
+      throw new Error(error.response?.data?.message || 'Failed to load products by brand')
+    }
+  }
 }
