@@ -38,6 +38,7 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
     '/admin/stores/edit',
     '/admin/products',
     '/admin/warehouses', // warehouse flows have their own page headers
+    '/admin/warehouse/manager', // warehouse manager flows have their own page headers
   ]
   const shouldHideHeader = hideHeaderPages.some(page => pathname?.startsWith(page))
 

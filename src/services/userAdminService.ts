@@ -3,7 +3,6 @@ import { tokenStorage } from '@/utils/tokenStorage'
 
 import type { StoreStatus } from './storeLocationService'
 
-// Use relative URL - Next.js rewrites will proxy to backend in dev, and in production should use same domain or reverse proxy
 const API_URL = ''
 
 export interface UserDTO {
@@ -135,31 +134,5 @@ export class UserAdminService {
       throw new Error(error.response?.data?.message || error.message || 'Failed to get staff accounts')
     }
   }
-
-  // Note: These endpoints may not exist in backend yet
-  // static async updateUserStatus(userId: number, status: 'active' | 'inactive' | 'banned'): Promise<ApiResponse<UserDTO>> {
-  //   try {
-  //     const response = await axios.put(
-  //       `${API_URL}/users/${userId}/status`,
-  //       { status },
-  //       { headers: this.getAuthHeaders() }
-  //     )
-  //     return response.data
-  //   } catch (error: any) {
-  //     throw new Error(error.response?.data?.message || 'Failed to update user status')
-  //   }
-  // }
-
-  // static async deleteUser(userId: number): Promise<ApiResponse<void>> {
-  //   try {
-  //     const response = await axios.delete(
-  //       `${API_URL}/users/${userId}`,
-  //       { headers: this.getAuthHeaders() }
-  //     )
-  //     return response.data
-  //   } catch (error: any) {
-  //     throw new Error(error.response?.data?.message || 'Failed to delete user')
-  //   }
-  // }
 }
 

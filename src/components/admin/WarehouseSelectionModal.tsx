@@ -13,10 +13,6 @@ interface WarehouseSelectionModalProps {
   onConfirm: (warehouseIds: number[]) => void
 }
 
-/**
- * Modal để chọn kho cửa hàng
- * Note: Main warehouse đã bị loại bỏ theo Requirements 1.1
- */
 export function WarehouseSelectionModal({
   isOpen,
   warehouses,

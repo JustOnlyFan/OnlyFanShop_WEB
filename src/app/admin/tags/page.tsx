@@ -69,10 +69,21 @@ export default function AdminTagsPage() {
   const loadTags = async () => {
     try {
       setLoading(true)
+      console.log('AdminTagsPage - Starting to load tags...')
       const data = await TagService.getAllTags()
-      setTags(data)
+      console.log('AdminTagsPage - Tags loaded:', data)
+      setTags(data || [])
+      console.log('AdminTagsPage - Tags set to state, count:', data?.length || 0)
     } catch (error: any) {
-      toast.error(error.message || 'Không thể tải danh sách nhãn')
+      console.error('AdminTagsPage - Error loading tags:', error)
+      console.error('AdminTagsPage - Error details:', {
+        message: error.message,
+        response: error.response?.data,
+        status: error.response?.status,
+        statusText: error.response?.statusText,
+        url: error.config?.url
+      })
+      toast.error(error.response?.data?.message || error.message || 'Không thể tải danh sách nhãn')
     } finally {
       setLoading(false)
     }

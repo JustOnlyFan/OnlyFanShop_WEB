@@ -1,6 +1,5 @@
 import { apiClient as api } from '@/lib/api';
 
-// Enums
 export enum ShipmentType {
   CUSTOMER_DELIVERY = 'CUSTOMER_DELIVERY',
   INTERNAL_TRANSFER = 'INTERNAL_TRANSFER'

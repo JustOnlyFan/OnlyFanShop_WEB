@@ -294,22 +294,6 @@ export class StoreLocationService {
     ]
   }
 
-  // Get common services
-  static getCommonServices() {
-    return [
-      'Bán hàng trực tiếp',
-      'Tư vấn sản phẩm',
-      'Bảo hành sản phẩm',
-      'Đổi trả sản phẩm',
-      'Giao hàng tại chỗ',
-      'Thanh toán tại cửa hàng',
-      'Hỗ trợ kỹ thuật',
-      'Lắp đặt sản phẩm',
-      'Sửa chữa sản phẩm',
-      'Bảo trì sản phẩm'
-    ]
-  }
-
   // Validate store location data
   static validateStoreLocationData(storeData: CreateStoreLocationRequest): { isValid: boolean, errors: string[] } {
     const errors: string[] = []

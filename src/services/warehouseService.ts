@@ -139,7 +139,7 @@ export class WarehouseService {
   static async getAllActiveWarehouses(): Promise<ApiResponse<Warehouse[]>> {
     try {
       // Gọi API backend để lấy danh sách kho active
-      const response = await apiClient.get('/warehouses')
+      const response = await apiClient.get('/api/warehouses')
       const payload = response.data
       if (payload && typeof payload === 'object' && 'data' in payload) {
         return payload as ApiResponse<Warehouse[]>
@@ -190,7 +190,7 @@ export class WarehouseService {
    */
   static async getStoreWarehouse(storeId: number): Promise<ApiResponse<Warehouse | null>> {
     try {
-      const response = await apiClient.get(`/warehouses/stores/${storeId}`)
+      const response = await apiClient.get(`/api/warehouses/stores/${storeId}`)
       const payload = response.data
       if (payload && typeof payload === 'object' && 'data' in payload) {
         return payload as ApiResponse<Warehouse>
@@ -219,7 +219,7 @@ export class WarehouseService {
    * Requirements: 7.2, 7.3
    */
   static async deactivateWarehouse(warehouseId: number): Promise<ApiResponse<void>> {
-    const response = await apiClient.delete(`/warehouses/${warehouseId}`)
+    const response = await apiClient.delete(`/api/warehouses/${warehouseId}`)
     const payload = response.data
     if (payload && typeof payload === 'object' && 'data' in payload) {
       return payload as ApiResponse<void>
@@ -244,9 +244,74 @@ export class WarehouseService {
   }
 
   static async getWarehouseInventory(warehouseId: number): Promise<ApiResponse<WarehouseInventory[]>> {
-    const response = await StoreInventoryService.getStoreProducts(warehouseId, true)
-    const inventory = (response.data || []).map(item => this.mapStoreInventoryToWarehouseInventory(item))
-    return this.wrapResponse(inventory, 'Tồn kho cửa hàng')
+    // Lấy TẤT CẢ sản phẩm đang bán từ getAllProductsWithStoreStatus (giống trang products)
+    // Và merge với inventory_items để lấy quantity chính xác
+    try {
+      const [warehouseResponse, allProductsResponse] = await Promise.all([
+        apiClient.get(`/api/warehouses/stores/${warehouseId}`).catch((err) => {
+          console.error('Error loading warehouse:', err)
+          return { data: { data: null } }
+        }),
+        StoreInventoryService.getAllProductsWithStoreStatus(warehouseId).catch((err) => {
+          console.error('Error loading all products:', err)
+          return { data: { data: [] } }
+        })
+      ])
+
+      console.log('allProductsResponse:', allProductsResponse)
+      console.log('allProductsResponse.data:', allProductsResponse.data)
+
+      const warehouseData = warehouseResponse.data?.data
+      const inventoryItemsMap = new Map(
+        (warehouseData?.inventoryItems || []).map((item: any) => [
+          item.productId,
+          item
+        ])
+      )
+
+      // getAllProductsWithStoreStatus đã trả về ApiResponse, nên data nằm ở allProductsResponse.data
+      const allProducts = Array.isArray(allProductsResponse.data) ? allProductsResponse.data : []
+      console.log('All products from getAllProductsWithStoreStatus:', allProducts.length)
+      console.log('First product sample:', allProducts[0])
+      
+      // Filter sản phẩm đang bán: isAvailable !== false (bao gồm true, undefined, null)
+      const enabledProducts = allProducts.filter((p: StoreInventoryRecord) => p.isAvailable !== false)
+      
+      console.log('Enabled products (isAvailable !== false):', enabledProducts.length)
+      
+      // Nếu không có sản phẩm nào được mark là available, mặc định tất cả đều available (new kho)
+      const productsToShow = enabledProducts.length > 0 ? enabledProducts : allProducts
+      console.log('Products to show:', productsToShow.length)
+      
+      // Map tất cả sản phẩm đang bán, merge với inventory_items để lấy quantity
+      const inventory = productsToShow.map((product: StoreInventoryRecord) => {
+        const inventoryItem = inventoryItemsMap.get(product.productId)
+        
+        return {
+          id: inventoryItem?.id || product.id || product.productId,
+          warehouseId: inventoryItem?.warehouseId || warehouseId,
+          warehouseName: inventoryItem?.warehouseName || warehouseData?.storeName || product.storeName || `Cửa hàng ${warehouseId}`,
+          productId: product.productId,
+          productName: product.productName || `Sản phẩm #${product.productId}`,
+          productVariantName: null,
+          quantityInStock: typeof inventoryItem?.quantity === 'number' ? inventoryItem.quantity : 0, // Lấy từ inventory_items, nếu không có thì = 0
+          isAvailable: product.isAvailable !== false, // Đảm bảo isAvailable = true cho sản phẩm đang bán (bao gồm true, undefined, null)
+          isEnabled: inventoryItem?.isEnabled !== false,
+          updatedAt: inventoryItem?.updatedAt || product.updatedAt || product.createdAt || new Date().toISOString(),
+          createdAt: product.createdAt,
+          productImageUrl: product.productImageUrl || null
+        } as WarehouseInventory
+      })
+
+      console.log('Final inventory count:', inventory.length)
+      return this.wrapResponse(inventory, 'Tồn kho cửa hàng')
+    } catch (error: any) {
+      console.error('Error loading warehouse inventory:', error)
+      // Fallback về cách cũ nếu có lỗi
+      const response = await StoreInventoryService.getStoreProducts(warehouseId, false)
+      const inventory = (response.data || []).map(item => this.mapStoreInventoryToWarehouseInventory(item))
+      return this.wrapResponse(inventory, 'Tồn kho cửa hàng')
+    }
   }
 
   static async addProductToWarehouse(payload: AddProductToWarehouseRequest) {
@@ -264,7 +329,7 @@ export class WarehouseService {
     reason?: string
   ): Promise<ApiResponse<InventoryItemResponse>> {
     const response = await apiClient.put(
-      `/warehouses/stores/${storeId}/inventory/${productId}`,
+      `/api/warehouses/stores/${storeId}/inventory/${productId}`,
       { quantity, reason }
     )
     const payload = response.data
@@ -284,7 +349,7 @@ export class WarehouseService {
     quantity: number
   ): Promise<ApiResponse<InventoryItemResponse>> {
     const response = await apiClient.post(
-      `/warehouses/stores/${storeId}/products`,
+      `/api/warehouses/stores/${storeId}/products`,
       { productId, quantity }
     )
     const payload = response.data
@@ -304,7 +369,7 @@ export class WarehouseService {
     isEnabled: boolean
   ): Promise<ApiResponse<InventoryItemResponse>> {
     const response = await apiClient.patch(
-      `/warehouses/stores/${storeId}/inventory/${productId}/toggle`,
+      `/api/warehouses/stores/${storeId}/inventory/${productId}/toggle`,
       null,
       { params: { isEnabled } }
     )

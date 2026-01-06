@@ -14,14 +14,6 @@ class CategoryService {
   // ==================== PUBLIC ENDPOINTS ====================
 
   /**
-   * Get all categories (legacy endpoint for backward compatibility).
-   */
-  static async getAllCategories(): Promise<Category[]> {
-    const response = await apiClient.get<Category[]>(`${API_URL}/category/public`)
-    return response.data
-  }
-
-  /**
    * Get categories by type.
    * Requirements: 1.1 - Category type filtering
    * 

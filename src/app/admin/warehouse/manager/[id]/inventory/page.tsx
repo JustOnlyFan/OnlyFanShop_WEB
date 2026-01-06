@@ -7,7 +7,7 @@ import { LoadingSpinner } from '@/components/ui/LoadingSpinner'
 import { WarehouseService, Warehouse, WarehouseInventory } from '@/services/warehouseService'
 import { StoreInventoryService, StoreInventoryRecord } from '@/services/storeInventoryService'
 import { motion } from 'framer-motion'
-import { ArrowLeft, Package, TrendingUp, TrendingDown, Search, X, Maximize2, Edit2, Save } from 'lucide-react'
+import { ArrowLeft, Package, TrendingUp, TrendingDown, Search, X, Maximize2, Edit2, Save, CheckSquare, Square } from 'lucide-react'
 import toast from 'react-hot-toast'
 import Link from 'next/link'
 import { ProductService, ProductFullDetails } from '@/services/productService'
@@ -22,6 +22,7 @@ export default function WarehouseInventoryPage() {
   const [warehouse, setWarehouse] = useState<Warehouse | null>(null)
   const [inventory, setInventory] = useState<WarehouseInventory[]>([])
   const [enabledProductsCount, setEnabledProductsCount] = useState(0)
+  const [outOfStockCount, setOutOfStockCount] = useState(0)
   const [searchTerm, setSearchTerm] = useState('')
   const [showProductModal, setShowProductModal] = useState(false)
   const [productLoading, setProductLoading] = useState(false)
@@ -34,6 +35,13 @@ export default function WarehouseInventoryPage() {
   const [editQuantity, setEditQuantity] = useState<number>(0)
   const [editReason, setEditReason] = useState<string>('')
   const [saving, setSaving] = useState(false)
+  
+  // Bulk update state
+  const [selectedProducts, setSelectedProducts] = useState<Set<number>>(new Set())
+  const [showBulkUpdateModal, setShowBulkUpdateModal] = useState(false)
+  const [bulkQuantity, setBulkQuantity] = useState<number>(0)
+  const [bulkReason, setBulkReason] = useState<string>('')
+  const [bulkSaving, setBulkSaving] = useState(false)
 
   const openProductModal = async (productId: number) => {
     try {
@@ -77,7 +85,7 @@ export default function WarehouseInventoryPage() {
   const loadData = async () => {
     try {
       setLoading(true)
-      const [warehouseRes, inventoryRes, productsRes] = await Promise.all([
+      const [warehouseRes, inventoryRes] = await Promise.all([
         WarehouseService.getWarehouseById(warehouseId).catch(err => {
           console.error('Error loading warehouse:', err)
           return { data: null }
@@ -85,30 +93,23 @@ export default function WarehouseInventoryPage() {
         WarehouseService.getWarehouseInventory(warehouseId).catch(err => {
           console.error('Error loading inventory:', err)
           return { data: [] }
-        }),
-        // Lấy danh sách sản phẩm đang bán để đếm chính xác (giống trang products)
-        StoreInventoryService.getAllProductsWithStoreStatus(warehouseId).catch(err => {
-          console.error('Error loading products:', err)
-          return { data: [] }
         })
       ])
       setWarehouse(warehouseRes.data)
-      setInventory(inventoryRes.data || [])
+      const inventoryData = inventoryRes.data || []
+      setInventory(inventoryData)
       
-      // Tính số sản phẩm đang bán từ API giống trang products
-      const allProducts = Array.isArray(productsRes.data) ? productsRes.data : []
-      const enabledProductIds = new Set(
-        allProducts
-          .filter((p) => p.isAvailable !== false)
-          .map((p) => p.productId)
-      )
-      // Nếu backend marks none as available (new kho), default bật toàn bộ
-      const finalEnabledIds = enabledProductIds.size === 0 && allProducts.length > 0
-        ? new Set(allProducts.map((p) => p.productId))
-        : enabledProductIds
+      // Sử dụng trực tiếp từ inventory (đã được warehouseService xử lý logic fallback)
+      // warehouseService đã xử lý: nếu không có sản phẩm available, sẽ fallback về allProducts
+      const totalProducts = inventoryData.length
+      setEnabledProductsCount(totalProducts)
       
-      // Lưu số sản phẩm đang bán để hiển thị
-      setEnabledProductsCount(finalEnabledIds.size)
+      // Đếm sản phẩm hết hàng: số lượng sản phẩm có quantity = 0
+      const outOfStockCount = inventoryData.filter(item => 
+        item.quantityInStock === 0 || item.quantityInStock === null || item.quantityInStock === undefined
+      ).length
+      
+      setOutOfStockCount(outOfStockCount)
     } catch (error: any) {
       console.error('Error loading data:', error)
       if (error.message?.includes('Network Error') || error.message?.includes('ERR_CONNECTION_REFUSED')) {
@@ -121,19 +122,18 @@ export default function WarehouseInventoryPage() {
     }
   }
 
-  // Lọc inventory: chỉ lấy sản phẩm đang bán (isAvailable = true) để khớp với "Tổng sản phẩm"
-  const availableInventory = inventory.filter(item => item.isAvailable === true)
-  
-  const filteredInventory = availableInventory.filter(item =>
+  // Sử dụng tất cả inventory từ warehouseService (đã được xử lý logic fallback)
+  // warehouseService đã xử lý: nếu không có sản phẩm available, sẽ fallback về allProducts
+  // Nên không cần filter lại ở đây
+  const filteredInventory = inventory.filter(item =>
     item.productName.toLowerCase().includes(searchTerm.toLowerCase()) ||
     item.warehouseName.toLowerCase().includes(searchTerm.toLowerCase())
   )
 
-  const totalItems = availableInventory.reduce((sum, item) => sum + item.quantityInStock, 0)
-  // Tổng sản phẩm = số sản phẩm đang bán tại cửa hàng (lấy từ API giống trang products)
-  const totalProducts = enabledProductsCount
-  // Sản phẩm hết hàng = số sản phẩm đang bán nhưng có số lượng = 0
-  const outOfStockCount = availableInventory.filter(item => item.quantityInStock === 0).length
+  const totalItems = inventory.reduce((sum, item) => sum + item.quantityInStock, 0)
+  // Tổng sản phẩm = số sản phẩm trong inventory (đã được warehouseService xử lý)
+  const totalProducts = inventory.length
+  // Sản phẩm hết hàng đã được tính trong loadData dựa trên cùng nguồn với totalProducts
 
   /**
    * Open edit modal for inventory item
@@ -158,20 +158,73 @@ export default function WarehouseInventoryPage() {
       return
     }
 
+    if (editQuantity > 50) {
+      toast.error('Số lượng tối đa cho mỗi sản phẩm là 50')
+      return
+    }
+
+    if (!warehouseId || isNaN(warehouseId)) {
+      toast.error('ID cửa hàng không hợp lệ')
+      return
+    }
+
+    if (!editingItem.productId || isNaN(editingItem.productId)) {
+      toast.error('ID sản phẩm không hợp lệ')
+      return
+    }
+
     try {
       setSaving(true)
+      console.log('Updating inventory:', { 
+        storeId: warehouseId, 
+        productId: editingItem.productId, 
+        quantity: editQuantity 
+      })
       await WarehouseService.updateStoreWarehouseQuantity(
         warehouseId,
         editingItem.productId,
         editQuantity,
         editReason || 'Cập nhật thủ công từ admin'
       )
+      
+      // Cập nhật state trực tiếp để UI phản ánh ngay lập tức (không cần reload)
+      setInventory(prevInventory => 
+        prevInventory.map(item => 
+          item.productId === editingItem.productId
+            ? { ...item, quantityInStock: editQuantity, updatedAt: new Date().toISOString() }
+            : item
+        )
+      )
+      
+      // Cập nhật statistics: đếm lại sản phẩm hết hàng
+      setOutOfStockCount(prevCount => {
+        const wasOutOfStock = editingItem.quantityInStock === 0
+        const isNowOutOfStock = editQuantity === 0
+        
+        if (wasOutOfStock && !isNowOutOfStock) {
+          // Từ hết hàng -> còn hàng: giảm count
+          return Math.max(0, prevCount - 1)
+        } else if (!wasOutOfStock && isNowOutOfStock) {
+          // Từ còn hàng -> hết hàng: tăng count
+          return prevCount + 1
+        }
+        return prevCount
+      })
+      
       toast.success('Cập nhật số lượng thành công')
       setShowEditModal(false)
       setEditingItem(null)
-      // Reload data to reflect changes
-      loadData()
+      setEditQuantity(0)
+      setEditReason('')
     } catch (error: any) {
+      console.error('Error updating inventory:', error)
+      console.error('Error details:', {
+        status: error.response?.status,
+        statusText: error.response?.statusText,
+        data: error.response?.data,
+        url: error.config?.url,
+        method: error.config?.method
+      })
       toast.error(error.response?.data?.message || error.message || 'Không thể cập nhật số lượng')
     } finally {
       setSaving(false)
@@ -186,12 +239,115 @@ export default function WarehouseInventoryPage() {
     )
   }
 
+  // Handle product selection
+  const handleSelectProduct = (productId: number) => {
+    setSelectedProducts(prev => {
+      const newSet = new Set(prev)
+      if (newSet.has(productId)) {
+        newSet.delete(productId)
+      } else {
+        newSet.add(productId)
+      }
+      return newSet
+    })
+  }
+
+  const handleSelectAll = () => {
+    if (selectedProducts.size === filteredInventory.length) {
+      setSelectedProducts(new Set())
+    } else {
+      setSelectedProducts(new Set(filteredInventory.map(item => item.productId)))
+    }
+  }
+
+  const handleBulkUpdate = () => {
+    if (selectedProducts.size === 0) {
+      toast.error('Vui lòng chọn ít nhất một sản phẩm')
+      return
+    }
+    setBulkQuantity(0)
+    setBulkReason('')
+    setShowBulkUpdateModal(true)
+  }
+
+  const handleBulkSave = async () => {
+    if (selectedProducts.size === 0) {
+      toast.error('Vui lòng chọn ít nhất một sản phẩm')
+      return
+    }
+
+    if (bulkQuantity < 0) {
+      toast.error('Số lượng không được âm')
+      return
+    }
+
+    if (bulkQuantity > 50) {
+      toast.error('Số lượng tối đa cho mỗi sản phẩm là 50')
+      return
+    }
+
+    if (!warehouseId || isNaN(warehouseId)) {
+      toast.error('ID cửa hàng không hợp lệ')
+      return
+    }
+
+    try {
+      setBulkSaving(true)
+      const productIds = Array.from(selectedProducts)
+      
+      // Update all selected products in parallel
+      await Promise.all(
+        productIds.map(productId =>
+          WarehouseService.updateStoreWarehouseQuantity(
+            warehouseId,
+            productId,
+            bulkQuantity,
+            bulkReason || `Cập nhật đồng loạt: ${productIds.length} sản phẩm`
+          ).catch(err => {
+            console.error(`Error updating product ${productId}:`, err)
+            throw err
+          })
+        )
+      )
+
+      // Update local state
+      setInventory(prevInventory =>
+        prevInventory.map(item =>
+          selectedProducts.has(item.productId)
+            ? { ...item, quantityInStock: bulkQuantity, updatedAt: new Date().toISOString() }
+            : item
+        )
+      )
+
+      // Update out of stock count
+      const wasOutOfStock = filteredInventory.filter(item => 
+        selectedProducts.has(item.productId) && item.quantityInStock === 0
+      ).length
+      const isNowOutOfStock = bulkQuantity === 0 ? selectedProducts.size : 0
+      setOutOfStockCount(prevCount => {
+        const diff = isNowOutOfStock - wasOutOfStock
+        return Math.max(0, prevCount + diff)
+      })
+
+      toast.success(`Đã cập nhật ${selectedProducts.size} sản phẩm thành công`)
+      setShowBulkUpdateModal(false)
+      setSelectedProducts(new Set())
+      setBulkQuantity(0)
+      setBulkReason('')
+    } catch (error: any) {
+      console.error('Error bulk updating inventory:', error)
+      toast.error(error.response?.data?.message || error.message || 'Không thể cập nhật số lượng')
+    } finally {
+      setBulkSaving(false)
+    }
+  }
+
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 p-6">
+    <div className="min-h-full bg-blue-50 -m-6 p-6">
       <div className="max-w-7xl mx-auto">
         {/* Header */}
         <div className="mb-6">
-          <Link href={`/admin/warehouse/manager/${warehouseId}/products`} className="inline-flex items-center text-gray-600 hover:text-gray-900 mb-4">
+          <Link href={`/admin/warehouse/manager/${warehouseId}`} className="inline-flex items-center text-gray-600 hover:text-gray-900 mb-4">
             <ArrowLeft className="w-4 h-4 mr-2" />
             Quay lại
           </Link>
@@ -207,7 +363,7 @@ export default function WarehouseInventoryPage() {
         </div>
 
         {/* Statistics */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
@@ -217,6 +373,7 @@ export default function WarehouseInventoryPage() {
               <div>
                 <p className="text-gray-600 text-sm">Tổng sản phẩm</p>
                 <p className="text-2xl font-bold text-gray-900">{totalProducts}</p>
+                <p className="text-xs text-gray-500 mt-1">Sản phẩm đang bán tại cửa hàng</p>
               </div>
               <Package className="w-8 h-8 text-blue-500" />
             </div>
@@ -229,41 +386,37 @@ export default function WarehouseInventoryPage() {
           >
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-gray-600 text-sm">Tổng số lượng</p>
-                <p className="text-2xl font-bold text-green-600">{totalItems}</p>
-              </div>
-              <TrendingUp className="w-8 h-8 text-green-500" />
-            </div>
-          </motion.div>
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.2 }}
-            className="bg-white rounded-lg shadow p-4"
-          >
-            <div className="flex items-center justify-between">
-              <div>
                 <p className="text-gray-600 text-sm">Sản phẩm hết hàng</p>
-                <p className="text-2xl font-bold text-red-600">
-                  {outOfStockCount}
-                </p>
+                <p className="text-2xl font-bold text-red-600">{outOfStockCount}</p>
+                <p className="text-xs text-gray-500 mt-1">Trong số đang bán</p>
               </div>
               <TrendingDown className="w-8 h-8 text-red-500" />
             </div>
           </motion.div>
         </div>
 
-        {/* Search */}
+        {/* Search and Bulk Actions */}
         <div className="bg-white rounded-lg shadow p-4 mb-6">
-          <div className="relative">
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
-            <input
-              type="text"
-              placeholder="Tìm kiếm sản phẩm..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
-            />
+          <div className="flex items-center gap-4">
+            <div className="relative flex-1">
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
+              <input
+                type="text"
+                placeholder="Tìm kiếm sản phẩm..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+              />
+            </div>
+            {selectedProducts.size > 0 && (
+              <button
+                onClick={handleBulkUpdate}
+                className="inline-flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors font-medium"
+              >
+                <Save className="w-4 h-4" />
+                Cập nhật {selectedProducts.size} sản phẩm
+              </button>
+            )}
           </div>
         </div>
 
@@ -273,6 +426,19 @@ export default function WarehouseInventoryPage() {
             <table className="w-full">
               <thead className="bg-gray-50">
                 <tr>
+                  <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider w-12">
+                    <button
+                      onClick={handleSelectAll}
+                      className="inline-flex items-center justify-center"
+                      title={selectedProducts.size === filteredInventory.length ? 'Bỏ chọn tất cả' : 'Chọn tất cả'}
+                    >
+                      {selectedProducts.size === filteredInventory.length && filteredInventory.length > 0 ? (
+                        <CheckSquare className="w-5 h-5 text-indigo-600" />
+                      ) : (
+                        <Square className="w-5 h-5 text-gray-400" />
+                      )}
+                    </button>
+                  </th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Sản phẩm</th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Biến thể</th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Số lượng</th>
@@ -287,8 +453,21 @@ export default function WarehouseInventoryPage() {
                     key={item.id}
                     initial={{ opacity: 0 }}
                     animate={{ opacity: 1 }}
-                    className="hover:bg-gray-50"
+                    className={`hover:bg-gray-50 ${selectedProducts.has(item.productId) ? 'bg-blue-50' : ''}`}
                   >
+                    <td className="px-6 py-4 whitespace-nowrap text-center">
+                      <button
+                        onClick={() => handleSelectProduct(item.productId)}
+                        className="inline-flex items-center justify-center"
+                        title={selectedProducts.has(item.productId) ? 'Bỏ chọn' : 'Chọn'}
+                      >
+                        {selectedProducts.has(item.productId) ? (
+                          <CheckSquare className="w-5 h-5 text-indigo-600" />
+                        ) : (
+                          <Square className="w-5 h-5 text-gray-400" />
+                        )}
+                      </button>
+                    </td>
                     <td className="px-6 py-4 whitespace-nowrap">
                       <button
                         onClick={() => openProductModal(item.productId)}
@@ -478,11 +657,34 @@ export default function WarehouseInventoryPage() {
                 <input
                   type="number"
                   min="0"
-                  value={editQuantity}
-                  onChange={(e) => setEditQuantity(parseInt(e.target.value) || 0)}
+                  step="1"
+                  value={editQuantity || ''}
+                  onChange={(e) => {
+                    const val = e.target.value
+                    if (val === '') {
+                      setEditQuantity(0)
+                    } else {
+                      const num = parseInt(val, 10)
+                      if (!isNaN(num) && num >= 0 && num <= 50) {
+                        setEditQuantity(num)
+                      }
+                    }
+                  }}
+                  onBlur={(e) => {
+                    // Đảm bảo giá trị là số nguyên không có leading zeros và không vượt quá 50
+                    const val = parseInt(e.target.value, 10)
+                    if (!isNaN(val) && val >= 0 && val <= 50) {
+                      setEditQuantity(val)
+                    } else if (!isNaN(val) && val > 50) {
+                      setEditQuantity(50)
+                      toast.error('Số lượng tối đa là 50')
+                    }
+                  }}
                   className="w-full px-4 py-2.5 border border-gray-200 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
-                  placeholder="Nhập số lượng mới"
+                  placeholder="Nhập số lượng mới (tối đa 50)"
+                  max={50}
                 />
+                <p className="text-xs text-gray-500 mt-1">Số lượng tối đa: 50</p>
               </div>
 
               {/* Reason Input */}
@@ -525,6 +727,100 @@ export default function WarehouseInventoryPage() {
               >
                 {saving ? <LoadingSpinner /> : <Save className="w-4 h-4" />}
                 Lưu thay đổi
+              </button>
+            </div>
+          </motion.div>
+        </div>
+      )}
+
+      {/* Bulk Update Modal */}
+      {showBulkUpdateModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <div className="absolute inset-0 bg-black/50" onClick={() => setShowBulkUpdateModal(false)} />
+          <motion.div
+            initial={{ opacity: 0, scale: 0.95 }}
+            animate={{ opacity: 1, scale: 1 }}
+            className="relative bg-white rounded-xl shadow-2xl w-full max-w-md overflow-hidden"
+          >
+            <div className="flex items-center justify-between px-5 py-4 border-b border-gray-200">
+              <h3 className="text-lg font-semibold text-gray-900">Cập nhật số lượng đồng loạt</h3>
+              <button onClick={() => setShowBulkUpdateModal(false)} className="p-2 text-gray-500 hover:text-gray-700">
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            <div className="p-5 space-y-4">
+              {/* Selected Products Info */}
+              <div className="bg-indigo-50 rounded-lg p-3">
+                <p className="text-sm text-indigo-700 font-medium">
+                  Đã chọn: {selectedProducts.size} sản phẩm
+                </p>
+                <p className="text-xs text-indigo-600 mt-1">
+                  Tất cả sản phẩm được chọn sẽ được cập nhật cùng một số lượng
+                </p>
+              </div>
+
+              {/* Quantity Input */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Số lượng mới <span className="text-red-500">*</span>
+                </label>
+                <input
+                  type="number"
+                  min="0"
+                  max="50"
+                  step="1"
+                  value={bulkQuantity || ''}
+                  onChange={(e) => {
+                    const val = e.target.value
+                    if (val === '') {
+                      setBulkQuantity(0)
+                    } else {
+                      const num = parseInt(val, 10)
+                      if (!isNaN(num) && num >= 0 && num <= 50) {
+                        setBulkQuantity(num)
+                      }
+                    }
+                  }}
+                  onBlur={(e) => {
+                    const val = parseInt(e.target.value, 10)
+                    if (!isNaN(val) && val >= 0 && val <= 50) {
+                      setBulkQuantity(val)
+                    }
+                  }}
+                  className="w-full px-4 py-2.5 border border-gray-200 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                  placeholder="Nhập số lượng mới (tối đa 50)"
+                />
+                <p className="text-xs text-gray-500 mt-1">Số lượng tối đa: 50 cho mỗi sản phẩm</p>
+              </div>
+
+              {/* Reason Input */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Lý do thay đổi
+                </label>
+                <textarea
+                  value={bulkReason}
+                  onChange={(e) => setBulkReason(e.target.value)}
+                  rows={3}
+                  className="w-full px-4 py-2.5 border border-gray-200 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent resize-none"
+                  placeholder="Nhập lý do thay đổi số lượng (tùy chọn)"
+                />
+              </div>
+            </div>
+            <div className="flex items-center justify-end gap-3 px-5 py-4 border-t border-gray-200 bg-gray-50">
+              <button
+                onClick={() => setShowBulkUpdateModal(false)}
+                className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50"
+              >
+                Hủy
+              </button>
+              <button
+                onClick={handleBulkSave}
+                disabled={bulkSaving || bulkQuantity < 0 || bulkQuantity > 50}
+                className="px-4 py-2 text-sm font-medium text-white bg-indigo-600 rounded-lg hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed inline-flex items-center gap-2"
+              >
+                {bulkSaving ? <LoadingSpinner /> : <Save className="w-4 h-4" />}
+                Cập nhật {selectedProducts.size} sản phẩm
               </button>
             </div>
           </motion.div>

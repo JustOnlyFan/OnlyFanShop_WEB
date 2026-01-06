@@ -832,8 +832,8 @@ export function ProductManagementModal({ product, brands, categories, onClose, o
                 </div>
               </div>
 
-              {/* Grid: Colors, Warranty */}
-              <div className="grid md:grid-cols-2 gap-4">
+              {/* Colors */}
+              <div>
                 {/* Colors - Custom Dropdown */}
                 <div className="relative" ref={colorDropdownRef}>
                   <div className="flex items-center justify-between mb-2">
@@ -880,20 +880,6 @@ export function ProductManagementModal({ product, brands, categories, onClose, o
                       </motion.div>
                     )}
                   </AnimatePresence>
-                </div>
-
-                {/* Warranty */}
-                <div>
-                  <div className="flex items-center justify-between mb-2">
-                    <label className="block text-sm font-medium text-gray-700">Bảo hành</label>
-                    <button type="button" onClick={() => window.open('/admin/warranties', '_blank')} className="text-xs text-green-600 hover:text-green-700 font-medium flex items-center gap-1">
-                      <Plus className="w-3 h-3" />Thêm bảo hành
-                    </button>
-                  </div>
-                  <select value={formData.warrantyId || ''} onChange={(e) => setFormData(prev => ({ ...prev, warrantyId: e.target.value ? parseInt(e.target.value) : undefined }))} className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500">
-                    <option value="">Chọn bảo hành</option>
-                    {warranties.map((warranty) => <option key={warranty.id} value={warranty.id}>{warranty.name} ({warranty.durationMonths} tháng)</option>)}
-                  </select>
                 </div>
               </div>
 

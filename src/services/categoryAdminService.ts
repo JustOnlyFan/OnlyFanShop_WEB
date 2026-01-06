@@ -3,7 +3,6 @@ import axios from 'axios'
 import { ApiResponse, CategoryManagement } from '@/types'
 import { tokenStorage } from '@/utils/tokenStorage'
 
-// Use relative URL - Next.js rewrites will proxy to backend in dev, and in production should use same domain or reverse proxy
 const API_URL = ''
 
 class CategoryAdminService {

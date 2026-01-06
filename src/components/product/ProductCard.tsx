@@ -119,7 +119,7 @@ export const ProductCard = memo(function ProductCard({ product, className, viewM
 
     if (viewMode === 'list') {
         return (
-            <Link href={`/products/${product.id}`} className={`group relative bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden hover:shadow-md hover:border-primary-300 hover:-translate-y-0.5 transition-all duration-300 block ${className}`}>
+            <Link href={`/products/${product.id}`} className={`group relative bg-white rounded-xl shadow-lg border-2 border-gray-300 overflow-hidden hover:shadow-xl hover:border-primary-500 hover:-translate-y-1.5 transition-all duration-300 block ${className}`}>
                 <div className="flex">
                     <div className="relative w-36 h-36 sm:w-40 sm:h-40 flex-shrink-0 overflow-hidden bg-gray-50 flex items-center justify-center">
                         <div className="absolute inset-0">
@@ -158,7 +158,6 @@ export const ProductCard = memo(function ProductCard({ product, className, viewM
                                 <div className="text-xl font-bold text-primary-600">{formatPrice(product.price)}</div>
                                 {(product as any).originalPrice && (product as any).originalPrice > product.price && (<div className="text-xs text-gray-400 line-through">{formatPrice((product as any).originalPrice)}</div>)}
                             </div>
-                            <div className="text-xs text-gray-500">{t('sold')} {Math.floor(Math.random() * 1000) + 100}</div>
                         </div>
                     </div>
                 </div>
@@ -167,7 +166,7 @@ export const ProductCard = memo(function ProductCard({ product, className, viewM
     }
 
     return (
-        <Link href={`/products/${product.id}`} className={`group relative bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden hover:shadow-md hover:border-primary-300 hover:-translate-y-0.5 transition-all duration-300 h-full flex flex-col cursor-pointer ${className}`}>
+        <Link href={`/products/${product.id}`} className={`group relative bg-white rounded-xl shadow-lg border-2 border-gray-300 overflow-hidden hover:shadow-xl hover:border-primary-500 hover:-translate-y-1.5 transition-all duration-300 h-full flex flex-col cursor-pointer ${className}`}>
             <div className="relative aspect-square overflow-hidden bg-gray-50 flex items-center justify-center">
                 <div className="absolute inset-0">
                     {imageList.map((img, idx) => (
@@ -203,7 +202,6 @@ export const ProductCard = memo(function ProductCard({ product, className, viewM
                         <div className="text-lg font-bold text-primary-600">{formatPrice(product.price)}</div>
                         {(product as any).originalPrice && (product as any).originalPrice > product.price && (<div className="text-[11px] text-gray-400 line-through -mt-0.5">{formatPrice((product as any).originalPrice)}</div>)}
                     </div>
-                    <div className="text-[11px] text-gray-500 pb-0.5">{t('sold')} {Math.floor(Math.random() * 1000) + 100}</div>
                 </div>
             </div>
         </Link>

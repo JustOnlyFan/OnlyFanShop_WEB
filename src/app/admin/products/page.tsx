@@ -60,6 +60,9 @@ export default function AdminProductsPage() {
   const [totalActive, setTotalActive] = useState(0)
   const [totalInactive, setTotalInactive] = useState(0)
   
+  // Active filter state: null = all, true = active only, false = inactive only
+  const [activeFilter, setActiveFilter] = useState<boolean | null>(null)
+  
   const router = useRouter()
   const { user, isAuthenticated, hasHydrated } = useAuthStore()
 
@@ -103,24 +106,68 @@ export default function AdminProductsPage() {
 
   const loadProducts = async (withStats = false, page = currentPage) => {
     try {
-      const data = await ProductAdminService.getProductList({
-        page: page,
-        size: pageSize,
-        sortBy: 'productID',
-        order: 'DESC',
-        keyword: searchTerm || undefined,
-        brandId: selectedBrand,
-        categoryId: selectedCategory
-      })
-      const list = data.products || []
-      setProducts(list)
+      let list: ProductDTO[] = []
+      let totalCount = 0
       
-      // Update pagination info
-      if (data.pagination) {
-        setTotalPages(data.pagination.totalPages || 1)
-        setTotalElements(data.pagination.totalElements || list.length)
-        setCurrentPage(data.pagination.currentPage || page)
+      if (activeFilter === true) {
+        // Filter active: use server-side filtering (includeInactive: false)
+        const data = await ProductAdminService.getProductList({
+          page: page,
+          size: pageSize,
+          sortBy: 'productID',
+          order: 'DESC',
+          keyword: searchTerm || undefined,
+          brandId: selectedBrand,
+          categoryId: selectedCategory,
+          includeInactive: false
+        })
+        list = data.products || []
+        if (data.pagination) {
+          setTotalPages(data.pagination.totalPages || 1)
+          setTotalElements(data.pagination.totalElements || list.length)
+          setCurrentPage(data.pagination.page || page)
+        }
+      } else if (activeFilter === false) {
+        // Filter inactive: need to load all then filter client-side
+        const data = await ProductAdminService.getProductList({
+          page: 1,
+          size: 10000, // Load all for filtering
+          sortBy: 'productID',
+          order: 'DESC',
+          keyword: searchTerm || undefined,
+          brandId: selectedBrand,
+          categoryId: selectedCategory,
+          includeInactive: true
+        })
+        const allProducts = (data.products || []).filter(p => !p.active)
+        totalCount = allProducts.length
+        const startIndex = (page - 1) * pageSize
+        const endIndex = startIndex + pageSize
+        list = allProducts.slice(startIndex, endIndex)
+        setTotalPages(Math.ceil(totalCount / pageSize) || 1)
+        setTotalElements(totalCount)
+        setCurrentPage(page)
+      } else {
+        // No filter: default behavior (only active products)
+        const data = await ProductAdminService.getProductList({
+          page: page,
+          size: pageSize,
+          sortBy: 'productID',
+          order: 'DESC',
+          keyword: searchTerm || undefined,
+          brandId: selectedBrand,
+          categoryId: selectedCategory,
+          includeInactive: false
+        })
+        list = data.products || []
+        if (data.pagination) {
+          setTotalPages(data.pagination.totalPages || 1)
+          setTotalElements(data.pagination.totalElements || list.length)
+          setCurrentPage(data.pagination.page || page)
+        }
       }
+      
+      setProducts(list)
       
       if (withStats) {
         await loadProductStats(list)
@@ -254,11 +301,20 @@ export default function AdminProductsPage() {
       loadProducts(true, 1)
     }, 300)
     return () => clearTimeout(handler)
-  }, [searchTerm, selectedBrand, selectedCategory, hasHydrated])
+  }, [searchTerm, selectedBrand, selectedCategory, activeFilter, hasHydrated])
 
   const handleAddProduct = () => {
     setEditingProduct(null)
     setShowModal(true)
+  }
+
+  const handleFilterByActive = (isActive: boolean | null) => {
+    // Toggle filter: if clicking the same filter, reset to null (show all)
+    if (activeFilter === isActive) {
+      setActiveFilter(null)
+    } else {
+      setActiveFilter(isActive)
+    }
   }
 
   const handleEditProduct = async (product: ProductDTO) => {
@@ -347,23 +403,76 @@ export default function AdminProductsPage() {
   return (
     <div className="space-y-6">
       {/* Header with Stats and Action Button */}
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between gap-6">
         <div className="flex items-center gap-6">
-          <div className="flex items-center gap-2">
-            <Package className="w-5 h-5 text-blue-600" />
-            <span className="text-gray-600">Tổng:</span>
-            <span className="font-semibold text-gray-900">{totalActive + totalInactive}</span>
-          </div>
-          <div className="flex items-center gap-2">
-            <Power className="w-4 h-4 text-green-600" />
-            <span className="text-gray-600">Active:</span>
-            <span className="font-semibold text-green-600">{totalActive}</span>
-          </div>
-          <div className="flex items-center gap-2">
-            <PowerOff className="w-4 h-4 text-red-500" />
-            <span className="text-gray-600">Inactive:</span>
-            <span className="font-semibold text-red-500">{totalInactive}</span>
-          </div>
+          {/* Total Products Card */}
+          <motion.div
+            initial={{ opacity: 0, y: -10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.3, delay: 0.1 }}
+            whileHover={{ scale: 1.03, y: -3 }}
+            onClick={() => handleFilterByActive(null)}
+            className={`relative flex items-center gap-4 px-5 py-4 bg-gradient-to-br from-blue-50 via-blue-50/80 to-indigo-50 rounded-2xl border-2 shadow-lg hover:shadow-xl transition-all duration-300 overflow-hidden group cursor-pointer ${
+              activeFilter === null 
+                ? 'border-blue-400 shadow-blue-200/50' 
+                : 'border-blue-200/50'
+            }`}
+          >
+            <div className="absolute inset-0 bg-gradient-to-br from-blue-400/0 to-blue-400/5 opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
+            <div className="relative p-3 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-xl shadow-md">
+              <Package className="w-6 h-6 text-white" />
+            </div>
+            <div className="relative flex flex-col">
+              <span className="text-xs text-blue-700/70 font-semibold uppercase tracking-wide">Tổng</span>
+              <span className="text-2xl font-bold text-blue-700">{totalActive + totalInactive}</span>
+            </div>
+          </motion.div>
+
+          {/* Active Products Card */}
+          <motion.div
+            initial={{ opacity: 0, y: -10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.3, delay: 0.2 }}
+            whileHover={{ scale: 1.03, y: -3 }}
+            onClick={() => handleFilterByActive(true)}
+            className={`relative flex items-center gap-4 px-5 py-4 bg-gradient-to-br from-emerald-50 via-green-50/80 to-teal-50 rounded-2xl border-2 shadow-lg hover:shadow-xl transition-all duration-300 overflow-hidden group cursor-pointer ${
+              activeFilter === true 
+                ? 'border-emerald-400 shadow-emerald-200/50' 
+                : 'border-emerald-200/50'
+            }`}
+          >
+            <div className="absolute inset-0 bg-gradient-to-br from-emerald-400/0 to-emerald-400/5 opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
+            <div className="relative p-3 bg-gradient-to-br from-emerald-500 to-green-600 rounded-xl shadow-md">
+              <Power className="w-6 h-6 text-white" />
+            </div>
+            <div className="relative flex flex-col">
+              <span className="text-xs text-emerald-700/70 font-semibold uppercase tracking-wide">Active</span>
+              <span className="text-2xl font-bold text-emerald-700">{totalActive}</span>
+            </div>
+          </motion.div>
+
+          {/* Inactive Products Card */}
+          <motion.div
+            initial={{ opacity: 0, y: -10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.3, delay: 0.3 }}
+            whileHover={{ scale: 1.03, y: -3 }}
+            onClick={() => handleFilterByActive(false)}
+            className={`relative flex items-center gap-4 px-5 py-4 bg-gradient-to-br from-rose-50 via-red-50/80 to-pink-50 rounded-2xl border-2 shadow-lg hover:shadow-xl transition-all duration-300 overflow-hidden group cursor-pointer ${
+              activeFilter === false 
+                ? 'border-rose-400 shadow-rose-200/50' 
+                : 'border-rose-200/50'
+            }`}
+          >
+            <div className="absolute inset-0 bg-gradient-to-br from-rose-400/0 to-rose-400/5 opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
+            <div className="relative p-3 bg-gradient-to-br from-rose-500 to-red-600 rounded-xl shadow-md">
+              <PowerOff className="w-6 h-6 text-white" />
+            </div>
+            <div className="relative flex flex-col">
+              <span className="text-xs text-rose-700/70 font-semibold uppercase tracking-wide">Inactive</span>
+              <span className="text-2xl font-bold text-rose-700">{totalInactive}</span>
+            </div>
+          </motion.div>
         </div>
         <AdminButton
           variant="success"

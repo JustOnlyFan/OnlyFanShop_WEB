@@ -1,8 +1,3 @@
-/**
- * SVG Icons for Header component
- * Extracted from Header.tsx for better code organization
- */
-
 export function FanIcon() {
     return (
         <svg className="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">

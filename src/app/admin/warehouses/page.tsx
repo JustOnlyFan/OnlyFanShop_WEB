@@ -152,21 +152,14 @@ export default function AdminWarehousesPage() {
                             {StoreLocationService.getStoreStatusLabel(status)}
                           </span>
                         </td>
-                        <td className="px-4 py-4 text-center">
-                          <div className="flex items-center justify-center gap-2">
+                        <td className="px-4 py-4">
+                          <div className="flex items-center justify-center">
                             <Link 
-                              href={`/admin/warehouses/${storeId}/products`}
+                              href={`/admin/warehouse/manager/${storeId}`}
                               className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 rounded-lg transition-colors"
                             >
                               <Package className="w-4 h-4" />
-                              Sản phẩm
-                            </Link>
-                            <Link 
-                              href={`/admin/warehouses/${storeId}/inventory-requests`}
-                              className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-green-600 bg-green-50 hover:bg-green-100 rounded-lg transition-colors"
-                            >
-                              <ClipboardList className="w-4 h-4" />
-                              Nhập hàng
+                              Quản lý
                             </Link>
                           </div>
                         </td>

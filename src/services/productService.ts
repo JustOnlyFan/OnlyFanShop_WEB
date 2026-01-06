@@ -2,7 +2,6 @@ import axios from 'axios'
 
 import { Product, ProductDetail, Brand, Category, ApiResponse, HomepageResponse } from '@/types'
 
-// Use relative URL - Next.js rewrites will proxy to backend in dev, and in production should use same domain or reverse proxy
 const API_URL = ''
 
 export interface ProductFullDetails {
